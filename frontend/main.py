@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonInstance
 from PySide6.QtCore import QTimer, Qt
 from frontend.config import logger
-from frontend.logic.chat.core.chat_controller import ChatController
+from frontend.logic.chat_controller import ChatController
 from frontend.theme_manager import ThemeManager
 from frontend.settings_model import SettingsModel
 

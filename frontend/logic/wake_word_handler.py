@@ -21,10 +21,10 @@ class WakeWordHandler:
         self._wake_word_threads = {}
         self._loop = asyncio.get_event_loop()
         
-        # Base path for wake word files - adjust if needed
+        # Base path for wake word files - adjusted for new file location
         self.base_path = os.path.abspath(os.path.join(
             os.path.dirname(__file__), 
-            '..', '..', 'wakeword', 'models'
+            '..', 'wakeword', 'models'
         ))
         
         # Wake word model paths

@@ -10,8 +10,8 @@ from frontend.config import logger
 from frontend.logic.audio_manager import AudioManager
 from frontend.logic.websocket_client import WebSocketClient
 from frontend.logic.speech_manager import SpeechManager
-from frontend.logic.chat.handlers.message_handler import MessageHandler
-from frontend.logic.voice.wake_word_handler import WakeWordHandler
+from frontend.logic.message_handler import MessageHandler
+from frontend.logic.wake_word_handler import WakeWordHandler
 from frontend.logic.tts_controller import TTSController
 from frontend.logic.resource_manager import ResourceManager
 
@@ -273,7 +273,7 @@ class ChatController(QObject):
             # Construct the path to the wakesound PCM file
             wakesound_path = os.path.join(
                 os.path.dirname(__file__), 
-                '..', '..', '..', 'wakeword', 'sounds', 'Wakesound.pcm'
+                '..', 'wakeword', 'sounds', 'Wakesound.pcm'
             )
             
             # Check if the file exists
