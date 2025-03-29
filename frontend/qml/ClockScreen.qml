@@ -3,20 +3,22 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import MyTheme 1.0
 
-Item {
+BaseScreen {
     id: clockScreen
     
-    // Property to tell MainWindow which controls to load
-    property string screenControls: "ClockControls.qml"
+    // Set the controls file for this screen
+    screenControls: "ClockControls.qml"
+    title: "Clock"
     
+    // Content specific to the clock screen
     Rectangle {
         anchors.fill: parent
-        color: ThemeManager.background_color
+        color: "transparent"
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 20
-            spacing: 10
+            anchors.centerIn: parent
+            anchors.verticalCenterOffset: -parent.height * 0.1  // Move 10% up from the center
+            spacing: 20
 
             Text {
                 id: timeText
@@ -33,11 +35,6 @@ Item {
                 color: ThemeManager.text_primary_color
                 font.pixelSize: 28
                 text: "January 1, 2023"
-            }
-
-            // Spacer
-            Item {
-                Layout.fillHeight: true
             }
         }
 

@@ -2,16 +2,19 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import MyTheme 1.0
 
-Item {
+BaseScreen {
     id: weatherScreen
     
-    // Property to tell MainWindow which controls to load
-    property string screenControls: "WeatherControls.qml"
+    // Set the controls file for this screen
+    screenControls: "WeatherControls.qml"
+    title: "Weather"
     
+    // Override the content area
     Rectangle {
+        id: weatherContent
         anchors.fill: parent
-        color: ThemeManager.background_color
-
+        color: "transparent"
+        
         Text {
             text: "Weather Screen Placeholder"
             color: ThemeManager.text_primary_color

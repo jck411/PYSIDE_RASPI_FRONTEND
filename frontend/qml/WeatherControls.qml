@@ -2,14 +2,18 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-RowLayout {
+BaseControls {
     id: weatherControls
-    spacing: 8
     
-    property var screen
+    // Weather-specific controls can be added here
     
-    // Empty layout to maintain structure
-    Item {
-        Layout.fillWidth: true
-    }
-} 
+    // Example of how to add a weather-specific button:
+    // Component.onCompleted: {
+    //     var refreshButton = createButton("../icons/refresh.svg", "Refresh Weather", 24);
+    //     if (refreshButton) {
+    //         refreshButton.onClicked.connect(function() {
+    //             // Refresh weather data
+    //         });
+    //     }
+    // }
+}

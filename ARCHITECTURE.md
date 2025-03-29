@@ -15,35 +15,6 @@ The PySide Raspberry Pi Frontend is a Qt/QML-based application designed to run o
 
 The application is built using Python with PySide6 (Qt for Python) for the backend and QML for the frontend UI.
 
-## Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        QML UI Layer                          │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────────┐  │
-│  │ Chat     │  │ Weather │  │ Calendar│  │ Settings        │  │
-│  │ Screen   │  │ Screen  │  │ Screen  │  │ Screen          │  │
-│  └─────────┘  └─────────┘  └─────────┘  └─────────────────┘  │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────┐
-│                      Python Backend                          │
-│                                                             │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │ Theme Manager   │  │ Settings Model  │  │ Config       │ │
-│  └─────────────────┘  └─────────────────┘  │ Manager      │ │
-│                                            └──────────────┘ │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │ Chat Logic      │  │ Audio Manager   │  │ Task Manager │ │
-│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
-│                                                             │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
-│  │ WebSocket       │  │ Speech Manager  │  │ Service      │ │
-│  │ Client          │  │                 │  │ Manager      │ │
-│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
-
 ## Core Components
 
 ### UI Layer (QML)
@@ -51,8 +22,11 @@ The application is built using Python with PySide6 (Qt for Python) for the backe
 The UI is built with QML and organized into screen components:
 
 - **MainWindow.qml**: The main application window that contains the navigation and screen management
-- **[Screen]Screen.qml**: Individual screen implementations (ChatScreen.qml, WeatherScreen.qml, etc.)
-- **[Screen]Controls.qml**: Control components for each screen that appear in the top bar
+- **BaseScreen.qml**: Base component that all screens inherit from, providing common structure and properties
+- **BaseControls.qml**: Base component that all control bars inherit from, providing common layout and behavior
+- **BaseControlButton.qml**: Reusable button component for consistent UI controls
+- **[Screen]Screen.qml**: Individual screen implementations (ChatScreen.qml, WeatherScreen.qml, etc.) that inherit from BaseScreen
+- **[Screen]Controls.qml**: Control components for each screen that appear in the top bar and inherit from BaseControls
 
 ### Backend (Python)
 
@@ -72,15 +46,14 @@ The Python backend is organized into several key components:
 - **logic/service_manager.py**: Manages external services
 - **logic/websocket_client.py**: Handles WebSocket communication
 - **logic/chat/**: Chat-related components
-  - **core/chat_controller.py**: Main controller for chat functionality
-  - **core/chatlogic.py**: Adapter for backward compatibility
+  - **core/chat_controller.py**: Main controller for chat functionality that handles all chat-related operations
   - **handlers/message_handler.py**: Processes chat messages
 
 ## Configuration System
 
 The application uses a multi-layered configuration system:
 
-1. **Module Configs**: Default configurations defined in Python modules (e.g., `frontend/stt/config.py`)
+1. **Centralized Config**: Default configurations defined in `frontend/config.py`
 2. **User Configs**: User-specific overrides stored in `~/.smartscreen_config.json`
 
 ### ConfigManager
@@ -97,7 +70,8 @@ config_manager.set_config("stt.STT_CONFIG.enabled", True)
 ```
 
 Configuration paths follow the format `source.variable.key`:
-- `stt.STT_CONFIG.enabled` refers to the `enabled` key in the `STT_CONFIG` variable from the STT module
+- `stt.STT_CONFIG.enabled` refers to the `enabled` key in the `STT_CONFIG` variable in the config module
+- `server.SERVER_HOST` refers to the `SERVER_HOST` variable in the config module
 - `user.theme.is_dark_mode` refers to the `is_dark_mode` key in the `theme` section of the user config
 
 ### Settings Model
@@ -165,10 +139,59 @@ if source == 'new_module':
     self.load_module_config('frontend.new_module.config', ['CONFIG_VAR1', 'CONFIG_VAR2'])
 ```
 
+## Component Inheritance System
+
+The application uses a component inheritance system to promote code reuse and maintain consistency across the UI:
+
+### Base Components
+
+- **BaseScreen**: Provides common structure and properties for all screens
+  - Standard background and layout
+  - Common properties like `screenControls` and `title`
+  - Content area that child screens can override
+
+- **BaseControls**: Provides common layout and behavior for all control bars
+  - Standard spacing and alignment
+  - Reference to the screen it controls
+  - Common utility functions
+
+- **BaseControlButton**: Reusable button component for consistent UI controls
+  - Standard size and appearance
+  - Properties for customization (icon, tooltip, etc.)
+  - Toggle functionality
+
+### Inheritance Pattern
+
+Screen components inherit from BaseScreen:
+```qml
+BaseScreen {
+    id: myScreen
+    screenControls: "MyControls.qml"
+    title: "My Screen"
+    
+    // Screen-specific content here
+}
+```
+
+Control components inherit from BaseControls:
+```qml
+BaseControls {
+    id: myControls
+    
+    // Control-specific buttons and widgets here
+}
+```
+
+This inheritance system makes it easier to:
+- Add new screens and controls with consistent behavior
+- Make global changes to all screens or controls
+- Maintain a cleaner, more organized codebase
+
 ## Best Practices
 
 1. **Separation of Concerns**: Keep UI logic in QML and business logic in Python
-2. **Asynchronous Operations**: Use `TaskManager` for async operations to avoid blocking the UI
-3. **Configuration**: Store configuration in the appropriate place based on its nature
-4. **Error Handling**: Use proper error handling and logging throughout the application
-5. **Documentation**: Keep this document updated as the application evolves
+2. **Component Inheritance**: Use the base components for new screens and controls
+3. **Asynchronous Operations**: Use `TaskManager` for async operations to avoid blocking the UI
+4. **Configuration**: Store configuration in the appropriate place based on its nature
+5. **Error Handling**: Use proper error handling and logging throughout the application
+6. **Documentation**: Keep this document updated as the application evolves

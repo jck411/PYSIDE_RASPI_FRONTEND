@@ -17,7 +17,7 @@ from deepgram import (
 )
 from PySide6.QtCore import QObject, Signal
 from dotenv import load_dotenv
-from .config import AUDIO_CONFIG, DEEPGRAM_CONFIG, STT_CONFIG
+from frontend.config import AUDIO_CONFIG, DEEPGRAM_CONFIG, STT_CONFIG
 
 logging.basicConfig(level=logging.INFO)
 

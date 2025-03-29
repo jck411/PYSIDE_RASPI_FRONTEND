@@ -2,16 +2,19 @@
 import sys
 import asyncio
 import signal
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonInstance
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, Qt
 from frontend.config import logger
-from frontend.logic.chat.core.chatlogic import ChatLogic  # Updated import path
+from frontend.logic.chat.core.chat_controller import ChatController
 from frontend.theme_manager import ThemeManager
 from frontend.settings_model import SettingsModel
 
 def main():
-    app = QGuiApplication(sys.argv)
+    # Enable touch input
+    app = QApplication(sys.argv)
+    app.setAttribute(Qt.AA_SynthesizeTouchForUnhandledMouseEvents, True)
+    app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     
     # Create an asyncio loop
     loop = asyncio.new_event_loop()
@@ -20,8 +23,8 @@ def main():
     # Create theme manager instance
     theme_manager = ThemeManager()
     
-    # Register ChatLogic so QML can instantiate it
-    qmlRegisterType(ChatLogic, "MyScreens", 1, 0, "ChatLogic")
+    # Register ChatController as ChatLogic for QML compatibility
+    qmlRegisterType(ChatController, "MyScreens", 1, 0, "ChatLogic")
     
     # Register ThemeManager as a singleton
     qmlRegisterSingletonInstance(ThemeManager, "MyTheme", 1, 0, "ThemeManager", theme_manager)
@@ -29,7 +32,11 @@ def main():
     # Create settings model
     settings_model = SettingsModel()
     
+    # Create QML engine
     engine = QQmlApplicationEngine()
+    
+    # Add import paths for base components
+    engine.addImportPath("frontend/qml")
     
     # Register settings model as a context property
     engine.rootContext().setContextProperty("settingsModel", settings_model)
@@ -72,11 +79,11 @@ def main():
     exit_code = app.exec()
     
     # Cleanup
-    chat_logic = None
+    chat_controller = None
     for obj in engine.rootObjects():
-        chat_logic = obj.findChild(ChatLogic)
-        if chat_logic:
-            chat_logic.cleanup()
+        chat_controller = obj.findChild(ChatController)
+        if chat_controller:
+            chat_controller.cleanup()
             break
     
     loop.close()

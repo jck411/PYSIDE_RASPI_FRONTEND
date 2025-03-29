@@ -5,20 +5,20 @@ import QtQuick.Layouts 1.15
 import MyScreens 1.0
 import MyTheme 1.0  // Import our ThemeManager
 
-Item {
+BaseScreen {
     id: chatScreen
-    property string title: "Chat Interface"
+    title: "Chat Interface"
     
     // Properties to expose chat logic and model to controls
     property alias chatLogic: chatLogic
     property alias chatModel: chatModel
     
-    // Property to tell MainWindow which controls to load
-    property string screenControls: "ChatControls.qml"
+    // Set the controls file for this screen
+    screenControls: "ChatControls.qml"
     
     Rectangle {
         anchors.fill: parent
-        color: ThemeManager.background_color
+        color: "transparent"
 
         ChatLogic {
             id: chatLogic

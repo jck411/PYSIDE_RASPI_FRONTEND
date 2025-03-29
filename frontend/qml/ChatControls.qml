@@ -3,117 +3,47 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 // Controls component for Chat Screen
-RowLayout {
+BaseControls {
     id: chatControls
-    spacing: 10
+    spacing: 5  // Match the spacing from BaseControls
     
-    // Reference to the screen this controls
-    property var screen
-    
-    // Force alignment to left
-    Layout.alignment: Qt.AlignLeft
-    
-    Button {
+    TouchFriendlyButton {
         id: sttButton
         property bool isListening: false
-        Layout.preferredWidth: 50
-        Layout.preferredHeight: 40
-        background: Rectangle {
-            color: "transparent"
-            radius: 5
-        }
+        source: isListening ? "../icons/stt_on.svg" : "../icons/stt_off.svg"
+        text: isListening ? "STT On" : "STT Off"
         onClicked: {
             isListening = !isListening
             screen.chatLogic.toggleSTT()
         }
-        
-        Image {
-            anchors.centerIn: parent
-            source: sttButton.isListening ? "../icons/stt_on.svg" : "../icons/stt_off.svg"
-            width: 24
-            height: 24
-            sourceSize.width: 24
-            sourceSize.height: 24
-        }
-        
-        ToolTip.visible: hovered
-        ToolTip.text: isListening ? "STT On" : "STT Off"
     }
     
-    Button {
+    TouchFriendlyButton {
         id: ttsButton
         property bool isEnabled: false
-        Layout.preferredWidth: 50
-        Layout.preferredHeight: 40
-        background: Rectangle {
-            color: "transparent"
-            radius: 5
-        }
+        source: isEnabled ? "../icons/sound_on.svg" : "../icons/sound_off.svg"
+        text: isEnabled ? "TTS On" : "TTS Off"
         onClicked: {
             isEnabled = !isEnabled
             screen.chatLogic.toggleTTS()
         }
-        
-        Image {
-            anchors.centerIn: parent
-            source: ttsButton.isEnabled ? "../icons/sound_on.svg" : "../icons/sound_off.svg"
-            width: 24
-            height: 24
-            sourceSize.width: 24
-            sourceSize.height: 24
-        }
-        
-        ToolTip.visible: hovered
-        ToolTip.text: isEnabled ? "TTS On" : "TTS Off"
     }
     
-    Button {
+    TouchFriendlyButton {
         id: stopButton
-        Layout.preferredWidth: 50
-        Layout.preferredHeight: 40
-        background: Rectangle {
-            color: "transparent"
-            radius: 5
-        }
+        source: "../icons/stop_all.svg"
+        text: "Stop"
         onClicked: screen.chatLogic.stopAll()
-        
-        Image {
-            anchors.centerIn: parent
-            source: "../icons/stop_all.svg"
-            width: 24
-            height: 24
-            sourceSize.width: 24
-            sourceSize.height: 24
-        }
-        
-        ToolTip.visible: hovered
-        ToolTip.text: "Stop"
     }
     
-    Button {
+    TouchFriendlyButton {
         id: clearButton
-        Layout.preferredWidth: 50
-        Layout.preferredHeight: 40
-        background: Rectangle {
-            color: "transparent"
-            radius: 5
-        }
+        source: "../icons/clear_all.svg"
+        text: "Clear"
         onClicked: {
             screen.chatLogic.clearChat()
             screen.chatModel.clear()
         }
-        
-        Image {
-            anchors.centerIn: parent
-            source: "../icons/clear_all.svg"
-            width: 24
-            height: 24
-            sourceSize.width: 24
-            sourceSize.height: 24
-        }
-        
-        ToolTip.visible: hovered
-        ToolTip.text: "Clear"
     }
     
     // Add a spacer to prevent stretching
@@ -133,4 +63,4 @@ RowLayout {
             ttsButton.isEnabled = enabled
         }
     }
-} 
+}

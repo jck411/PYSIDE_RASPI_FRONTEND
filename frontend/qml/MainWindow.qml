@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.15
 import QtQuick.Window 2.15
 import MyScreens 1.0
 import MyTheme 1.0  // Import our ThemeManager
+import "." // Import the current directory to find TouchFriendlyButton.qml
 
 Window {
     id: mainWindow
@@ -30,8 +31,8 @@ Window {
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: 10
-                anchors.rightMargin: 10
-                spacing: 10
+                anchors.rightMargin: 30
+                spacing: 5  // Significantly reduced spacing between buttons
                 
                 // Screen-specific controls
                 Loader {
@@ -52,163 +53,54 @@ Window {
                     Layout.preferredWidth: 50
                 } // Spacer
                 
-                // Navigation icons
-                Button {
+                // Navigation icons using the new TouchFriendlyButton
+                TouchFriendlyButton {
                     id: chatButton
-                    Layout.preferredWidth: 50
-                    Layout.preferredHeight: 40
-                    background: Rectangle {
-                        color: "transparent"
-                        border.color: stackView.currentItem.toString().includes("ChatScreen") ? ThemeManager.button_primary_color : "transparent"
-                        border.width: 2
-                        radius: 5
-                    }
+                    source: "../icons/chat.svg"
+                    text: "Chat"
                     onClicked: stackView.replace("ChatScreen.qml")
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        source: "../icons/chat.svg"
-                        width: 24
-                        height: 24
-                        sourceSize.width: 24
-                        sourceSize.height: 24
-                    }
                 }
-                
-                Button {
+
+                TouchFriendlyButton {
                     id: weatherButton
-                    Layout.preferredWidth: 50
-                    Layout.preferredHeight: 40
-                    background: Rectangle {
-                        color: "transparent"
-                        border.color: stackView.currentItem.toString().includes("WeatherScreen") ? ThemeManager.button_primary_color : "transparent"
-                        border.width: 2
-                        radius: 5
-                    }
+                    source: "../icons/weather.svg"
+                    text: "Weather"
                     onClicked: stackView.replace("WeatherScreen.qml")
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        source: "../icons/weather.svg"
-                        width: 24
-                        height: 24
-                        sourceSize.width: 24
-                        sourceSize.height: 24
-                    }
                 }
-                
-                Button {
+
+                TouchFriendlyButton {
                     id: calendarButton
-                    Layout.preferredWidth: 50
-                    Layout.preferredHeight: 40
-                    background: Rectangle {
-                        color: "transparent"
-                        border.color: stackView.currentItem.toString().includes("CalendarScreen") ? ThemeManager.button_primary_color : "transparent"
-                        border.width: 2
-                        radius: 5
-                    }
+                    source: "../icons/calendar.svg"
+                    text: "Calendar"
                     onClicked: stackView.replace("CalendarScreen.qml")
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        source: "../icons/calendar.svg"
-                        width: 24
-                        height: 24
-                        sourceSize.width: 24
-                        sourceSize.height: 24
-                    }
                 }
-                
-                Button {
+
+                TouchFriendlyButton {
                     id: clockButton
-                    Layout.preferredWidth: 50
-                    Layout.preferredHeight: 40
-                    background: Rectangle {
-                        color: "transparent"
-                        border.color: stackView.currentItem.toString().includes("ClockScreen") ? ThemeManager.button_primary_color : "transparent"
-                        border.width: 2
-                        radius: 5
-                    }
+                    source: "../icons/clock.svg"
+                    text: "Clock"
                     onClicked: stackView.replace("ClockScreen.qml")
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        source: "../icons/clock.svg"
-                        width: 24
-                        height: 24
-                        sourceSize.width: 24
-                        sourceSize.height: 24
-                    }
                 }
-                
-                Button {
+
+                TouchFriendlyButton {
                     id: photosButton
-                    Layout.preferredWidth: 50
-                    Layout.preferredHeight: 40
-                    background: Rectangle {
-                        color: "transparent"
-                        border.color: stackView.currentItem.toString().includes("PhotoScreen") ? ThemeManager.button_primary_color : "transparent"
-                        border.width: 2
-                        radius: 5
-                    }
+                    source: "../icons/photos.svg"
+                    text: "Photos"
                     onClicked: stackView.replace("PhotoScreen.qml")
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        source: "../icons/photos.svg"
-                        width: 24
-                        height: 24
-                        sourceSize.width: 24
-                        sourceSize.height: 24
-                    }
                 }
-                
-                Button {
+
+                TouchFriendlyButton {
                     id: themeToggleButton
-                    Layout.preferredWidth: 50
-                    Layout.preferredHeight: 40
-                    background: Rectangle {
-                        color: "transparent"
-                        radius: 5
-                    }
+                    source: ThemeManager.is_dark_mode ? "../icons/light_mode.svg" : "../icons/dark_mode.svg"
+                    text: ThemeManager.is_dark_mode ? "Switch to Light Mode" : "Switch to Dark Mode"
                     onClicked: ThemeManager.toggle_theme()
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        source: ThemeManager.is_dark_mode ? "../icons/light_mode.svg" : "../icons/dark_mode.svg"
-                        width: 24
-                        height: 24
-                        sourceSize.width: 24
-                        sourceSize.height: 24
-                    }
-                    
-                    ToolTip.visible: hovered
-                    ToolTip.text: ThemeManager.is_dark_mode ? "Switch to Light Mode" : "Switch to Dark Mode"
                 }
-                
-                Button {
+
+                TouchFriendlyButton {
                     id: settingsButton
-                    Layout.preferredWidth: 50
-                    Layout.preferredHeight: 40
-                    background: Rectangle {
-                        color: "transparent"
-                        border.color: stackView.currentItem.toString().includes("SettingsScreen") ? ThemeManager.button_primary_color : "transparent"
-                        border.width: 2
-                        radius: 5
-                    }
+                    source: "../icons/settings.svg"
+                    text: "Settings"
                     onClicked: stackView.replace("SettingsScreen.qml")
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        source: "../icons/settings.svg"
-                        width: 24
-                        height: 24
-                        sourceSize.width: 24
-                        sourceSize.height: 24
-                    }
-                    
-                    ToolTip.visible: hovered
-                    ToolTip.text: "Settings"
                 }
             }
         }
@@ -228,6 +120,11 @@ Window {
                     screenControlsLoader.source = ""
                     // Then load the new one
                     screenControlsLoader.source = currentItem.screenControls
+                    
+                    // Update the window title if the screen has a title
+                    if (currentItem.title) {
+                        mainWindow.title = currentItem.title
+                    }
                 }
             }
         }

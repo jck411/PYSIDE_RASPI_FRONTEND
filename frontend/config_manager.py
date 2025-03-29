@@ -143,7 +143,9 @@ class ConfigManager:
         # Handle module config - load if needed
         if source not in self._module_configs:
             if source == 'stt':
-                self.load_module_config('frontend.stt.config', ['STT_CONFIG', 'AUDIO_CONFIG', 'DEEPGRAM_CONFIG'])
+                self.load_module_config('frontend.config', ['STT_CONFIG', 'AUDIO_CONFIG', 'DEEPGRAM_CONFIG'])
+            elif source == 'server':
+                self.load_module_config('frontend.config', ['SERVER_HOST', 'SERVER_PORT', 'WEBSOCKET_PATH', 'HTTP_BASE_URL'])
         
         # Get from module config
         if source in self._module_configs and var in self._module_configs[source]:
