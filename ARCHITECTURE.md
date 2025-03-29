@@ -40,10 +40,9 @@ The Python backend is organized into several key components:
 
 #### Logic Components
 
-- **logic/task_manager.py**: Manages asynchronous tasks
+- **logic/resource_manager.py**: Unified manager for asynchronous tasks and service operations
 - **logic/audio_manager.py**: Handles audio playback
 - **logic/speech_manager.py**: Manages speech recognition
-- **logic/service_manager.py**: Manages external services
 - **logic/websocket_client.py**: Handles WebSocket communication
 - **logic/chat/**: Chat-related components
   - **core/chat_controller.py**: Main controller for chat functionality that handles all chat-related operations

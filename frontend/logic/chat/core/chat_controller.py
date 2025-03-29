@@ -13,8 +13,7 @@ from frontend.logic.speech_manager import SpeechManager
 from frontend.logic.chat.handlers.message_handler import MessageHandler
 from frontend.logic.voice.wake_word_handler import WakeWordHandler
 from frontend.logic.tts_controller import TTSController
-from frontend.logic.task_manager import TaskManager
-from frontend.logic.service_manager import ServiceManager
+from frontend.logic.resource_manager import ResourceManager
 
 class ChatController(QObject):
     """
@@ -39,8 +38,8 @@ class ChatController(QObject):
         # Get the event loop but don't start tasks immediately
         self._loop = asyncio.get_event_loop()
         
-        # Initialize task manager for async operations
-        self.task_manager = TaskManager(self._loop)
+        # Initialize resource manager for async operations and services
+        self.resource_manager = ResourceManager(self._loop)
         
         # Initialize component managers
         self.audio_manager = AudioManager()
@@ -48,7 +47,6 @@ class ChatController(QObject):
         self.message_handler = MessageHandler()
         self.websocket_client = WebSocketClient()
         self.tts_controller = TTSController(parent)
-        self.service_manager = ServiceManager()
         
         # Initialize wake word handler
         self.wake_word_handler = WakeWordHandler()
@@ -92,8 +90,8 @@ class ChatController(QObject):
     def _startTasks(self):
         """Start the background tasks"""
         logger.info("[ChatController] Starting background tasks")
-        self.task_manager.create_task("websocket", self.websocket_client.start_connection_loop())
-        self.task_manager.create_task("audio", self.audio_manager.start_audio_consumer())
+        self.resource_manager.create_task("websocket", self.websocket_client.start_connection_loop())
+        self.resource_manager.create_task("audio", self.audio_manager.start_audio_consumer())
         
         # Start wake word detection
         self.wake_word_handler.start_listening()
@@ -125,7 +123,7 @@ class ChatController(QObject):
         Non-coroutine method that schedules the async processing of audio data.
         This is what gets connected to the audioReceived signal.
         """
-        self.task_manager.schedule_coroutine(self._handle_audio_data(audio_data))
+        self.resource_manager.schedule_coroutine(self._handle_audio_data(audio_data))
         logger.debug(f"[ChatController] Scheduled audio processing task for {len(audio_data)} bytes")
 
     async def _handle_audio_data(self, audio_data):
@@ -189,7 +187,7 @@ class ChatController(QObject):
             payload["continue_response"] = True
         
         # Send asynchronously
-        self.task_manager.schedule_coroutine(self.websocket_client.send_message(payload))
+        self.resource_manager.schedule_coroutine(self.websocket_client.send_message(payload))
         logger.info(f"[ChatController] Sending message: {text}{' (continuing interrupted response)' if has_interrupted else ''}")
 
     @Slot()
@@ -200,7 +198,7 @@ class ChatController(QObject):
     @Slot()
     def toggleTTS(self):
         """Toggle text-to-speech functionality"""
-        self.task_manager.schedule_coroutine(self.tts_controller.toggleTTS())
+        self.resource_manager.schedule_coroutine(self.tts_controller.toggleTTS())
 
     @Slot()
     def stopAll(self):
@@ -208,7 +206,7 @@ class ChatController(QObject):
         logger.info("[ChatController] Stop all triggered.")
         # Mark the current response as interrupted before stopping
         self.message_handler.mark_response_as_interrupted()
-        self.task_manager.schedule_coroutine(self._stopAllAsync())
+        self.resource_manager.schedule_coroutine(self._stopAllAsync())
 
     async def _stopAllAsync(self):
         """
@@ -219,7 +217,7 @@ class ChatController(QObject):
         logger.info(f"[ChatController] Current TTS state before stopping: {current_tts_state}")
         
         # Stop server-side operations
-        await self.service_manager.stop_all_services()
+        await self.resource_manager.stop_all_services()
         
         # Restore TTS state if needed
         if current_tts_state:
@@ -248,16 +246,22 @@ class ChatController(QObject):
         """
         logger.info("[ChatController] Cleanup called. Stopping tasks.")
         self._running = False
-
-        # Clean up all managers
-        self.speech_manager.cleanup()
-        self.websocket_client.cleanup()
-        self.audio_manager.cleanup()
-        self.wake_word_handler.stop_listening()
         
-        # Cancel all tasks
-        self.task_manager.cleanup()
-        
+        # Stop the wake word handler
+        if hasattr(self, 'wake_word_handler'):
+            self.wake_word_handler.stop_listening()
+            
+        # Clean up all tasks
+        if hasattr(self, 'resource_manager'):
+            self.resource_manager.cleanup()
+            
+        # Clean up all handlers
+        for handler_name in ['websocket_client', 'audio_manager', 'speech_manager', 'tts_controller']:
+            if hasattr(self, handler_name):
+                handler = getattr(self, handler_name)
+                if hasattr(handler, 'cleanup') and callable(handler.cleanup):
+                    handler.cleanup()
+                    
         logger.info("[ChatController] Cleanup complete.")
 
     async def _enable_tts_on_wake_word(self):
@@ -295,3 +299,7 @@ class ChatController(QObject):
         if not self.speech_manager.is_stt_enabled():
             self.toggleSTT()
             logger.info("[ChatController] STT enabled after wake word")
+            
+        # Also enable TTS as per the latest implementation
+        await self.tts_controller.set_tts_enabled(True)
+        logger.info("[ChatController] TTS enabled after wake word")
