@@ -4,7 +4,7 @@ import logging
 
 from PySide6.QtCore import QObject, Signal, Slot
 
-from frontend.config import logger
+from frontend.config import logger, STT_CONFIG
 from frontend.stt.deepgram_stt import DeepgramSTT
 
 class SpeechManager(QObject):
@@ -15,6 +15,7 @@ class SpeechManager(QObject):
     sttTextReceived = Signal(str)           # Emitted when partial or final STT text arrives
     sttStateChanged = Signal(bool)          # Emitted when STT state toggles
     sttInputTextReceived = Signal(str)      # Emitted when complete STT utterance should be set as input text
+    autoSubmitUtterance = Signal(str)       # Emitted when a complete utterance should be auto-submitted to chat
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -43,7 +44,14 @@ class SpeechManager(QObject):
         if text.strip():
             logger.info(f"[SpeechManager] Complete utterance: {text}")
             self.sttTextReceived.emit(text)
-            self.sttInputTextReceived.emit(text)
+            
+            # Check if we should auto-submit complete utterances
+            if STT_CONFIG.get('auto_submit_utterances', False):
+                logger.info(f"[SpeechManager] Auto-submitting utterance to chat: {text}")
+                self.autoSubmitUtterance.emit(text)
+            else:
+                # Default behavior: just populate the input field
+                self.sttInputTextReceived.emit(text)
 
     def handle_frontend_stt_state(self, is_listening):
         """Handle STT state changes"""

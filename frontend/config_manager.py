@@ -140,6 +140,31 @@ class ConfigManager:
                 return config
             return default
         
+        # Check for module overrides first
+        if 'module_overrides' in self._file_configs.get('user', {}) and \
+           source in self._file_configs['user']['module_overrides'] and \
+           var in self._file_configs['user']['module_overrides'][source]:
+            
+            override = self._file_configs['user']['module_overrides'][source][var]
+            
+            # Handle nested access for overrides
+            if len(parts) > 2:
+                for key in parts[2:]:
+                    if isinstance(override, dict) and key in override:
+                        override = override[key]
+                    else:
+                        # If we can't find the nested key in the override, 
+                        # we'll fall back to the module config
+                        break
+                else:
+                    # If we've traversed all keys successfully, return the override
+                    self._config_cache[path] = override
+                    return override
+            else:
+                # Direct access without nested keys
+                self._config_cache[path] = override
+                return override
+        
         # Handle module config - load if needed
         if source not in self._module_configs:
             if source == 'stt':

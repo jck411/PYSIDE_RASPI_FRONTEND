@@ -44,9 +44,8 @@ The Python backend is organized into several key components:
 - **logic/audio_manager.py**: Handles audio playback
 - **logic/speech_manager.py**: Manages speech recognition
 - **logic/websocket_client.py**: Handles WebSocket communication
-- **logic/chat/**: Chat-related components
-  - **core/chat_controller.py**: Main controller for chat functionality that handles all chat-related operations
-  - **handlers/message_handler.py**: Processes chat messages
+- **logic/chat_controller.py**: Main controller for chat functionality that handles all chat-related operations
+- **logic/message_handler.py**: Processes chat messages
 
 ## Configuration System
 
@@ -72,6 +71,15 @@ Configuration paths follow the format `source.variable.key`:
 - `stt.STT_CONFIG.enabled` refers to the `enabled` key in the `STT_CONFIG` variable in the config module
 - `server.SERVER_HOST` refers to the `SERVER_HOST` variable in the config module
 - `user.theme.is_dark_mode` refers to the `is_dark_mode` key in the `theme` section of the user config
+
+### Speech-to-Text Configuration
+
+The Speech-to-Text system is highly configurable through the `STT_CONFIG` dictionary:
+
+- `enabled`: Global switch to enable/disable STT
+- `auto_start`: Whether to start STT automatically on initialization
+- `use_keepalive`: Whether to use KeepAlive for pausing/resuming during TTS
+- `auto_submit_utterances`: When enabled, complete utterances are automatically submitted to the chat instead of being placed in the input field
 
 ### Settings Model
 
@@ -104,6 +112,17 @@ The application uses Qt's signal/slot mechanism for communication between compon
 1. **Python to Python**: Components emit signals that other Python components can connect to
 2. **Python to QML**: Python signals are exposed to QML through properties and can trigger UI updates
 3. **QML to Python**: QML calls Python methods through exposed slots and properties
+
+### Chat Signal Flow
+
+The ChatController exposes several signals to QML:
+- `messageReceived`: Emitted when a new message is received from the backend
+- `messageChunkReceived`: Emitted when a streaming message chunk is received 
+- `sttTextReceived`: Emitted when speech-to-text transcription arrives
+- `sttInputTextReceived`: Emitted when a complete utterance should be set in the input field
+- `userMessageAutoSubmitted`: Emitted when an utterance is auto-submitted to chat, ensuring it appears in the chat history
+- `connectionStatusChanged`: Emitted when the WebSocket connection status changes
+- `ttsStateChanged`: Emitted when the text-to-speech state changes
 
 ## Adding New Features
 

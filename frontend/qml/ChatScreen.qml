@@ -55,6 +55,13 @@ BaseScreen {
             onSttInputTextReceived: function(text) {
                 inputField.text = text
             }
+            
+            onUserMessageAutoSubmitted: function(text) {
+                chatModel.append({"text": text, "isUser": true})
+                if (chatView.autoScroll) {
+                    chatView.positionViewAtEnd()
+                }
+            }
         }
 
         Rectangle {

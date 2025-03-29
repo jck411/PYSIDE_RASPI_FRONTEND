@@ -23,6 +23,7 @@ STT_CONFIG: Dict[str, Any] = {
     'enabled': False,      # Global switch to enable/disable STT
     'auto_start': False,   # Whether to start STT automatically on initialization
     'use_keepalive': True, # Whether to use KeepAlive for pausing/resuming during TTS
+    'auto_submit_utterances': True, # Whether to automatically submit complete utterances directly to chat
 }
 
 # Audio capture configuration

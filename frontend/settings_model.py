@@ -200,6 +200,11 @@ class SettingsModel(QAbstractListModel):
             "Use KeepAlive for pausing/resuming during TTS", 
             "bool", "stt.STT_CONFIG.use_keepalive"
         ))
+        stt_category.add_setting(SettingItem(
+            "auto_submit_utterances", "Auto-Submit Utterances", 
+            "Automatically submit complete utterances to chat without putting them in the input box", 
+            "bool", "stt.STT_CONFIG.auto_submit_utterances"
+        ))
         self._categories.append(stt_category)
         
         # Audio Category

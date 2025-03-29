@@ -29,6 +29,7 @@ class ChatController(QObject):
     ttsStateChanged = Signal(bool)          # From TTSController
     messageChunkReceived = Signal(str, bool)  # From MessageHandler
     sttInputTextReceived = Signal(str)      # From SpeechManager
+    userMessageAutoSubmitted = Signal(str)  # Emitted when a message is auto-submitted
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -76,6 +77,7 @@ class ChatController(QObject):
         self.speech_manager.sttTextReceived.connect(self.sttTextReceived)
         self.speech_manager.sttStateChanged.connect(self.sttStateChanged)
         self.speech_manager.sttInputTextReceived.connect(self.sttInputTextReceived)
+        self.speech_manager.autoSubmitUtterance.connect(self._handle_auto_submit_utterance)
         
         # MessageHandler signals
         self.message_handler.messageReceived.connect(self.messageReceived)
@@ -303,3 +305,13 @@ class ChatController(QObject):
         # Also enable TTS as per the latest implementation
         await self.tts_controller.set_tts_enabled(True)
         logger.info("[ChatController] TTS enabled after wake word")
+
+    def _handle_auto_submit_utterance(self, text):
+        """
+        Handle auto-submission of complete utterances directly to chat.
+        This bypasses the input field and sends the message immediately.
+        """
+        logger.info(f"[ChatController] Auto-submitting utterance to chat: {text}")
+        # Emit a signal so the UI can display the message
+        self.userMessageAutoSubmitted.emit(text)
+        self.sendMessage(text)
