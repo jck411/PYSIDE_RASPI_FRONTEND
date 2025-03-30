@@ -88,3 +88,10 @@ def setup_logger(name=__name__, level=logging.INFO):
 
 # Create default logger
 logger = setup_logger(level=logging.INFO)
+
+# ========================
+# CHAT CONFIGURATION
+# ========================
+CHAT_CONFIG: Dict[str, Any] = {
+    'show_input_box': True,      # Whether to show the text input field on the chat screen
+}

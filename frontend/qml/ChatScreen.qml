@@ -4,10 +4,14 @@ import QtQuick.Layouts 1.15
 
 import MyScreens 1.0
 import MyTheme 1.0  // Import our ThemeManager
+import MyServices 1.0 // Needed for SettingsService
 
 BaseScreen {
     id: chatScreen
     title: "Chat Interface"
+    
+    // Property to hold the setting value
+    property bool showInputBox: true
     
     // Properties to expose chat logic and model to controls
     property alias chatLogic: chatLogic
@@ -16,6 +20,27 @@ BaseScreen {
     // Set the controls file for this screen
     screenControls: "ChatControls.qml"
     
+    Component.onCompleted: {
+        // Get initial value for input box visibility
+        try {
+            showInputBox = SettingsService.getSetting("chat.CHAT_CONFIG.show_input_box", true)
+            console.log("ChatScreen initial showInputBox value:", showInputBox)
+        } catch (e) {
+            console.error("Error getting showInputBox setting:", e)
+        }
+    }
+    
+    // Optional: Connect to setting changes if needed at runtime
+    Connections {
+        target: SettingsService
+        function onSettingChanged(path, value) {
+            if (path === "chat.CHAT_CONFIG.show_input_box") {
+                showInputBox = value
+                console.log("ChatScreen updated showInputBox value:", value)
+            }
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "transparent"
@@ -123,6 +148,9 @@ BaseScreen {
                 }
                 
                 RowLayout {
+                    id: inputAreaRow
+                    visible: showInputBox
+                    
                     spacing: 8
                     TextField {
                         id: inputField

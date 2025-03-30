@@ -35,6 +35,12 @@ def main():
         module_key='server',
         config_vars=['SERVER_HOST', 'SERVER_PORT', 'WEBSOCKET_PATH', 'HTTP_BASE_URL']
     )
+    # Load Chat related configurations
+    config_manager.load_module_config(
+        module_path='frontend.config',
+        module_key='chat',
+        config_vars=['CHAT_CONFIG']
+    )
     # ----------------------------
 
     # Create theme manager instance
