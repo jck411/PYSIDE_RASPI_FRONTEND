@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import MyTheme 1.0
+import MyServices 1.0
 
 Item {
     id: settingsScreen
@@ -14,16 +15,12 @@ Item {
     property bool autoSendEnabled: false
     
     Component.onCompleted: {
-        console.log("Settings model has", settingsModel ? settingsModel.rowCount() : 0, "categories")
-        
-        // Get the initial value from the model using our direct method
-        if (settingsModel) {
-            try {
-                autoSendEnabled = settingsModel.getAutoSubmitUtterances()
-                console.log("Auto Send setting initial value:", autoSendEnabled)
-            } catch (e) {
-                console.log("Error getting Auto Send value:", e)
-            }
+        // Get the initial value from the SettingsService
+        try {
+            autoSendEnabled = SettingsService.getSetting('stt.STT_CONFIG.auto_submit_utterances', false)
+            console.log("Auto Send setting initial value:", autoSendEnabled)
+        } catch (e) {
+            console.error("Error getting Auto Send value from SettingsService:", e)
         }
     }
     
@@ -98,17 +95,15 @@ Item {
                                 checked: autoSendEnabled
                                 
                                 onToggled: {
-                                    if (settingsModel) {
-                                        // Call the direct method
-                                        var success = settingsModel.setAutoSubmitUtterances(checked)
-                                        if (success) {
-                                            autoSendEnabled = checked
-                                            console.log("Auto Send setting changed to:", checked)
-                                        } else {
-                                            console.log("Failed to update Auto Send setting")
-                                            // Revert the switch position without triggering events
-                                            autoSendSwitch.checked = Qt.binding(function() { return autoSendEnabled; })
-                                        }
+                                    // Call the SettingsService method
+                                    var success = SettingsService.setSetting('stt.STT_CONFIG.auto_submit_utterances', checked)
+                                    if (success) {
+                                        autoSendEnabled = checked
+                                        console.log("Auto Send setting changed via SettingsService to:", checked)
+                                    } else {
+                                        console.error("Failed to update Auto Send setting via SettingsService")
+                                        // Revert the switch position without triggering events
+                                        autoSendSwitch.checked = Qt.binding(function() { return autoSendEnabled; })
                                     }
                                 }
                             }

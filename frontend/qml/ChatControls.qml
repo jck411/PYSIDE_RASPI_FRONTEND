@@ -10,10 +10,12 @@ BaseControls {
     TouchFriendlyButton {
         id: sttButton
         property bool isListening: false
-        source: isListening ? "../icons/stt_on.svg" : "../icons/stt_off.svg"
-        text: isListening ? "STT On" : "STT Off"
+        source: "../icons/mic.svg"
+        text: isListening ? "Listening..." : "Tap to Speak"
+        
+        opacity: isListening ? 1.0 : 0.6
+        
         onClicked: {
-            isListening = !isListening
             screen.chatLogic.toggleSTT()
         }
     }
@@ -54,12 +56,15 @@ BaseControls {
     // Connect signals from ChatLogic to update button states
     Connections {
         target: screen ? screen.chatLogic : null
+        ignoreUnknownSignals: true
         
-        function onSttStateChanged(enabled) {
-            sttButton.isListening = enabled
+        function onSttStateChanged(listening) {
+            console.log("ChatControls received sttStateChanged: ", listening)
+            sttButton.isListening = listening
         }
         
         function onTtsStateChanged(enabled) {
+            console.log("ChatControls received ttsStateChanged: ", enabled)
             ttsButton.isEnabled = enabled
         }
     }

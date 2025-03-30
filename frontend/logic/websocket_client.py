@@ -7,6 +7,7 @@ import logging
 from PySide6.QtCore import QObject, Signal
 
 from frontend.config import SERVER_HOST, SERVER_PORT, WEBSOCKET_PATH, logger
+from frontend.error_handler import handle_error
 
 class WebSocketClient(QObject):
     """
@@ -43,23 +44,27 @@ class WebSocketClient(QObject):
                             raw_msg = await ws.recv()
                             await self._process_message(raw_msg)
                         except Exception as e:
-                            logger.error(f"[WebSocketClient] Message processing error: {e}")
+                            # Pass user message for significant processing errors
+                            handle_error(e, context="WebSocket message processing", user_message="Error processing server message.", error_type="Data")
                             await asyncio.sleep(0.1)
                             continue
             except (ConnectionRefusedError, websockets.exceptions.InvalidURI) as e:
-                logger.error(f"[WebSocketClient] Connection failed: {e}")
+                # Provide user message for connection failures
+                handle_error(e, context="WebSocket connection failed", level=logging.ERROR, user_message="Cannot connect to the server.", error_type="Connection")
                 self._connected = False
                 self._ws = None
                 self.connectionStatusChanged.emit(False)
                 await asyncio.sleep(2)
             except websockets.exceptions.ConnectionClosedError as e:
-                logger.warning(f"[WebSocketClient] Connection closed: {e}")
+                # Provide user message for unexpected disconnects (but keep as warning)
+                handle_error(e, context="WebSocket connection closed", level=logging.WARNING, user_message="Connection to server lost.", error_type="Connection")
                 self._connected = False
                 self._ws = None
                 self.connectionStatusChanged.emit(False)
                 await asyncio.sleep(2)
             except Exception as e:
-                logger.error(f"[WebSocketClient] Error: {e}")
+                # General connection loop errors
+                handle_error(e, context="WebSocket connection loop", user_message="A WebSocket error occurred.", error_type="Connection")
                 self._connected = False
                 self._ws = None
                 self.connectionStatusChanged.emit(False)
@@ -89,8 +94,9 @@ class WebSocketClient(QObject):
                 data = json.loads(raw_msg)
                 logger.debug(f"[WebSocketClient] Received message: {data}")
                 self.messageReceived.emit(data)
-            except json.JSONDecodeError:
-                logger.error("[WebSocketClient] Failed to parse JSON message")
+            except json.JSONDecodeError as e:
+                # User message for bad JSON data
+                handle_error(e, context="Parsing JSON message", user_message="Received invalid data from server.", error_type="Data")
                 logger.error(f"[WebSocketClient] Raw message: {raw_msg}")
 
     async def send_message(self, data):
@@ -108,7 +114,8 @@ class WebSocketClient(QObject):
             await self._ws.send(json.dumps(data))
             return True
         except Exception as e:
-            logger.error(f"[WebSocketClient] Error sending message: {e}")
+            # User message for send failures
+            handle_error(e, context="Sending WebSocket message", user_message="Failed to send message to server.", error_type="Connection")
             return False
 
     async def send_playback_complete(self):

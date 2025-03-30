@@ -34,9 +34,9 @@ The Python backend is organized into several key components:
 
 - **main.py**: Application entry point and initialization
 - **config.py**: Basic configuration and logging setup
-- **config_manager.py**: Advanced configuration management
+- **config_manager.py**: Advanced configuration management (handles loading/saving)
+- **settings_service.py**: Unified service for accessing/modifying settings (wraps ConfigManager)
 - **theme_manager.py**: Manages application theming (dark/light mode)
-- **settings_model.py**: QML-compatible model for settings management
 
 #### Logic Components
 
@@ -49,247 +49,108 @@ The Python backend is organized into several key components:
 
 ## Configuration System
 
-The application uses a multi-layered configuration system:
+The application uses a multi-layered configuration system managed primarily by the `ConfigManager`:
 
-1. **Centralized Config**: Default configurations defined in `frontend/config.py`
-2. **User Configs**: User-specific overrides stored in `~/.smartscreen_config.json`
+1.  **Default Config**: Default configurations potentially defined in Python modules (e.g., `frontend.config` or feature-specific config modules).
+2.  **User Config**: User-specific overrides stored in `~/.smartscreen_config.json`.
 
 ### ConfigManager
 
-The `ConfigManager` class provides a unified interface for accessing configuration values from different sources:
+The `ConfigManager` class handles the low-level loading of configurations from modules and the user JSON file, as well as saving user overrides. It is primarily used internally by the `SettingsService`.
+
+### SettingsService
+
+The `SettingsService` class provides a simplified, unified, and singleton interface for the rest of the application (both Python and QML) to interact with settings. It wraps the `ConfigManager`.
+
+**Accessing Settings (Python):**
 
 ```python
-# Get a configuration value
-config_manager = ConfigManager()
-value = config_manager.get_config("stt.STT_CONFIG.enabled")
+from frontend.settings_service import SettingsService
 
-# Set a configuration value
-config_manager.set_config("stt.STT_CONFIG.enabled", True)
+settings_service = SettingsService() # Get singleton instance
+
+# Get a setting value
+value = settings_service.getSetting("stt.STT_CONFIG.enabled", default=False)
+
+# Set a setting value
+success = settings_service.setSetting("stt.STT_CONFIG.enabled", True)
+
+# Observe changes (connect to the signal)
+def handle_change(path, new_value):
+    print(f"Setting {path} changed to {new_value}")
+
+settings_service.settingChanged.connect(handle_change)
+```
+
+**Accessing Settings (QML):**
+
+The `SettingsService` is registered as a QML singleton `SettingsService` under the URI `MyServices`. Import it and use its methods:
+
+```qml
+import QtQuick 2.15
+import MyServices 1.0
+
+Item {
+    property bool someSettingValue: false
+
+    Component.onCompleted: {
+        // Get initial value
+        someSettingValue = SettingsService.getSetting("some.config.path", false)
+    }
+
+    Switch {
+        checked: someSettingValue
+        onToggled: {
+            var success = SettingsService.setSetting("some.config.path", checked)
+            if (success) {
+                someSettingValue = checked
+            } else {
+                // Revert UI if setting failed
+                checked = Qt.binding(function() { return someSettingValue; })
+            }
+        }
+    }
+}
 ```
 
 Configuration paths follow the format `source.variable.key`:
-- `stt.STT_CONFIG.enabled` refers to the `enabled` key in the `STT_CONFIG` variable in the config module
-- `server.SERVER_HOST` refers to the `SERVER_HOST` variable in the config module
-- `user.theme.is_dark_mode` refers to the `is_dark_mode` key in the `theme` section of the user config
+
+-   `stt.STT_CONFIG.enabled` refers to the `enabled` key within the `STT_CONFIG` dictionary, loaded under the `stt` source key.
+-   `server.SERVER_HOST` refers to the `SERVER_HOST` variable, loaded under the `server` source key.
+-   `user.theme.is_dark_mode` refers to the `is_dark_mode` key within the `theme` dictionary in the user config file.
 
 ### Speech-to-Text Configuration
 
-The Speech-to-Text system is highly configurable through the `STT_CONFIG` dictionary:
+The Speech-to-Text system configuration can be accessed via `SettingsService` using paths starting with `stt.`: 
 
-- `enabled`: Global switch to enable/disable STT
-- `auto_start`: Whether to start STT automatically on initialization
-- `use_keepalive`: Whether to use KeepAlive for pausing/resuming during TTS
-- `auto_submit_utterances`: When enabled, complete utterances are automatically submitted to the chat instead of being placed in the input field (displayed as "Auto Send" in UI)
+-   `stt.STT_CONFIG.enabled`: Global switch to enable/disable STT
+-   `stt.STT_CONFIG.auto_start`: Whether to start STT automatically on initialization
+-   `stt.STT_CONFIG.use_keepalive`: Whether to use KeepAlive for pausing/resuming during TTS
+-   `stt.STT_CONFIG.auto_submit_utterances`: When enabled, complete utterances are automatically submitted to the chat instead of being placed in the input field (displayed as "Auto Send" in UI)
 
-### Settings Model
+### Settings UI Implementation
 
-The settings system uses a model-view architecture to expose configuration values to the QML UI:
+The settings UI (`SettingsScreen.qml`) directly interacts with the `SettingsService` to get and set configuration values. It uses a hardcoded layout for reliability and simplicity, mapping UI controls directly to specific configuration paths via `SettingsService.getSetting` and `SettingsService.setSetting`.
 
-- **SettingsModel**: Main model containing all settings categories
-- **SettingsCategory**: Groups related settings (e.g., "Speech-to-Text", "Audio")
-- **SettingItem**: Individual setting with properties like name, type, and value
+#### Adding New Settings to the UI
 
-The model is registered with QML in `main.py`:
+1.  **Ensure Config Exists**: Make sure the configuration variable and its default value exist in the appropriate Python config module and are loaded by `ConfigManager` (via `load_module_config` in `main.py`).
+2.  **Frontend**: Add a new UI block (e.g., `RowLayout` with `Text` and a `Switch` or `TextField`) to the appropriate section in `SettingsScreen.qml`.
+3.  **Connect UI**: 
+    *   In `Component.onCompleted`, use `SettingsService.getSetting("your.config.path", default_value)` to initialize the UI control's state (e.g., a `property bool` backing a `Switch`).
+    *   In the control's `onToggled`, `onAccepted`, or similar signal handler, call `SettingsService.setSetting("your.config.path", new_value)`.
+    *   Update the local QML property based on the success of `setSetting`.
+    *   Use the `Qt.binding` trick shown above to revert the UI control if `setSetting` fails.
 
-```python
-settings_model = SettingsModel()
-engine.rootContext().setContextProperty("settingsModel", settings_model)
-```
-
-#### Settings UI Implementation
-
-The settings UI uses a direct hardcoded approach rather than a fully dynamic one. This approach was chosen for reliability and simplicity:
-
-1. Each settings category is explicitly defined in the SettingsScreen.qml file
-2. Settings within each category are explicitly coded with their labels and controls
-3. Settings values are accessed directly using model indices
-
-Example setting implementation:
-
-```qml
-// Setting: Auto Send
-RowLayout {
-    Layout.fillWidth: true
-    spacing: 16
-    
-    Text {
-        text: "Auto Send:"
-        color: ThemeManager.text_primary_color
-        Layout.preferredWidth: 150
-        elide: Text.ElideRight
-        
-        ToolTip.visible: autoSendMouseArea.containsMouse
-        ToolTip.text: "Automatically submit complete utterances..."
-        
-        MouseArea {
-            id: autoSendMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-        }
-    }
-    
-    Switch {
-        id: autoSendSwitch
-        checked: settingsModel.data(settingsModel.index(0, 0), 259)[3].value
-        onCheckedChanged: {
-            if (checked !== settingsModel.data(settingsModel.index(0, 0), 259)[3].value) {
-                settingsModel.data(settingsModel.index(0, 0), 259)[3].value = checked
-            }
-        }
-    }
-}
-```
-
-#### Direct Method Approach for Settings
-
-For settings that need to persist across screen navigation, we use a direct method approach to avoid QML/Python type conversion issues:
-
-1. **Define getter and setter methods in the Python model** that are exposed as slots:
-
-```python
-@Slot(bool, result=bool)
-def setAutoSubmitUtterances(self, enabled: bool) -> bool:
-    """Directly set the auto_submit_utterances setting value."""
-    # Initialize the config manager
-    config_manager = ConfigManager()
-    
-    # Directly set the config value using the config path
-    result = config_manager.set_config("stt.STT_CONFIG.auto_submit_utterances", enabled)
-    
-    if result:
-        logger.info(f"Updated auto_submit_utterances to {enabled}")
-        # Update UI consistency if needed
-    
-    return result
-    
-@Slot(result=bool)
-def getAutoSubmitUtterances(self) -> bool:
-    """Directly get the auto_submit_utterances setting value."""
-    config_manager = ConfigManager()
-    return config_manager.get_config("stt.STT_CONFIG.auto_submit_utterances", False)
-```
-
-2. **In QML, store the current value in a property** and update it using the direct methods:
-
-```qml
-// Property to store current value
-property bool autoSendEnabled: false
-
-// Initialize on component load
-Component.onCompleted: {
-    if (settingsModel) {
-        autoSendEnabled = settingsModel.getAutoSubmitUtterances()
-    }
-}
-
-// Update via direct method call
-Switch {
-    checked: autoSendEnabled
-    onToggled: {
-        if (settingsModel) {
-            var success = settingsModel.setAutoSubmitUtterances(checked)
-            if (success) {
-                autoSendEnabled = checked
-            }
-        }
-    }
-}
-```
-
-3. **Components that use the setting must access it via ConfigManager, not directly**:
-
-```python
-# In SpeechManager.py
-def handle_frontend_stt_text(self, text):
-    """Handle final transcription results"""
-    if text.strip():
-        # Get the most up-to-date setting value from ConfigManager
-        auto_submit = self.config_manager.get_config("stt.STT_CONFIG.auto_submit_utterances", False)
-        
-        if auto_submit:
-            # Auto-submit the utterance to chat
-            self.autoSubmitUtterance.emit(text)
-        else:
-            # Default: populate the input field
-            self.sttInputTextReceived.emit(text)
-}
-```
-
-This approach solves QML/Python type conversion issues by:
-- Using explicit methods instead of property bindings
-- Only exchanging simple types (boolean, string, numbers) between QML and Python
-- Handling all complex logic in Python rather than QML
-- Ensuring that components access the latest config values directly via ConfigManager
-- Avoiding stale cached values from module imports
-
-#### Adding New Settings
-
-To add a new setting:
-
-1. **Backend**: Add the setting to the appropriate category in `settings_model.py`:
-
-```python
-category.add_setting(SettingItem(
-    "setting_name", "Display Name", 
-    "Description of the setting", 
-    "bool", "config.path.to.setting"
-))
-```
-
-2. **Frontend**: Add a new UI block to the appropriate category in `SettingsScreen.qml`:
-
-```qml
-// Setting: New Setting
-RowLayout {
-    Layout.fillWidth: true
-    spacing: 16
-    
-    Text {
-        text: "New Setting:"
-        color: ThemeManager.text_primary_color
-        Layout.preferredWidth: 150
-        elide: Text.ElideRight
-        
-        ToolTip.visible: newSettingMouseArea.containsMouse
-        ToolTip.text: "Description of the new setting"
-        
-        MouseArea {
-            id: newSettingMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-        }
-    }
-    
-    // For boolean settings
-    Switch {
-        id: newSettingSwitch
-        // categoryIndex, settingIndex - adjust these as needed
-        checked: settingsModel.data(settingsModel.index(0, 0), 259)[4].value
-        onCheckedChanged: {
-            if (checked !== settingsModel.data(settingsModel.index(0, 0), 259)[4].value) {
-                settingsModel.data(settingsModel.index(0, 0), 259)[4].value = checked
-            }
-        }
-    }
-    
-    // For other types, copy appropriate controls from existing examples
-}
-```
-
-3. To find the correct indices for a new setting, use:
-   - **categoryIndex**: The index of the category in the `_categories` list (0 for STT, 1 for Audio, etc.)
-   - **settingIndex**: The index of the setting within that category (based on order added to category)
-   - **Role ID**: Always use 259 for accessing settings (this is the SettingsRole value)
-
-This direct approach means changes to settings require changes to both the model and UI code, but results in a more reliable and straightforward implementation.
+This direct approach ensures type safety by exchanging only primitive types via the `SettingsService` and keeps the QML relatively simple.
 
 ## Signal Flow
 
 The application uses Qt's signal/slot mechanism for communication between components:
 
-1. **Python to Python**: Components emit signals that other Python components can connect to
-2. **Python to QML**: Python signals are exposed to QML through properties and can trigger UI updates
-3. **QML to Python**: QML calls Python methods through exposed slots and properties
+1.  **Python to Python**: Components emit signals that other Python components can connect to (e.g., `SettingsService.settingChanged`).
+2.  **Python to QML**: Python signals are exposed to QML through registered objects (like `SettingsService` or controllers registered via `qmlRegisterType`) and can trigger UI updates or actions.
+3.  **QML to Python**: QML calls Python methods exposed as slots or methods on registered objects (e.g., `SettingsService.setSetting`, `ChatController.sendMessage`).
 
 ### Chat Signal Flow
 
@@ -306,34 +167,23 @@ The ChatController exposes several signals to QML:
 
 ### Adding a New Screen
 
-1. Create a new QML file in `frontend/qml/` (e.g., `NewScreen.qml`)
-2. Create a corresponding controls file (e.g., `NewControls.qml`)
-3. Add a navigation button in `MainWindow.qml`
-
-### Adding New Settings
-
-1. Identify the appropriate category or create a new one in `settings_model.py`
-2. Add the setting to the category in the `_init_model` method:
-
-```python
-category.add_setting(SettingItem(
-    "setting_name", "Display Name", 
-    "Description of the setting", 
-    "bool", "config.path.to.setting"
-))
-```
-
-3. The setting will automatically appear in the Settings screen
+1. Create a new QML file in `frontend/qml/` (e.g., `NewScreen.qml`) inheriting from `BaseScreen.qml`.
+2. Create a corresponding controls file (e.g., `NewControls.qml`) inheriting from `BaseControls.qml`.
+3. Add a navigation button in `MainWindow.qml` that loads the new screen.
 
 ### Adding a New Configuration Module
 
-1. Create a new Python module with configuration variables
-2. Update `ConfigManager` to load the new module:
+1. Create a new Python module (e.g., `frontend/new_feature/config.py`) containing configuration variables (dictionaries, strings, bools, etc.).
+2. In `frontend/main.py`, add a call to `config_manager.load_module_config` to load variables from your new module under a unique `module_key`:
 
-```python
-if source == 'new_module':
-    self.load_module_config('frontend.new_module.config', ['CONFIG_VAR1', 'CONFIG_VAR2'])
-```
+   ```python
+   config_manager.load_module_config(
+       module_path='frontend.new_feature.config', 
+       module_key='new_feature', # Unique key for this config source
+       config_vars=['FEATURE_SETTINGS', 'ANOTHER_VAR']
+   )
+   ```
+3. Access these settings via `SettingsService` using paths like `'new_feature.FEATURE_SETTINGS.some_key'`.
 
 ## Component Inheritance System
 
@@ -360,9 +210,12 @@ The application uses a component inheritance system to promote code reuse and ma
 
 Screen components inherit from BaseScreen:
 ```qml
+// In MyScreen.qml
+import "../BaseComponents"
+
 BaseScreen {
     id: myScreen
-    screenControls: "MyControls.qml"
+    screenControls: "MyControls.qml" // Reference to its controls
     title: "My Screen"
     
     // Screen-specific content here
@@ -371,10 +224,20 @@ BaseScreen {
 
 Control components inherit from BaseControls:
 ```qml
+// In MyControls.qml
+import "../BaseComponents"
+
 BaseControls {
     id: myControls
     
-    // Control-specific buttons and widgets here
+    // Control-specific buttons and widgets here, e.g.:
+    BaseControlButton {
+        text: "Action"
+        onClicked: {
+            // Access parent screen via myControls.parentScreen
+            console.log("Action clicked on", myControls.parentScreen.title)
+        }
+    }
 }
 ```
 
@@ -385,168 +248,94 @@ This inheritance system makes it easier to:
 
 ## Best Practices
 
-1. **Separation of Concerns**: Keep UI logic in QML and business logic in Python
-2. **Component Inheritance**: Use the base components for new screens and controls
-3. **Asynchronous Operations**: Use `TaskManager` for async operations to avoid blocking the UI
-4. **Configuration**: Store configuration in the appropriate place based on its nature
-5. **Error Handling**: Use proper error handling and logging throughout the application
-6. **Documentation**: Keep this document updated as the application evolves
+1.  **Separation of Concerns**: Keep UI layout/presentation in QML and business logic/state management in Python.
+2.  **Component Inheritance**: Use the base components for new screens and controls.
+3.  **Asynchronous Operations**: Use appropriate async patterns (like `asyncio` integrated with the Qt event loop) or dedicated threads for long-running tasks to avoid blocking the UI.
+4.  **Settings Management**: Use the `SettingsService` for all setting access and modification in both Python and QML.
+5.  **Error Handling**: Implement robust error handling (see `frontend/error_handler.py`) and provide user feedback where appropriate (logging isn't always sufficient).
+6.  **Documentation**: Keep this document updated as the application evolves.
+
+## Implementation Plan (Current Focus: Chat Enhancements)
+
+This plan outlines the current development focus on improving the chat functionality and adding history persistence.
+
+**Phase A: Chat Screen UI/UX Enhancements**
+*   A.1: Implement STT Visual Indicator: **NOT STARTED**
+*   A.2: Implement Option to Hide Chat Input Box: **NOT STARTED**
+
+**Phase B: STT Logic Enhancements**
+*   B.1: Implement STT Inactivity Timeout: **NOT STARTED**
+
+**Phase C: Chat History Persistence**
+*   C.1: Ensure Short-Term Persistence (Screen Switching): **NOT STARTED**
+*   C.2: Implement Long-Term Conversation Storage (Backend): **NOT STARTED**
+*   C.3: Implement Loading Last Conversation on Startup: **NOT STARTED**
+*   C.4: Implement UI for Viewing Past Conversations (Deferred): **NOT STARTED**
+
+**Phase D: Other Screens** (Deferred until Chat Enhancements are complete)
+*   D.1: Implement Weather Screen Functionality: **NOT STARTED**
+*   D.2: Implement Calendar Screen Functionality: **NOT STARTED**
+*   D.3: Implement Photo Screen Enhancements: **NOT STARTED**
+
+## Previous Implementation Plan Status (Archived)
+
+This section tracks the progress of *previously completed* major refactoring and improvement efforts.
+
+**Phase 1: Configuration System Overhaul**
+*   1.1 Standardize Configuration Module Key Handling: **DONE**
+*   1.2 Create a SettingsService Abstraction Layer: **DONE**
+*   5.2 Optimize Startup Sequence: **NOT STARTED**.
 
 ## Common Issues and Solutions
 
 ### Configuration Management
 
-The application's configuration system can be tricky to work with. Here are solutions to common issues:
+Problems with settings not saving or loading correctly often stem from issues in the configuration layer.
 
-#### Module Key Naming
+#### Incorrect Configuration Path
 
-**Problem**: Configuration modules are loaded with inconsistent keys, causing "Unknown config source" errors when accessing values.
+**Problem**: `SettingsService.getSetting` returns the default value, or `setSetting` fails.
+**Solution**: Double-check the configuration path string. It must match the `source.variable.key` structure precisely, where `source` is the `module_key` used in `load_module_config` (or `'user'` for user-specific settings), `variable` is the name of the dictionary or variable loaded from the module, and `key` is the nested key within that variable (if applicable).
 
-**Solution**: Always ensure module keys match the expected source names:
+#### Module Not Loaded
 
-```python
-# In ConfigManager.load_module_config():
-# Use 'stt' for STT_CONFIG, 'server' for SERVER_HOST, etc.
-if 'STT_CONFIG' in config_vars:
-    module_key = 'stt'
-elif 'SERVER_HOST' in config_vars:
-    module_key = 'server'
-else:
-    module_key = module_path.split('.')[-1]
-```
+**Problem**: Settings from a specific module cannot be accessed.
+**Solution**: Ensure the module's configuration is explicitly loaded using `config_manager.load_module_config` in `main.py` with the correct `module_path`, `module_key`, and `config_vars` list.
 
-#### UI Settings Updates
+#### QML UI Not Updating
 
-**Problem**: Settings toggled in the UI aren't persisting due to QML/Python type conversion issues.
-
-**Solution**: Use direct method calls (slots) instead of property bindings for settings:
-
-1. Define dedicated get/set methods in your model:
-
-```python
-@Slot(bool, result=bool)
-def setAutoSubmitUtterances(self, enabled: bool) -> bool:
-    config_manager = ConfigManager()
-    return config_manager.set_config("stt.STT_CONFIG.auto_submit_utterances", enabled)
-    
-@Slot(result=bool)
-def getAutoSubmitUtterances(self) -> bool:
-    config_manager = ConfigManager()
-    return config_manager.get_config("stt.STT_CONFIG.auto_submit_utterances", False)
-```
-
-2. In QML, use a property and update it via the direct methods:
-
-```qml
-// Property to store current value
-property bool autoSendEnabled: false
-
-// Initialize in Component.onCompleted
-Component.onCompleted: {
-    if (settingsModel) {
-        autoSendEnabled = settingsModel.getAutoSubmitUtterances()
-    }
-}
-
-// Update via direct method call
-Switch {
-    checked: autoSendEnabled
-    onToggled: {
-        if (settingsModel) {
-            var success = settingsModel.setAutoSubmitUtterances(checked)
-            if (success) {
-                autoSendEnabled = checked
-            } else {
-                // Revert without triggering events if update failed
-                checked = Qt.binding(function() { return autoSendEnabled; })
-            }
-        }
-    }
-}
-```
-
-3. Never try to assign values directly to PyObject properties in QML:
-
-```qml
-// AVOID this pattern - leads to "Cannot assign bool to PySide::PyObjectWrapper" errors
-Switch {
-    checked: settingsModel.data(settingsModel.index(0, 0), 259)[3].value
-    onCheckedChanged: {
-        // This will fail!
-        settingsModel.data(settingsModel.index(0, 0), 259)[3].value = checked
-    }
-}
-```
+**Problem**: Changing a setting via `SettingsService.setSetting` doesn't update the bound QML UI control.
+**Solution**: Ensure the QML code correctly updates its local state property after a successful `setSetting` call. If the Python component responsible for the underlying behavior needs to react to the change, connect it to the `SettingsService.settingChanged` signal.
 
 #### Testing Configuration Changes
 
 Before assuming configuration changes work, always test them thoroughly:
 
-1. Verify changes persist after navigating between screens
-2. Check the logs for errors (especially "Unknown config source" errors)
-3. Verify the actual behavior matches the expected setting (e.g., auto-submit actually working)
-4. Consider adding debug logging in components that use the configuration
-
-#### Configuration File Integrity
-
-If settings seem to reset themselves, check the user configuration file integrity:
-
-```bash
-cat ~/.smartscreen_config.json
-```
-
-Ensure it's valid JSON format and contains the expected structure:
-
-```json
-{
-  "module_overrides": {
-    "stt": {
-      "STT_CONFIG": {
-        "auto_submit_utterances": true
-      }
-    }
-  },
-  "theme": {
-    "is_dark_mode": true
-  }
-}
-```
+1.  Verify changes persist after restarting the application.
+2.  Check the application logs (`~/.smartscreen.log`) for errors related to configuration loading or saving.
+3.  Verify the actual behavior matches the expected setting (e.g., STT enabling/disabling).
+4.  Inspect the user configuration file (`~/.smartscreen_config.json`) to see if overrides are being saved correctly.
 
 ### QML UI Issues
 
-#### QML/Python Type Conversion
+#### QML/Python Type Conversion Errors
 
-**Problem**: QML cannot directly modify Python object properties, leading to errors like `Cannot assign bool to PySide::PyObjectWrapper`.
-
-**Solution**: 
-1. Use simple types (bool, string, int) for data exchange between QML and Python
-2. Provide explicit getters and setters as Python slots for complex operations
-3. Store current values in QML properties rather than trying to bind directly to Python objects
+**Problem**: Errors like `Cannot assign QVariant to PySide::PyObjectWrapper` or similar type issues.
+**Solution**: Avoid passing complex Python objects directly to QML or trying to manipulate them from QML. Use the `SettingsService` or dedicated slots/methods on controllers that only accept and return primitive types (bool, int, float, string).
 
 #### UI Updates After Configuration Changes
 
-If UI components don't reflect configuration changes:
-
-1. Emit appropriate signals after settings are changed
-2. Add a binding function to reset the property if needed:
-
-```qml
-// Reset binding if update fails
-someProperty = Qt.binding(function() { return originalValue; })
-```
-
-3. Consider using the `notify` property in Python `Property` definitions to signal changes:
-
-```python
-value = Property(bool, _get_value, _set_value, notify=valueChanged)
-```
+**Problem**: A UI element should change based on a setting, but doesn't.
+**Solution**: 
+1. Make sure the QML element's relevant property (e.g., `checked`, `text`) is bound to a local QML `property`.
+2. Ensure that local property is updated when the setting changes (either via the `onToggled`/`onClicked` handler that calls `setSetting`, or potentially by connecting to a relevant signal like `SettingsService.settingChanged` if the change can originate elsewhere).
 
 ### Debugging and Testing
 
-1. **Always log configuration changes**: Add debug logs before and after configuration updates
-2. **Test navigation**: Ensure settings persist when navigating between screens
-3. **Check console output**: Many issues appear as QML errors in the console
-4. **Verify configuration file**: Check that changes are actually saved to the user configuration file
-5. **Test component by component**: Isolate which component is not behaving as expected
+1.  **Use Logging**: Add `console.log` in QML and `logger.debug`/`info` in Python to trace execution flow and variable values.
+2.  **Check Logs**: Monitor `~/.smartscreen.log` for errors and warnings.
+3.  **Inspect `SettingsService`**: In Python, you can inspect `SettingsService()._config_manager._module_configs` and `SettingsService()._config_manager._file_configs` to see the loaded configuration state.
+4.  **Check User Config File**: Examine `~/.smartscreen_config.json` to understand what overrides are active.
+5.  **Test Component by Component**: Isolate issues by testing the interaction between specific QML components and the Python services/controllers they use.
 
-By following these guidelines, you can avoid many common issues with the configuration system and ensure settings work consistently across the application.
+By following these guidelines and using the `SettingsService` consistently, you can maintain a robust and understandable settings system.

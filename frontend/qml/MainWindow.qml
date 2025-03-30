@@ -2,8 +2,10 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Window 2.15
+// import QtQuick.Controls.Material 2.15 // No longer needed
 import MyScreens 1.0
 import MyTheme 1.0  // Import our ThemeManager
+// import MyServices 1.0 // No longer needed for ErrorHandler, check if SettingsService is used directly here
 import "." // Import the current directory to find TouchFriendlyButton.qml
 
 Window {
@@ -129,4 +131,39 @@ Window {
             }
         }
     }
+
+    // Error Notification Snackbar - REMOVED
+    /*
+    Snackbar {
+        id: errorSnackbar
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: parent.width * 0.8 // Take 80% of the window width
+        timeout: 5000 // Show for 5 seconds
+
+        contentItem: Label {
+            text: errorSnackbar.text // Display the text property of the Snackbar
+            color: "white"
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap // Wrap text if needed
+        }
+
+        background: Rectangle {
+            color: "#D32F2F" // Material Design error color (red)
+            radius: 4
+        }
+    }
+    */
+
+    // Connect to ErrorHandler signal - REMOVED
+    /*
+    Connections {
+        target: ErrorHandler
+        function onErrorOccurred(error_type, user_message) {
+            console.log("QML received error: ", error_type, " - ", user_message)
+            errorSnackbar.text = user_message // Set the text to display
+            errorSnackbar.open() // Show the snackbar
+        }
+    }
+    */
 }

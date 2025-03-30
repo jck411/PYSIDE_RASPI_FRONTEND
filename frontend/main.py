@@ -6,22 +6,42 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonInstance
 from PySide6.QtCore import QTimer, Qt
 from frontend.config import logger
+from frontend.config_manager import ConfigManager
 from frontend.logic.chat_controller import ChatController
 from frontend.theme_manager import ThemeManager
-from frontend.settings_model import SettingsModel
+from frontend.settings_service import SettingsService
+from frontend.error_handler import error_handler_instance, ErrorHandler
 
 def main():
     # Enable touch input
     app = QApplication(sys.argv)
-    app.setAttribute(Qt.AA_SynthesizeTouchForUnhandledMouseEvents, True)
     app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     
     # Create an asyncio loop
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
+    # --- Configuration Loading --- 
+    config_manager = ConfigManager()
+    # Load STT related configurations
+    config_manager.load_module_config(
+        module_path='frontend.config', 
+        module_key='stt',
+        config_vars=['STT_CONFIG', 'AUDIO_CONFIG', 'DEEPGRAM_CONFIG']
+    )
+    # Load Server related configurations
+    config_manager.load_module_config(
+        module_path='frontend.config', 
+        module_key='server',
+        config_vars=['SERVER_HOST', 'SERVER_PORT', 'WEBSOCKET_PATH', 'HTTP_BASE_URL']
+    )
+    # ----------------------------
+
     # Create theme manager instance
     theme_manager = ThemeManager()
+    
+    # Create settings service instance
+    settings_service = SettingsService()
     
     # Register ChatController as ChatLogic for QML compatibility
     qmlRegisterType(ChatController, "MyScreens", 1, 0, "ChatLogic")
@@ -29,17 +49,17 @@ def main():
     # Register ThemeManager as a singleton
     qmlRegisterSingletonInstance(ThemeManager, "MyTheme", 1, 0, "ThemeManager", theme_manager)
     
-    # Create settings model
-    settings_model = SettingsModel()
+    # Register SettingsService as a singleton
+    qmlRegisterSingletonInstance(SettingsService, "MyServices", 1, 0, "SettingsService", settings_service)
+    
+    # Register ErrorHandler as a singleton
+    qmlRegisterSingletonInstance(ErrorHandler, "MyServices", 1, 0, "ErrorHandler", error_handler_instance)
     
     # Create QML engine
     engine = QQmlApplicationEngine()
     
     # Add import paths for base components
     engine.addImportPath("frontend/qml")
-    
-    # Register settings model as a context property
-    engine.rootContext().setContextProperty("settingsModel", settings_model)
     
     # Load QML from the correct relative path (from project root)
     engine.load("frontend/qml/MainWindow.qml")
