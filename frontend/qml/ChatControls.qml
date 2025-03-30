@@ -97,7 +97,7 @@ BaseControls {
         ignoreUnknownSignals: true
         
         function onSttStateChanged(listening) {
-            console.log("ChatControls received sttStateChanged: ", listening)
+            // console.log("ChatControls received sttStateChanged: ", listening)
             sttButton.isListening = listening
             // Also stop UI timer if STT is manually disabled
             if (!listening && chatControls.timerRunning) {
@@ -107,20 +107,20 @@ BaseControls {
         }
         
         function onTtsStateChanged(enabled) {
-            console.log("ChatControls received ttsStateChanged: ", enabled)
+            // console.log("ChatControls received ttsStateChanged: ", enabled)
             ttsButton.isEnabled = enabled
         }
         
         // --- Inactivity Timer Signals --- 
         function onInactivityTimerStarted(durationMs) {
-            console.log("UI Timer Started: duration=", durationMs)
+            // console.log("UI Timer Started: duration=", durationMs)
             chatControls.totalDurationMs = durationMs;
             chatControls.remainingMs = durationMs;
             chatControls.timerRunning = true; // Starts the QML Timer
         }
         
         function onInactivityTimerStopped() {
-            console.log("UI Timer Stopped")
+            // console.log("UI Timer Stopped")
             chatControls.timerRunning = false; // Stops the QML Timer
             chatControls.remainingMs = 0;
             chatControls.totalDurationMs = 0;

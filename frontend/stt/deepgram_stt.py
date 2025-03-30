@@ -382,7 +382,8 @@ class DeepgramSTT(QObject):
                 remaining_time -= 1.0
                 # Log countdown every few seconds or when close to timeout
                 if int(remaining_time) % 5 == 0 or remaining_time < 5:
-                    logger.debug(f"Inactivity timer: {remaining_time:.1f}s remaining...")
+                    # logger.debug(f"Inactivity timer: {remaining_time:.1f}s remaining...") # Commented out countdown log
+                    pass # Keep the structure
                     
                 # Check if cancelled during sleep
                 if not self._inactivity_timer_task or self._inactivity_timer_task.cancelled():
@@ -430,7 +431,7 @@ class DeepgramSTT(QObject):
         # if was_running: # Re-evaluate if emitting stopped on cancel is needed here
         #     self.inactivityTimerStopped.emit()
 
-        logger.debug("Scheduling inactivity timer...")
+        # logger.debug("Scheduling inactivity timer...") # Commented out scheduling log
         # Schedule the handler in the dedicated Deepgram event loop
         self._inactivity_timer_task = asyncio.run_coroutine_threadsafe(
             self._inactivity_timeout_handler(), 
@@ -444,7 +445,7 @@ class DeepgramSTT(QObject):
         timer_was_running = False
         if self._inactivity_timer_task and not self._inactivity_timer_task.done():
             timer_was_running = True
-            logger.debug("Cancelling inactivity timer task.")
+            # logger.debug("Cancelling inactivity timer task.") # Commented out cancellation log
             # Use run_coroutine_threadsafe to schedule cancellation in the dg_loop
             cancel_future = asyncio.run_coroutine_threadsafe(
                  self._cancel_task(self._inactivity_timer_task, "Inactivity Timer"), self.dg_loop
@@ -461,13 +462,13 @@ class DeepgramSTT(QObject):
         
         # Emit stopped signal if a timer was actually running and we are asked to emit
         if timer_was_running and emit_signal:
-            logger.debug("Emitting inactivityTimerStopped signal due to cancellation.")
+            # logger.debug("Emitting inactivityTimerStopped signal due to cancellation.") # Commented out signal emission log
             self.inactivityTimerStopped.emit()
 
     async def _cancel_task(self, task, task_name="Task"):
          """Helper coroutine to cancel an asyncio task and log."""
          if task and not task.done():
-             logger.debug(f"Attempting to cancel {task_name}...")
+             # logger.debug(f"Attempting to cancel {task_name}...") # Commented out detailed cancellation log
              task.cancel()
              try:
                  # Give the event loop a chance to process the cancellation
@@ -475,11 +476,13 @@ class DeepgramSTT(QObject):
                  # Optional: Wait for the task to acknowledge cancellation (can deadlock if task ignores cancellation)
                  # await task 
              except asyncio.CancelledError:
-                 logger.debug(f"{task_name} cancellation processed.")
+                 # logger.debug(f"{task_name} cancellation processed.") # Commented out detailed cancellation log
+                 pass # Keep structure
              except Exception as e:
                  logger.error(f"Exception during {task_name} cancellation: {e}")
          else:
-             logger.debug(f"{task_name} was already done or None, no need to cancel.")
+             # logger.debug(f"{task_name} was already done or None, no need to cancel.") # Commented out detailed cancellation log
+             pass # Keep structure
              
     # --- End Inactivity Timer Logic ---
 
