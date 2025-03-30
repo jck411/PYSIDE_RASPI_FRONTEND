@@ -6,6 +6,7 @@ from PySide6.QtCore import QObject, Signal, Slot
 
 from frontend.config import logger, STT_CONFIG
 from frontend.stt.deepgram_stt import DeepgramSTT
+from frontend.config_manager import ConfigManager
 
 class SpeechManager(QObject):
     """
@@ -22,6 +23,9 @@ class SpeechManager(QObject):
         self.stt_listening = False
         self.is_toggling_stt = False
         self.tts_audio_playing = False
+        
+        # Initialize configuration manager
+        self.config_manager = ConfigManager()
         
         # Initialize Deepgram STT
         self.frontend_stt = DeepgramSTT()
@@ -46,11 +50,16 @@ class SpeechManager(QObject):
             self.sttTextReceived.emit(text)
             
             # Check if we should auto-submit complete utterances
-            if STT_CONFIG.get('auto_submit_utterances', False):
+            # Use ConfigManager to get the most up-to-date setting value
+            auto_submit = self.config_manager.get_config("stt.STT_CONFIG.auto_submit_utterances", False)
+            logger.info(f"[SpeechManager] Auto-submit setting value: {auto_submit}")
+            
+            if auto_submit:
                 logger.info(f"[SpeechManager] Auto-submitting utterance to chat: {text}")
                 self.autoSubmitUtterance.emit(text)
             else:
                 # Default behavior: just populate the input field
+                logger.info(f"[SpeechManager] Sending utterance to input field: {text}")
                 self.sttInputTextReceived.emit(text)
 
     def handle_frontend_stt_state(self, is_listening):

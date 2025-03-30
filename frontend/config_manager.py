@@ -89,7 +89,14 @@ class ConfigManager:
                     config_dict[var_name] = getattr(module, var_name)
             
             # Store in module configs
-            module_key = module_path.split('.')[-1]  # Use last part of path as key
+            # Use 'stt' for STT_CONFIG, 'server' for SERVER_HOST, etc.
+            if 'STT_CONFIG' in config_vars:
+                module_key = 'stt'
+            elif 'SERVER_HOST' in config_vars:
+                module_key = 'server'
+            else:
+                module_key = module_path.split('.')[-1]  # Use last part of path as key
+            
             self._module_configs[module_key] = config_dict
             logger.info(f"Loaded module config from {module_path}: {', '.join(config_vars)}")
             return config_dict
@@ -237,6 +244,13 @@ class ConfigManager:
             # Save to file
             return self._save_user_config()
         
+        # Load module config if needed
+        if source not in self._module_configs:
+            if source == 'stt':
+                self.load_module_config('frontend.config', ['STT_CONFIG', 'AUDIO_CONFIG', 'DEEPGRAM_CONFIG'])
+            elif source == 'server':
+                self.load_module_config('frontend.config', ['SERVER_HOST', 'SERVER_PORT', 'WEBSOCKET_PATH', 'HTTP_BASE_URL'])
+        
         # Handle module config overrides
         if source in self._module_configs:
             # Create override structure in user config
@@ -247,19 +261,26 @@ class ConfigManager:
                 self._file_configs['user']['module_overrides'][source] = {}
             
             if var not in self._file_configs['user']['module_overrides'][source]:
-                self._file_configs['user']['module_overrides'][source][var] = {}
+                # For dict values, need to copy the entire dict
+                if len(parts) > 2 and var in self._module_configs[source]:
+                    module_value = self._module_configs[source][var]
+                    if isinstance(module_value, dict):
+                        self._file_configs['user']['module_overrides'][source][var] = dict(module_value)
+                    else:
+                        self._file_configs['user']['module_overrides'][source][var] = {}
+                else:
+                    self._file_configs['user']['module_overrides'][source][var] = {}
             
-            override = self._file_configs['user']['module_overrides'][source][var]
-            
-            # Handle nested keys
+            # Handle nested keys if any
             if len(parts) > 2:
+                config = self._file_configs['user']['module_overrides'][source][var]
                 for i, key in enumerate(parts[2:-1], 2):
-                    if key not in override:
-                        override[key] = {}
-                    override = override[key]
+                    if key not in config:
+                        config[key] = {}
+                    config = config[key]
                 
                 # Set the final value
-                override[parts[-1]] = value
+                config[parts[-1]] = value
             else:
                 # Direct setting
                 self._file_configs['user']['module_overrides'][source][var] = value
@@ -270,7 +291,72 @@ class ConfigManager:
         logger.error(f"Unknown config source: {source}")
         return False
     
-    def clear_cache(self) -> None:
-        """Clear the configuration cache."""
-        self._config_cache = {}
-        logger.debug("Config cache cleared")
+    def reset_config(self, path: str) -> bool:
+        """
+        Reset configuration to default (remove override).
+        
+        Args:
+            path: Configuration path
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        parts = path.split('.')
+        if len(parts) < 2:
+            logger.error(f"Invalid config path: {path}")
+            return False
+        
+        source = parts[0]
+        var = parts[1]
+        
+        # Clear cache
+        if path in self._config_cache:
+            del self._config_cache[path]
+        
+        # Can only reset module overrides
+        if source == 'user':
+            logger.error(f"Cannot reset user config: {path}")
+            return False
+        
+        # Check if override exists
+        if 'module_overrides' not in self._file_configs['user'] or \
+           source not in self._file_configs['user']['module_overrides'] or \
+           var not in self._file_configs['user']['module_overrides'][source]:
+            # Nothing to reset
+            return True
+        
+        # Handle nested keys
+        if len(parts) > 2:
+            config = self._file_configs['user']['module_overrides'][source][var]
+            parent = None
+            leaf = None
+            
+            # Navigate to the parent of the leaf node
+            for i, key in enumerate(parts[2:], 2):
+                if i == len(parts) - 1:  # Last key
+                    parent = config
+                    leaf = key
+                elif key in config:
+                    config = config[key]
+                else:
+                    # Key doesn't exist, nothing to reset
+                    return True
+            
+            # Remove leaf node
+            if parent is not None and leaf in parent:
+                del parent[leaf]
+        else:
+            # Remove the entire var
+            del self._file_configs['user']['module_overrides'][source][var]
+        
+        # Cleanup empty dictionaries
+        if source in self._file_configs['user']['module_overrides'] and \
+           not self._file_configs['user']['module_overrides'][source]:
+            del self._file_configs['user']['module_overrides'][source]
+        
+        if 'module_overrides' in self._file_configs['user'] and \
+           not self._file_configs['user']['module_overrides']:
+            del self._file_configs['user']['module_overrides']
+        
+        # Save to file
+        return self._save_user_config()

@@ -10,6 +10,23 @@ Item {
     // Property to tell MainWindow which controls to load
     property string screenControls: "SettingsControls.qml"
     
+    // Store the current value here
+    property bool autoSendEnabled: false
+    
+    Component.onCompleted: {
+        console.log("Settings model has", settingsModel ? settingsModel.rowCount() : 0, "categories")
+        
+        // Get the initial value from the model using our direct method
+        if (settingsModel) {
+            try {
+                autoSendEnabled = settingsModel.getAutoSubmitUtterances()
+                console.log("Auto Send setting initial value:", autoSendEnabled)
+            } catch (e) {
+                console.log("Error getting Auto Send value:", e)
+            }
+        }
+    }
+    
     Rectangle {
         anchors.fill: parent
         color: ThemeManager.background_color
@@ -33,81 +50,65 @@ Item {
                     
                     Text {
                         anchors.centerIn: parent
-                        text: "Application Settings"
+                        text: "Speech-to-Text Settings"
                         font.pixelSize: 20
                         font.bold: true
                         color: ThemeManager.text_primary_color
                     }
                 }
                 
-                // Dynamic settings categories from model
-                Repeater {
-                    model: settingsModel // This will be registered in main.py
+                // Speech-to-Text Category
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: sttColumn.height + 32
+                    color: ThemeManager.input_background_color
+                    radius: 8
                     
-                    delegate: Rectangle {
-                        Layout.fillWidth: true
-                        height: categoryColumn.height + 32
-                        color: ThemeManager.input_background_color
-                        radius: 8
+                    ColumnLayout {
+                        id: sttColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 16
+                        spacing: 8
                         
-                        ColumnLayout {
-                            id: categoryColumn
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.margins: 16
-                            spacing: 8
+                        // Only keep the Auto Send setting
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
                             
                             Text {
-                                text: model.displayName
-                                font.pixelSize: 16
-                                font.bold: true
+                                text: "Auto Send:"
                                 color: ThemeManager.text_primary_color
+                                Layout.preferredWidth: 150
+                                elide: Text.ElideRight
+                                
+                                ToolTip.visible: autoSendMouseArea.containsMouse
+                                ToolTip.text: "Automatically submit complete utterances to chat without putting them in the input box"
+                                
+                                MouseArea {
+                                    id: autoSendMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                }
                             }
                             
-                            // Settings within this category
-                            Repeater {
-                                model: model.settings
+                            Switch {
+                                id: autoSendSwitch
+                                checked: autoSendEnabled
                                 
-                                delegate: RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 16
-                                    
-                                    Text {
-                                        text: modelData.displayName + ":"
-                                        color: ThemeManager.text_primary_color
-                                        Layout.preferredWidth: 150
-                                        elide: Text.ElideRight
-                                        
-                                        ToolTip.visible: descriptionMouseArea.containsMouse
-                                        ToolTip.text: modelData.description
-                                        
-                                        MouseArea {
-                                            id: descriptionMouseArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
+                                onToggled: {
+                                    if (settingsModel) {
+                                        // Call the direct method
+                                        var success = settingsModel.setAutoSubmitUtterances(checked)
+                                        if (success) {
+                                            autoSendEnabled = checked
+                                            console.log("Auto Send setting changed to:", checked)
+                                        } else {
+                                            console.log("Failed to update Auto Send setting")
+                                            // Revert the switch position without triggering events
+                                            autoSendSwitch.checked = Qt.binding(function() { return autoSendEnabled; })
                                         }
-                                    }
-                                    
-                                    // Dynamic component based on setting type
-                                    Loader {
-                                        Layout.fillWidth: true
-                                        
-                                        sourceComponent: {
-                                            switch(modelData.valueType) {
-                                                case "bool":
-                                                    return switchComponent
-                                                case "int":
-                                                case "float":
-                                                    return sliderComponent
-                                                case "string":
-                                                    return textFieldComponent
-                                                default:
-                                                    return null
-                                            }
-                                        }
-                                        
-                                        property var setting: modelData
                                     }
                                 }
                             }
@@ -122,92 +123,6 @@ Item {
                     height: 20
                 }
             }
-        }
-    }
-    
-    // Components for different setting types
-    Component {
-        id: switchComponent
-        
-        Switch {
-            checked: setting.value
-            onCheckedChanged: {
-                if (checked !== setting.value) {
-                    setting.value = checked
-                }
-            }
-        }
-    }
-    
-    Component {
-        id: sliderComponent
-        
-        ColumnLayout {
-            spacing: 4
-            
-            Slider {
-                id: slider
-                Layout.fillWidth: true
-                from: {
-                    if (setting.valueType === "int") {
-                        if (setting.name === "sample_rate") return 8000
-                        if (setting.name === "block_size") return 1000
-                        if (setting.name === "endpointing") return 100
-                        return 0
-                    }
-                    return 0
-                }
-                to: {
-                    if (setting.valueType === "int") {
-                        if (setting.name === "sample_rate") return 48000
-                        if (setting.name === "block_size") return 8000
-                        if (setting.name === "endpointing") return 2000
-                        return 100
-                    }
-                    return 1
-                }
-                stepSize: setting.valueType === "int" ? 1 : 0.1
-                value: setting.value
-                
-                onMoved: {
-                    if (setting.valueType === "int") {
-                        setting.value = Math.round(value)
-                    } else {
-                        setting.value = value
-                    }
-                }
-            }
-            
-            Text {
-                text: setting.valueType === "int" ? Math.round(slider.value).toString() : slider.value.toFixed(1)
-                color: ThemeManager.text_secondary_color
-                font.pixelSize: 12
-                Layout.alignment: Qt.AlignRight
-            }
-        }
-    }
-    
-    Component {
-        id: textFieldComponent
-        
-        TextField {
-            text: setting.value || ""
-            placeholderText: "Enter value..."
-            
-            onEditingFinished: {
-                if (text !== setting.value) {
-                    setting.value = text
-                }
-            }
-            
-            background: Rectangle {
-                color: ThemeManager.input_background_color
-                border.width: 1
-                border.color: ThemeManager.input_border_color
-                radius: 4
-            }
-            
-            color: ThemeManager.text_primary_color
         }
     }
 }

@@ -201,7 +201,7 @@ class SettingsModel(QAbstractListModel):
             "bool", "stt.STT_CONFIG.use_keepalive"
         ))
         stt_category.add_setting(SettingItem(
-            "auto_submit_utterances", "Auto-Submit Utterances", 
+            "auto_submit_utterances", "Auto Send", 
             "Automatically submit complete utterances to chat without putting them in the input box", 
             "bool", "stt.STT_CONFIG.auto_submit_utterances"
         ))
@@ -252,6 +252,16 @@ class SettingsModel(QAbstractListModel):
             "endpointing", "Endpointing", 
             "Milliseconds of silence to consider end of speech", 
             "int", "stt.DEEPGRAM_CONFIG.endpointing"
+        ))
+        deepgram_category.add_setting(SettingItem(
+            "punctuate", "Punctuate", 
+            "Add punctuation to transcription", 
+            "bool", "stt.DEEPGRAM_CONFIG.punctuate"
+        ))
+        deepgram_category.add_setting(SettingItem(
+            "filler_words", "Filler Words", 
+            "Include filler words (um, uh) in transcription", 
+            "bool", "stt.DEEPGRAM_CONFIG.filler_words"
         ))
         self._categories.append(deepgram_category)
         
@@ -381,3 +391,56 @@ class SettingsModel(QAbstractListModel):
         
         logger.info(f"Added category {name}")
         return True
+        
+    @Slot(bool, result=bool)
+    def setAutoSubmitUtterances(self, enabled: bool) -> bool:
+        """
+        Directly set the auto_submit_utterances setting.
+        
+        Args:
+            enabled: Whether to enable or disable auto-submit utterances
+            
+        Returns:
+            True if the setting was updated successfully, False otherwise
+        """
+        # Initialize the config manager
+        config_manager = ConfigManager()
+        
+        # Directly set the config value using the config path
+        result = config_manager.set_config("stt.STT_CONFIG.auto_submit_utterances", enabled)
+        
+        if result:
+            logger.info(f"Updated auto_submit_utterances to {enabled}")
+            
+            # Update the model setting for UI consistency
+            # Get the STT category (first category)
+            if self._categories and len(self._categories) > 0:
+                stt_category = self._categories[0]
+                
+                # Find the auto_submit_utterances setting and update its cached value
+                for setting in stt_category._settings:
+                    if setting._name == "auto_submit_utterances":
+                        # Force refresh the setting's cached value
+                        setting.valueChanged.emit()
+                        break
+        else:
+            logger.error(f"Failed to update auto_submit_utterances to {enabled}")
+            
+        return result
+
+    @Slot(result=bool)
+    def getAutoSubmitUtterances(self) -> bool:
+        """
+        Directly get the auto_submit_utterances setting value.
+        
+        Returns:
+            Current value of the auto_submit_utterances setting (True/False)
+        """
+        # Initialize the config manager
+        config_manager = ConfigManager()
+        
+        # Directly get the config value
+        value = config_manager.get_config("stt.STT_CONFIG.auto_submit_utterances", False)
+        logger.info(f"Retrieved auto_submit_utterances value: {value}")
+        
+        return bool(value)
