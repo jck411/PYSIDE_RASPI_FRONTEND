@@ -128,6 +128,24 @@ The Speech-to-Text system configuration can be accessed via `SettingsService` us
 -   `stt.STT_CONFIG.use_keepalive`: Whether to use KeepAlive for pausing/resuming during TTS
 -   `stt.STT_CONFIG.auto_submit_utterances`: When enabled, complete utterances are automatically submitted to the chat instead of being placed in the input field (displayed as "Auto Send" in UI)
 
+### STT Inactivity Timeout
+
+To prevent STT from staying active indefinitely when no speech is detected, an inactivity timeout mechanism is implemented:
+
+-   **Configuration**: The timeout duration is set via `stt.STT_CONFIG.inactivity_timeout_ms` in `frontend/config.py` (value in milliseconds, 0 disables the feature).
+-   **Logic**: Located in `frontend/stt/deepgram_stt.py`.
+    -   An internal timer (`_inactivity_timer_task`) runs in the dedicated `dg_loop`.
+    -   The timer **starts**:
+        -   When STT is initially enabled (`_async_start`).
+        -   When resuming from pause (`set_paused(False)`).
+        -   After receiving a **final** transcript segment (`result.is_final` is true in `on_transcript`).
+    -   The timer **cancels**:
+        -   When STT is disabled (`set_enabled(False)`).
+        -   When STT is paused (`set_paused(True)`).
+        -   When *any* transcript text (interim or final) is received (`transcript.strip()` is true in `on_transcript`).
+    -   If the timer completes without being cancelled, it calls `self.set_enabled(False)` to turn off STT.
+-   **UI Feedback**: A visual countdown timer is displayed in `ChatControls.qml`.
+
 ### Settings UI Implementation
 
 The settings UI (`SettingsScreen.qml`) directly interacts with the `SettingsService` to get and set configuration values. It uses a hardcoded layout for reliability and simplicity, mapping UI controls directly to specific configuration paths via `SettingsService.getSetting` and `SettingsService.setSetting`.
@@ -162,6 +180,10 @@ The ChatController exposes several signals to QML:
 - `userMessageAutoSubmitted`: Emitted when an utterance is auto-submitted to chat, ensuring it appears in the chat history
 - `connectionStatusChanged`: Emitted when the WebSocket connection status changes
 - `ttsStateChanged`: Emitted when the text-to-speech state changes
+- `inactivityTimerStarted(int durationMs)`: Emitted when the STT inactivity timer starts, providing the total duration.
+- `inactivityTimerStopped()`: Emitted when the STT inactivity timer stops (cancelled or completed).
+
+These signals are relayed from `DeepgramSTT` -> `SpeechManager` -> `ChatController`.
 
 ## Adding New Features
 
@@ -264,7 +286,7 @@ This plan outlines the current development focus on improving the chat functiona
 *   A.2: Implement Option to Hide Chat Input Box: **NOT STARTED**
 
 **Phase B: STT Logic Enhancements**
-*   B.1: Implement STT Inactivity Timeout: **NOT STARTED**
+*   B.1: Implement STT Inactivity Timeout: **DONE**
 
 **Phase C: Chat History Persistence**
 *   C.1: Ensure Short-Term Persistence (Screen Switching): **NOT STARTED**
