@@ -275,7 +275,8 @@ This inheritance system makes it easier to:
 3.  **Asynchronous Operations**: Use appropriate async patterns (like `asyncio` integrated with the Qt event loop) or dedicated threads for long-running tasks to avoid blocking the UI.
 4.  **Settings Management**: Use the `SettingsService` for all setting access and modification in both Python and QML.
 5.  **Error Handling**: Implement robust error handling (see `frontend/error_handler.py`) and provide user feedback where appropriate (logging isn't always sufficient).
-6.  **Documentation**: Keep this document updated as the application evolves.
+6.  **Singleton Pattern for Shared State**: For state that needs to persist across screen navigations (like chat history), use a singleton pattern. Register a single Python instance (e.g., `ChatController` as `ChatService`) using `qmlRegisterSingletonInstance` and access it directly from QML (`ChatService.method()`). Avoid creating stateful logic components directly within QML screens that are dynamically loaded/replaced.
+7.  **Documentation**: Keep this document updated as the application evolves.
 
 ## Implementation Plan (Current Focus: Chat Enhancements)
 
@@ -283,14 +284,16 @@ This plan outlines the current development focus on improving the chat functiona
 
 **Phase A: Chat Screen UI/UX Enhancements**
 *   A.1: Implement STT Visual Indicator: **NOT STARTED**
-*   A.2: Implement Option to Hide Chat Input Box: **NOT STARTED**
+*   A.2: Implement Option to Hide Chat Input Box: **DONE** (Implemented via Settings)
 
 **Phase B: STT Logic Enhancements**
 *   B.1: Implement STT Inactivity Timeout: **DONE**
 
 **Phase C: Chat History Persistence**
-*   C.1: Ensure Short-Term Persistence (Screen Switching): **DONE**
-*   C.2: Implement Long-Term Conversation Storage (Backend): **NOT STARTED**
+*   C.1: Ensure Short-Term Persistence (Screen Switching): **DONE** (Achieved via `ChatService` singleton)
+*   C.2: Implement Long-Term Conversation Storage: **PARTIALLY DONE**
+    *   Current conversations are saved to timestamped JSON files in `chat_history/` upon clearing the chat or closing the application.
+    *   Saving logic is handled by `ChatController._save_history_to_file`.
 *   C.3: Implement Loading Last Conversation on Startup: **NOT STARTED**
 *   C.4: Implement UI for Viewing Past Conversations (Deferred): **NOT STARTED**
 
@@ -338,26 +341,32 @@ Before assuming configuration changes work, always test them thoroughly:
 3.  Verify the actual behavior matches the expected setting (e.g., STT enabling/disabling).
 4.  Inspect the user configuration file (`~/.smartscreen_config.json`) to see if overrides are being saved correctly.
 
+### State Persistence Across Screens
+
+**Problem**: State managed within a QML screen component (like chat history in `ChatScreen.qml`'s local `ListModel` or a locally instantiated controller) is lost when navigating away, especially when using `StackView.replace()` which destroys the old component instance.
+**Solution**: Implement a singleton pattern for the stateful controller in Python.
+1.  **Python**: Create a single instance of the controller (e.g., `chat_controller_instance = ChatController()`) in `main.py`.
+2.  **Python**: Register this *instance* as a QML singleton using `qmlRegisterSingletonInstance(ControllerClass, "URI", 1, 0, "SingletonName", instance)` (e.g., `qmlRegisterSingletonInstance(ChatController, "MyServices", 1, 0, "ChatService", chat_controller_instance)`).
+3.  **QML**: Remove any local instantiation of the controller within the screen QML (e.g., remove `ChatLogic { id: chatLogic }`).
+4.  **QML**: Import the singleton's URI (e.g., `import MyServices 1.0`).
+5.  **QML**: Access the singleton instance directly using its registered name (e.g., `ChatService.getHistory()`, `Connections { target: ChatService }`).
+This ensures all QML components interact with the *same* persistent Python object, preserving state across navigations.
+
 ### QML UI Issues
 
 #### QML/Python Type Conversion Errors
 
-**Problem**: Errors like `Cannot assign QVariant to PySide::PyObjectWrapper` or similar type issues.
-**Solution**: Avoid passing complex Python objects directly to QML or trying to manipulate them from QML. Use the `SettingsService` or dedicated slots/methods on controllers that only accept and return primitive types (bool, int, float, string).
-
-#### UI Updates After Configuration Changes
-
-**Problem**: A UI element should change based on a setting, but doesn't.
+**Problem**: Errors like `Cannot assign QVariant to PySide::PyObjectWrapper` or `Cannot assign <PythonType> to <QMLType>` when receiving signals or calling methods between Python and QML.
 **Solution**: 
-1. Make sure the QML element's relevant property (e.g., `checked`, `text`) is bound to a local QML `property`.
-2. Ensure that local property is updated when the setting changes (either via the `onToggled`/`onClicked` handler that calls `setSetting`, or potentially by connecting to a relevant signal like `SettingsService.settingChanged` if the change can originate elsewhere).
+1.  **Python to QML Signals**: When assigning the received signal value (`value`) to a QML property, explicitly cast it to the expected QML type: `qmlProperty = Boolean(value)`, `qmlProperty = Number(value)`, `qmlProperty = String(value)`. 
+2.  **QML to Python Calls**: Ensure methods exposed from Python to QML (`@Slot`s) only accept and return primitive types (bool, int, float, string, list/dict of primitives) whenever possible. Avoid passing complex Python objects directly.
 
-### Debugging and Testing
+#### QML Binding Errors During Initialization/Destruction
 
-1.  **Use Logging**: Add `console.log` in QML and `logger.debug`/`info` in Python to trace execution flow and variable values.
-2.  **Check Logs**: Monitor `~/.smartscreen.log` for errors and warnings.
-3.  **Inspect `SettingsService`**: In Python, you can inspect `SettingsService()._config_manager._module_configs` and `SettingsService()._config_manager._file_configs` to see the loaded configuration state.
-4.  **Check User Config File**: Examine `~/.smartscreen_config.json` to understand what overrides are active.
-5.  **Test Component by Component**: Isolate issues by testing the interaction between specific QML components and the Python services/controllers they use.
+**Problem**: Errors like `TypeError: Cannot read property '<property>' of null` or `TypeError: Cannot read property '<property>' of undefined` when binding a property in one component to a property in another component (e.g., `someProperty: otherComponent.someOtherProperty`). This often occurs during component loading or destruction when `otherComponent` might not be fully ready or is being torn down.
+**Solution**: Make the binding more robust by adding checks or using fallback values:
+*   Check for existence: `someProperty: otherComponent ? otherComponent.someOtherProperty : fallbackValue`
+*   Check for property existence: `someProperty: otherComponent.someOtherProperty !== undefined ? otherComponent.someOtherProperty : fallbackValue`
+*   Use a standard value (e.g., from `ThemeManager`) instead of relying on another component's state if possible.
 
 By following these guidelines and using the `SettingsService` consistently, you can maintain a robust and understandable settings system.

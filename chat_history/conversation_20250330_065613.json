@@ -1,0 +1,10 @@
+[
+    {
+        "text": "this ia test on closing",
+        "isUser": true
+    },
+    {
+        "text": "Sounds riveting! What do you need help with?",
+        "isUser": false
+    }
+]

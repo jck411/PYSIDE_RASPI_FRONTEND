@@ -82,7 +82,9 @@ BaseControls {
     Text {
         id: countdownText
         text: Math.ceil(chatControls.remainingMs / 1000) + "s" // Display whole seconds remaining
-        font.pixelSize: sttButton.font.pixelSize // Match button font size
+        // font.pixelSize: sttButton.font.pixelSize // Original binding - can fail on load
+        // Use a fallback if sttButton.font isn't ready
+        font.pixelSize: sttButton.font ? sttButton.font.pixelSize : 14 
         color: "#565f89" // Updated color to match icons
         font.bold: true
         verticalAlignment: Text.AlignVCenter

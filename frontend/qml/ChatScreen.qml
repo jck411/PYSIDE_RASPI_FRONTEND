@@ -48,7 +48,8 @@ BaseScreen {
         target: SettingsService
         function onSettingChanged(path, value) {
             if (path === "chat.CHAT_CONFIG.show_input_box") {
-                showInputBox = value
+                // Explicitly cast the Python value to a QML boolean
+                showInputBox = Boolean(value)
                 console.log("ChatScreen updated showInputBox value:", value)
             }
         }
@@ -139,7 +140,7 @@ BaseScreen {
                         height: contentLabel.paintedHeight + 16
                         
                         anchors.right: model.isUser ? parent.right : undefined
-                        anchors.left: model.isUser ? undefined : parent.left
+                        anchors.left: parent && !model.isUser ? parent.left : undefined
                         anchors.rightMargin: model.isUser ? 8 : 0
                         anchors.leftMargin: model.isUser ? 0 : 8
                         

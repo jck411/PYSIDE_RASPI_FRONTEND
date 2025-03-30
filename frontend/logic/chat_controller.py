@@ -3,6 +3,7 @@ import json
 import asyncio
 import logging
 import os
+from datetime import datetime
 
 from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
 
@@ -247,10 +248,60 @@ class ChatController(QObject):
 
     @Slot()
     def clearChat(self):
-        """Clear the chat history"""
-        logger.info("[ChatController] Clearing chat history.")
-        self.message_handler.clear_history()
+        """Clear the chat history, saving the current one first."""
+        logger.info("[ChatController] Clear chat triggered. Scheduling save and clear.")
+        # Schedule the async task to save and clear
+        self.resource_manager.schedule_coroutine(self._save_and_clear_history_async())
+
+    def _save_history_to_file(self, history_to_save):
+        """Synchronously saves the given history list to a timestamped JSON file."""
+        save_path = "/home/jack/PYSIDE_RASPI_FRONTEND/chat_history" # User specified path
+        full_path = ""
+        
+        if not history_to_save:
+            logger.info("[ChatController:_save_history_to_file] History is empty, skipping save.")
+            return True # Indicate success (nothing needed to be done)
+            
+        try:
+            # Ensure the directory exists
+            os.makedirs(save_path, exist_ok=True)
+            
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"conversation_{timestamp}.json"
+            full_path = os.path.join(save_path, filename)
+            
+            # Save the file
+            with open(full_path, 'w', encoding='utf-8') as f:
+                json.dump(history_to_save, f, indent=4, ensure_ascii=False)
+            
+            logger.info(f"[ChatController:_save_history_to_file] Successfully saved conversation to {full_path}")
+            return True
+            
+        except OSError as e:
+            logger.error(f"[ChatController:_save_history_to_file] Error creating directory {save_path}: {e}")
+            return False
+        except IOError as e:
+            logger.error(f"[ChatController:_save_history_to_file] Error saving conversation to {full_path}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"[ChatController:_save_history_to_file] Unexpected error saving conversation: {e}")
+            return False
+
+    async def _save_and_clear_history_async(self):
+        """Asynchronously saves the current history using a sync helper and then clears it."""
+        history_copy = list(self._chat_history) # Make a copy
+        
+        # Run the synchronous save function in a thread
+        save_success = await asyncio.to_thread(self._save_history_to_file, history_copy)
+        
+        if not save_success:
+            logger.warning("[ChatController:_save_and_clear_history_async] Saving history failed, but proceeding to clear.")
+            
+        # --- Clear internal state AFTER saving attempt ---
+        self.message_handler.clear_history() # Clear backend context history
         self._chat_history.clear() # Clear display history
+        logger.info("[ChatController] Internal chat history cleared.")
         self.historyCleared.emit() # Notify UI
 
     def getConnected(self):
@@ -264,6 +315,12 @@ class ChatController(QObject):
         Clean up resources on shutdown.
         """
         logger.info("[ChatController] Cleaning up...")
+        
+        # --- Save history synchronously before stopping components ---
+        logger.info("[ChatController:cleanup] Attempting to save final conversation history...")
+        self._save_history_to_file(list(self._chat_history))
+        # -----------------------------------------------------------
+        
         self._running = False
         # Stop wake word handler gracefully
         self.wake_word_handler.stop_listening()
@@ -276,8 +333,8 @@ class ChatController(QObject):
         
         # Stop AudioManager
         if self.audio_manager:
-            self.resource_manager.schedule_coroutine(self.audio_manager.stop_audio_consumer())
-        logger.info("[ChatController] Audio manager scheduled for stopping")
+            self.audio_manager.cleanup()
+        logger.info("[ChatController] Audio manager cleanup initiated")
         
         # Stop STT service
         if self.speech_manager:
