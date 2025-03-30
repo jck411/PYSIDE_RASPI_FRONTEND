@@ -17,6 +17,9 @@ class SpeechManager(QObject):
     sttStateChanged = Signal(bool)          # Emitted when STT state toggles
     sttInputTextReceived = Signal(str)      # Emitted when complete STT utterance should be set as input text
     autoSubmitUtterance = Signal(str)       # Emitted when a complete utterance should be auto-submitted to chat
+    # Signals relayed from DeepgramSTT for UI timer
+    inactivityTimerStarted = Signal(int)    # Relays timeout duration in ms
+    inactivityTimerStopped = Signal()       # Relays timer stop event
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -34,6 +37,9 @@ class SpeechManager(QObject):
         self.frontend_stt.transcription_received.connect(self.handle_interim_stt_text)
         self.frontend_stt.complete_utterance_received.connect(self.handle_frontend_stt_text)
         self.frontend_stt.state_changed.connect(self.handle_frontend_stt_state)
+        # Relay inactivity timer signals
+        self.frontend_stt.inactivityTimerStarted.connect(self.inactivityTimerStarted)
+        self.frontend_stt.inactivityTimerStopped.connect(self.inactivityTimerStopped)
         
         logger.info("[SpeechManager] Initialized with Deepgram STT")
 

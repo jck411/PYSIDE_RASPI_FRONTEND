@@ -24,6 +24,7 @@ STT_CONFIG: Dict[str, Any] = {
     'auto_start': False,   # Whether to start STT automatically on initialization
     'use_keepalive': True, # Whether to use KeepAlive for pausing/resuming during TTS
     'auto_submit_utterances': True, # Whether to automatically submit complete utterances directly to chat
+    'inactivity_timeout_ms': 10000, # Milliseconds of silence before automatically stopping STT (0 to disable)
 }
 
 # Audio capture configuration

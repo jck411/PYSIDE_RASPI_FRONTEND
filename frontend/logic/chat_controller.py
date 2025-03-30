@@ -30,6 +30,9 @@ class ChatController(QObject):
     messageChunkReceived = Signal(str, bool)  # From MessageHandler
     sttInputTextReceived = Signal(str)      # From SpeechManager
     userMessageAutoSubmitted = Signal(str)  # Emitted when a message is auto-submitted
+    # Relayed inactivity timer signals for UI
+    inactivityTimerStarted = Signal(int)    # Relays timeout duration in ms
+    inactivityTimerStopped = Signal()       # Relays timer stop event
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -78,6 +81,9 @@ class ChatController(QObject):
         self.speech_manager.sttStateChanged.connect(self.sttStateChanged)
         self.speech_manager.sttInputTextReceived.connect(self.sttInputTextReceived)
         self.speech_manager.autoSubmitUtterance.connect(self._handle_auto_submit_utterance)
+        # Relay inactivity timer signals from SpeechManager
+        self.speech_manager.inactivityTimerStarted.connect(self.inactivityTimerStarted)
+        self.speech_manager.inactivityTimerStopped.connect(self.inactivityTimerStopped)
         
         # MessageHandler signals
         self.message_handler.messageReceived.connect(self.messageReceived)
