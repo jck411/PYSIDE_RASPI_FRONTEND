@@ -289,7 +289,7 @@ This plan outlines the current development focus on improving the chat functiona
 *   B.1: Implement STT Inactivity Timeout: **DONE**
 
 **Phase C: Chat History Persistence**
-*   C.1: Ensure Short-Term Persistence (Screen Switching): **NOT STARTED**
+*   C.1: Ensure Short-Term Persistence (Screen Switching): **DONE**
 *   C.2: Implement Long-Term Conversation Storage (Backend): **NOT STARTED**
 *   C.3: Implement Loading Last Conversation on Startup: **NOT STARTED**
 *   C.4: Implement UI for Viewing Past Conversations (Deferred): **NOT STARTED**

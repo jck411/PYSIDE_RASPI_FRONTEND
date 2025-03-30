@@ -3,6 +3,8 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick 6.2 // Needed for Timer
 
+import MyServices 1.0 // Import ChatService
+
 // Controls component for Chat Screen
 BaseControls {
     id: chatControls
@@ -40,7 +42,7 @@ BaseControls {
         opacity: isListening ? 1.0 : 0.5
         
         onClicked: {
-            screen.chatLogic.toggleSTT()
+            ChatService.toggleSTT()
         }
     }
     
@@ -51,7 +53,7 @@ BaseControls {
         text: isEnabled ? "TTS On" : "TTS Off"
         onClicked: {
             isEnabled = !isEnabled
-            screen.chatLogic.toggleTTS()
+            ChatService.toggleTTS()
         }
     }
     
@@ -59,7 +61,7 @@ BaseControls {
         id: stopButton
         source: "../icons/stop_all.svg"
         text: "Stop"
-        onClicked: screen.chatLogic.stopAll()
+        onClicked: ChatService.stopAll()
     }
     
     TouchFriendlyButton {
@@ -67,8 +69,7 @@ BaseControls {
         source: "../icons/clear_all.svg"
         text: "Clear"
         onClicked: {
-            screen.chatLogic.clearChat()
-            screen.chatModel.clear()
+            ChatService.clearChat()
         }
     }
     
@@ -91,9 +92,9 @@ BaseControls {
     }
     // --- End Countdown Timer UI --- 
 
-    // Connect signals from ChatLogic to update button states
+    // Connect signals from ChatService to update button states
     Connections {
-        target: screen ? screen.chatLogic : null
+        target: ChatService
         ignoreUnknownSignals: true
         
         function onSttStateChanged(listening) {

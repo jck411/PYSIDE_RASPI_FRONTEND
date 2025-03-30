@@ -33,11 +33,14 @@ class ChatController(QObject):
     # Relayed inactivity timer signals for UI
     inactivityTimerStarted = Signal(int)    # Relays timeout duration in ms
     inactivityTimerStopped = Signal()       # Relays timer stop event
+    # Signal to notify UI when history is cleared
+    historyCleared = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._running = True
         self._connected = False
+        self._chat_history = [] # <-- Add history list here
         
         # Get the event loop but don't start tasks immediately
         self._loop = asyncio.get_event_loop()
@@ -88,6 +91,9 @@ class ChatController(QObject):
         # MessageHandler signals
         self.message_handler.messageReceived.connect(self.messageReceived)
         self.message_handler.messageChunkReceived.connect(self.messageChunkReceived)
+        # Connect internal handler for adding assistant messages to history
+        self.message_handler.messageReceived.connect(self._add_assistant_message_to_history)
+        self.message_handler.messageChunkReceived.connect(self._handle_assistant_message_chunk)
         
         # TTS controller signals
         self.tts_controller.ttsStateChanged.connect(self.ttsStateChanged)
@@ -123,7 +129,7 @@ class ChatController(QObject):
             logger.debug(f"[ChatController] Updating STT state: listening = {is_listening}")
             self.sttStateChanged.emit(is_listening)
         else:
-            # Try to process as a message
+            # Try to process as a message - MessageHandler will emit signals handled elsewhere
             self.message_handler.process_message(data)
 
     def _handle_audio_data_signal(self, audio_data):
@@ -168,6 +174,9 @@ class ChatController(QObject):
         
         # Add message to history
         self.message_handler.add_message("user", text)
+        
+        # Add message to persistent display history
+        self._add_user_message_to_history(text)
         
         # If there's interrupted content, we want to continue from where we left off
         # instead of resetting the current response
@@ -241,6 +250,8 @@ class ChatController(QObject):
         """Clear the chat history"""
         logger.info("[ChatController] Clearing chat history.")
         self.message_handler.clear_history()
+        self._chat_history.clear() # Clear display history
+        self.historyCleared.emit() # Notify UI
 
     def getConnected(self):
         """Get the connection status for Property binding"""
@@ -252,29 +263,79 @@ class ChatController(QObject):
         """
         Clean up resources on shutdown.
         """
-        logger.info("[ChatController] Cleanup called. Stopping tasks.")
+        logger.info("[ChatController] Cleaning up...")
         self._running = False
+        # Stop wake word handler gracefully
+        self.wake_word_handler.stop_listening()
+        logger.info("[ChatController] Wake word handler stopped")
+
+        # Stop WebSocket connection and related tasks
+        if self.websocket_client:
+            self.websocket_client.cleanup()
+            logger.info("[ChatController] WebSocket client cleanup initiated")
         
-        # Stop the wake word handler
-        if hasattr(self, 'wake_word_handler'):
-            self.wake_word_handler.stop_listening()
-            
-        # Clean up all tasks
-        if hasattr(self, 'resource_manager'):
-            self.resource_manager.cleanup()
-            
-        # Clean up all handlers
-        for handler_name in ['websocket_client', 'audio_manager', 'speech_manager', 'tts_controller']:
-            if hasattr(self, handler_name):
-                handler = getattr(self, handler_name)
-                if hasattr(handler, 'cleanup') and callable(handler.cleanup):
-                    handler.cleanup()
-                    
-        logger.info("[ChatController] Cleanup complete.")
+        # Stop AudioManager
+        if self.audio_manager:
+            self.resource_manager.schedule_coroutine(self.audio_manager.stop_audio_consumer())
+        logger.info("[ChatController] Audio manager scheduled for stopping")
+        
+        # Stop STT service
+        if self.speech_manager:
+             self.speech_manager.cleanup()
+        logger.info("[ChatController] Speech manager cleaned up")
+
+        # Cancel all remaining tasks managed by ResourceManager
+        self.resource_manager.cancel_all_tasks()
+        logger.info("[ChatController] All resource manager tasks cancelled")
+
+        # Allow event loop to process cancellations
+        async def wait_for_cleanup():
+            await asyncio.sleep(0.1) # Short delay for tasks to cancel
+            logger.info("[ChatController] Cleanup complete.")
+        
+        # Run the final cleanup step in the loop if it's still running
+        if self._loop and self._loop.is_running():
+             self._loop.create_task(wait_for_cleanup())
+        else:
+            logger.warning("[ChatController] Event loop not running during cleanup.")
+
+    # --- History Management Methods ---
+    @Slot(result=list)
+    def getChatHistory(self):
+        """Return the current chat history for QML."""
+        logger.debug(f"[ChatController] getChatHistory called, returning {len(self._chat_history)} messages.")
+        return list(self._chat_history) # Return a copy
+
+    def _add_user_message_to_history(self, text):
+        """Adds a user message to the internal history list."""
+        self._chat_history.append({"text": text, "isUser": True})
+        logger.debug(f"[ChatController] Added user message to history. New length: {len(self._chat_history)}")
+
+    def _add_assistant_message_to_history(self, text):
+        """Adds a complete assistant message to the internal history list."""
+        # This is called when a non-chunked message arrives
+        self._chat_history.append({"text": text, "isUser": False})
+        logger.debug(f"[ChatController] Added assistant message to history. New length: {len(self._chat_history)}")
+
+    def _handle_assistant_message_chunk(self, text, is_final):
+        """Handles incoming chunks for assistant messages, updating the history."""
+        if not self._chat_history or self._chat_history[-1]["isUser"]:
+            # Start of a new assistant message
+            self._chat_history.append({"text": text, "isUser": False})
+            logger.debug(f"[ChatController] Started new assistant message chunk in history. Length: {len(self._chat_history)}")
+        else:
+            # Update the last assistant message
+            self._chat_history[-1]["text"] = text
+            # logger.debug(f"[ChatController] Updated assistant message chunk in history.") # Too noisy
+        
+        if is_final:
+            logger.debug(f"[ChatController] Final assistant message chunk received. History length: {len(self._chat_history)}")
 
     async def _enable_tts_on_wake_word(self):
-        """Enable STT when wake word is detected"""
-        logger.info("[ChatController] Wake word detected - enabling STT")
+        """
+        Enable TTS when wake word is detected.
+        """
+        logger.info("[ChatController] Wake word detected - enabling TTS")
         
         # Play the wake sound
         try:
@@ -303,7 +364,7 @@ class ChatController(QObject):
         except Exception as e:
             logger.error(f"[ChatController] Error playing wake sound: {e}")
         
-        # Enable STT if it's not already enabled
+        # Enable TTS if it's not already enabled
         if not self.speech_manager.is_stt_enabled():
             self.toggleSTT()
             logger.info("[ChatController] STT enabled after wake word")
@@ -320,4 +381,5 @@ class ChatController(QObject):
         logger.info(f"[ChatController] Auto-submitting utterance to chat: {text}")
         # Emit a signal so the UI can display the message
         self.userMessageAutoSubmitted.emit(text)
+        # Call sendMessage, which now handles adding to history
         self.sendMessage(text)

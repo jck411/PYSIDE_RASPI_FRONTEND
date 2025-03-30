@@ -2,9 +2,9 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-import MyScreens 1.0
+// import MyScreens 1.0 // REMOVED - Module no longer defined/needed here
 import MyTheme 1.0  // Import our ThemeManager
-import MyServices 1.0 // Needed for SettingsService
+import MyServices 1.0 // Needed for SettingsService AND ChatService
 
 BaseScreen {
     id: chatScreen
@@ -13,8 +13,8 @@ BaseScreen {
     // Property to hold the setting value
     property bool showInputBox: true
     
-    // Properties to expose chat logic and model to controls
-    property alias chatLogic: chatLogic
+    // Properties to expose chat logic (singleton) and model to controls
+    // property alias chatLogic: ChatService // REMOVED - Conflicting alias
     property alias chatModel: chatModel
     
     // Set the controls file for this screen
@@ -25,8 +25,21 @@ BaseScreen {
         try {
             showInputBox = SettingsService.getSetting("chat.CHAT_CONFIG.show_input_box", true)
             console.log("ChatScreen initial showInputBox value:", showInputBox)
+            
+            // Load initial chat history FROM THE SINGLETON
+            var history = ChatService.getChatHistory() // <-- Use ChatService
+            console.log("ChatScreen loading initial history from ChatService with " + history.length + " messages.")
+            // Clear existing model before loading potentially stale data (important!)
+            chatModel.clear()
+            for (var i = 0; i < history.length; ++i) {
+                chatModel.append(history[i])
+            }
+            if (history.length > 0 && chatView.autoScroll) {
+                chatView.positionViewAtEnd()
+            }
+            
         } catch (e) {
-            console.error("Error getting showInputBox setting:", e)
+            console.error("Error during ChatScreen Component.onCompleted:", e)
         }
     }
     
@@ -41,53 +54,62 @@ BaseScreen {
         }
     }
 
+    // Connections for ChatService specific signals (like history clear)
+    // Target the ChatService singleton directly
+    Connections {
+        target: ChatService // <-- Use ChatService
+
+        onHistoryCleared: {
+            console.log("ChatScreen: Received historyCleared signal. Clearing model.")
+            chatModel.clear()
+        }
+
+        // Handlers for real-time updates while screen is visible
+        // These signals are emitted by the ChatService singleton
+        onMessageReceived: function(text) {
+            chatModel.append({"text": text, "isUser": false})
+            if (chatView.autoScroll) {
+                chatView.positionViewAtEnd()
+            }
+        }
+        
+        onMessageChunkReceived: function(text, isFinal) {
+            var lastIndex = chatModel.count - 1
+            if (lastIndex >= 0 && !chatModel.get(lastIndex).isUser) {
+                chatModel.setProperty(lastIndex, "text", text)
+            } else {
+                chatModel.append({"text": text, "isUser": false})
+            }
+            
+            if (isFinal) {
+                console.log("Message stream complete")
+            }
+            
+            if (chatView.autoScroll) {
+                chatView.positionViewAtEnd()
+            }
+        }
+        
+        onConnectionStatusChanged: function(connected) {
+            console.log("Connection changed => " + connected)
+            chatScreen.title = connected ? "Chat Interface - Connected" : "Chat Interface - Disconnected"
+        }
+        
+        onSttInputTextReceived: function(text) {
+            inputField.text = text
+        }
+        
+        onUserMessageAutoSubmitted: function(text) {
+            chatModel.append({"text": text, "isUser": true})
+            if (chatView.autoScroll) {
+                chatView.positionViewAtEnd()
+            }
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "transparent"
-
-        ChatLogic {
-            id: chatLogic
-            
-            onMessageReceived: function(text) {
-                chatModel.append({"text": text, "isUser": false})
-                if (chatView.autoScroll) {
-                    chatView.positionViewAtEnd()
-                }
-            }
-            
-            onMessageChunkReceived: function(text, isFinal) {
-                var lastIndex = chatModel.count - 1
-                if (lastIndex >= 0 && !chatModel.get(lastIndex).isUser) {
-                    chatModel.setProperty(lastIndex, "text", text)
-                } else {
-                    chatModel.append({"text": text, "isUser": false})
-                }
-                
-                if (isFinal) {
-                    console.log("Message stream complete")
-                }
-                
-                if (chatView.autoScroll) {
-                    chatView.positionViewAtEnd()
-                }
-            }
-            
-            onConnectionStatusChanged: function(connected) {
-                console.log("Connection changed => " + connected)
-                chatScreen.title = connected ? "Chat Interface - Connected" : "Chat Interface - Disconnected"
-            }
-            
-            onSttInputTextReceived: function(text) {
-                inputField.text = text
-            }
-            
-            onUserMessageAutoSubmitted: function(text) {
-                chatModel.append({"text": text, "isUser": true})
-                if (chatView.autoScroll) {
-                    chatView.positionViewAtEnd()
-                }
-            }
-        }
 
         Rectangle {
             anchors.fill: parent
@@ -189,7 +211,7 @@ BaseScreen {
                             if (userText.length > 0) {
                                 chatModel.append({ "text": userText, "isUser": true })
                                 inputField.text = ""
-                                chatLogic.sendMessage(userText)
+                                ChatService.sendMessage(userText) // <-- Use ChatService
                                 chatView.autoScroll = true
                                 chatView.positionViewAtEnd()
                             }
@@ -220,3 +242,4 @@ BaseScreen {
         }
     }
 }
+

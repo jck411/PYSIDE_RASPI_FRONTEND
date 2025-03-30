@@ -49,9 +49,14 @@ def main():
     # Create settings service instance
     settings_service = SettingsService()
     
-    # Register ChatController as ChatLogic for QML compatibility
-    qmlRegisterType(ChatController, "MyScreens", 1, 0, "ChatLogic")
-    
+    # --- Create Singleton Instances ---
+    # Create the single ChatController instance
+    chat_controller_instance = ChatController()
+    # ----------------------------------
+
+    # --- Register QML Types and Singletons ---
+    # qmlRegisterType(ChatController, "MyScreens", 1, 0, "ChatLogic") # REMOVE: No longer registering as type
+
     # Register ThemeManager as a singleton
     qmlRegisterSingletonInstance(ThemeManager, "MyTheme", 1, 0, "ThemeManager", theme_manager)
     
@@ -60,7 +65,11 @@ def main():
     
     # Register ErrorHandler as a singleton
     qmlRegisterSingletonInstance(ErrorHandler, "MyServices", 1, 0, "ErrorHandler", error_handler_instance)
-    
+
+    # Register ChatController instance as a singleton (using MyServices seems appropriate)
+    qmlRegisterSingletonInstance(ChatController, "MyServices", 1, 0, "ChatService", chat_controller_instance)
+    # -----------------------------------------
+
     # Create QML engine
     engine = QQmlApplicationEngine()
     
@@ -105,13 +114,17 @@ def main():
     exit_code = app.exec()
     
     # Cleanup
-    chat_controller = None
-    for obj in engine.rootObjects():
-        chat_controller = obj.findChild(ChatController)
-        if chat_controller:
-            chat_controller.cleanup()
-            break
-    
+    # chat_controller = None # REMOVE: We have the instance directly
+    # for obj in engine.rootObjects():
+    #     chat_controller = obj.findChild(ChatController)
+    #     if chat_controller:
+    #         chat_controller.cleanup()
+    #         break
+    # Directly cleanup the singleton instance
+    if chat_controller_instance:
+        logger.info("Cleaning up ChatController singleton...")
+        chat_controller_instance.cleanup()
+
     loop.close()
     logger.info("Application closed.")
     sys.exit(exit_code)
