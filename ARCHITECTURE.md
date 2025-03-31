@@ -217,6 +217,27 @@ The Weather Screen uses Lottie animations for displaying weather conditions. The
   - Network/loading errors
   - Fallback to default animations when specific ones aren't available
 
+### Forecast Implementation (Added March 31, 2025)
+
+The Weather Screen was enhanced to display a 5-day forecast below the current weather conditions.
+
+- **Data Source**: The forecast data is retrieved from the `daily` array within the JSON response provided by the backend's `/api/weather` endpoint. This endpoint caches data fetched by `backend/weather/fetcher.py` from the OpenWeatherMap One Call API.
+- **Displayed Information**: For each of the 5 forecast days (excluding the current day), the following is displayed:
+    - Day and Date (e.g., "Mon 03/31") using the `formatDateToDay` helper function.
+    - Weather condition icon (using static SVGs from `frontend/icons/weather/` via `getWeatherSvgIconPath` helper function for performance).
+    - High and Low temperatures (e.g., "75° / 55°").
+    - Percentage Chance of Precipitation (PoP) (e.g., "30% rain").
+- **Layout**:
+    - The forecast items are arranged horizontally using a `RowLayout`.
+    - Both the current weather and the forecast sections are placed within a `ColumnLayout`.
+    - The entire content area (`ColumnLayout`) is wrapped in a `Flickable` to allow vertical scrolling if the content exceeds the screen height.
+- **Development Notes & Troubleshooting**:
+    - An initial attempt was made to refactor the screen into `CurrentWeatherDisplay.qml` and `ForecastDisplay.qml` components. However, persistent layout issues (overlapping, incorrect positioning) arose, likely due to complexities in nested layouts, height calculations, and interactions with `Flickable`.
+    - To resolve these issues and simplify the structure, the UI elements and logic were merged back into a single `WeatherScreen.qml` file.
+    - Layout adjustments included removing explicit heights on child components, removing conflicting anchors within the `Flickable`'s content, adjusting spacing and margins, and ensuring the `RowLayout` fills available width.
+    - Date formatting initially used `toLocaleDateString`, but was changed to manual formatting using `getDay()` and an array lookup for better reliability in the QML environment.
+    - The `SettingsService` was updated to expose the `httpBaseUrl` as a QML property to fix an issue where the weather API URL was not being constructed correctly.
+
 ## Implementation Plan (Current Focus: Chat Enhancements)
 
 **Phase A: Chat Screen UI/UX Enhancements**

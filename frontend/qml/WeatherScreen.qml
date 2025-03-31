@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtWebEngine 1.8
+import QtWebEngine 1.8 // Needed again for WebEngineView
 import MyTheme 1.0
 import MyServices 1.0 
 
@@ -11,15 +11,17 @@ BaseScreen {
     screenControls: "WeatherControls.qml"
     title: "Weather"
     
+    // --- State Properties ---
     property var currentWeatherData: null
     property string statusMessage: "Loading weather..."
-    property string currentWeatherCode: ""
+    property string currentWeatherCode: "" 
     
-    // Define the absolute path to your Lottie files
+    // --- Configuration Properties ---
     property string lottieIconsBase: "/home/jack/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/lottie/"
     property string lottiePlayerPath: "/home/jack/PYSIDE_RASPI_FRONTEND/frontend/assets/js/lottie.min.js"
+    property string svgIconsBase: "file:///home/jack/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/"
 
-    // HTML template for displaying Lottie animations - using local lottie player
+    // HTML template for Lottie 
     property string lottieHtmlTemplate: '
     <!DOCTYPE html>
     <html>
@@ -35,9 +37,7 @@ BaseScreen {
     <body>
       <div id="lottie"></div>
       <script>
-        // We use a direct animation object instead of loading from URL
         var animationData = %ANIMATION_DATA%;
-        
         var animation = lottie.loadAnimation({
           container: document.getElementById("lottie"),
           renderer: "svg",
@@ -50,112 +50,88 @@ BaseScreen {
     </html>
     '
 
-    // --- Icon Mapping Function ---
+    // --- Helper Functions ---
+
+    // --- Lottie Icon Mapping Function ---
     function getWeatherIconPath(owmIconCode) {
-        // Map OpenWeatherMap icon codes to Basmilius collection Lottie files
         const iconMap = {
-            "01d": "clear-day",             // clear sky day
-            "01n": "clear-night",           // clear sky night
-            "02d": "partly-cloudy-day",     // few clouds day
-            "02n": "partly-cloudy-night",   // few clouds night
-            "03d": "cloudy",                // scattered clouds day
-            "03n": "cloudy",                // scattered clouds night
-            "04d": "overcast-day",          // broken clouds day
-            "04n": "overcast-night",        // broken clouds night
-            "09d": "rain",                  // shower rain day
-            "09n": "rain",                  // shower rain night
-            "10d": "partly-cloudy-day-rain", // rain day
-            "10n": "partly-cloudy-night-rain", // rain night
-            "11d": "thunderstorms-day",     // thunderstorm day
-            "11n": "thunderstorms-night",   // thunderstorm night
-            "13d": "snow",                  // snow day
-            "13n": "snow",                  // snow night
-            "50d": "mist",                  // mist day
-            "50n": "mist"                   // mist night
+            "01d": "clear-day", "01n": "clear-night", "02d": "partly-cloudy-day", "02n": "partly-cloudy-night",
+            "03d": "cloudy", "03n": "cloudy", "04d": "overcast-day", "04n": "overcast-night",
+            "09d": "rain", "09n": "rain", "10d": "partly-cloudy-day-rain", "10n": "partly-cloudy-night-rain",
+            "11d": "thunderstorms-day", "11n": "thunderstorms-night", "13d": "snow", "13n": "snow",
+            "50d": "mist", "50n": "mist"
         };
-        
         if (!iconMap[owmIconCode]) {
             console.warn("Unknown weather icon code:", owmIconCode);
-            return lottieIconsBase + "thermometer.json"; // Default fallback
+            return lottieIconsBase + "thermometer.json"; 
         }
-        
         return lottieIconsBase + iconMap[owmIconCode] + ".json";
+    }
+
+    // --- SVG Icon Mapping Function (for Forecast) ---
+    function getWeatherSvgIconPath(owmIconCode) {
+        const iconMap = {
+            "01d": "clear-day.svg", "01n": "clear-night.svg", "02d": "partly-cloudy-day.svg", "02n": "partly-cloudy-night.svg",
+            "03d": "cloudy.svg", "03n": "cloudy.svg", "04d": "overcast-day.svg", "04n": "overcast-night.svg",
+            "09d": "drizzle.svg", "09n": "drizzle.svg", "10d": "partly-cloudy-day-rain.svg", "10n": "partly-cloudy-night-rain.svg",
+            "11d": "thunderstorms-day.svg", "11n": "thunderstorms-night.svg", "13d": "partly-cloudy-day-snow.svg", "13n": "partly-cloudy-night-snow.svg",
+            "50d": "mist.svg", "50n": "mist.svg"
+        };
+        if (!iconMap[owmIconCode]) {
+            console.warn("Unknown weather icon code for SVG:", owmIconCode);
+            return svgIconsBase + "not-available.svg"; 
+        }
+        return svgIconsBase + iconMap[owmIconCode];
+    }
+
+    // --- Date Formatting Function ---
+    function formatDateToDay(unixTimestamp) {
+        var date = new Date(unixTimestamp * 1000);
+        var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        var dayName = days[date.getDay()];
+        var month = ("0" + (date.getMonth() + 1)).slice(-2); 
+        var dayNum = ("0" + date.getDate()).slice(-2);
+        return dayName + " " + month + "/" + dayNum;
     }
 
     // Function to load and parse Lottie JSON file
     function loadLottieAnimation(filePath) {
         console.log("Attempting to load Lottie file from:", filePath);
-        
-        // Create XMLHttpRequest with better error handling
         var xhr = new XMLHttpRequest();
-        
         try {
-            // Use the file:// protocol explicitly and make sure the path is correctly formatted
             var fileUrl = "file://" + filePath;
-            console.log("Loading from URL:", fileUrl);
-            
-            xhr.open("GET", fileUrl, false); // Synchronous request
-            
-            // Add error handlers
-            xhr.onerror = function() {
-                console.error("Network error occurred when trying to load Lottie file:", filePath);
-                return null;
-            };
-            
+            xhr.open("GET", fileUrl, false); 
+            xhr.onerror = function() { console.error("Network error loading Lottie:", filePath); return null; };
             xhr.send(null);
-            
             if (xhr.status === 200) {
-                console.log("Successfully loaded Lottie file:", filePath);
-                try {
-                    // Validate that we received valid JSON
-                    var jsonContent = xhr.responseText;
-                    JSON.parse(jsonContent); // This will throw if not valid JSON
-                    return jsonContent;
-                } catch (e) {
-                    console.error("Error parsing JSON from file:", filePath, e);
-                    statusMessage = "Error: Invalid JSON in animation file";
-                    return null;
-                }
+                var jsonContent = xhr.responseText;
+                JSON.parse(jsonContent); // Validate
+                return jsonContent;
             } else {
-                console.error("Error loading Lottie file:", filePath, "Status:", xhr.status, xhr.statusText);
+                console.error("Error loading Lottie file:", filePath, "Status:", xhr.status);
                 statusMessage = "Error: Could not load animation file (Status: " + xhr.status + ")";
-                
-                // Check for common error cases
-                if (xhr.status === 0) {
-                    console.error("Access denied or file not found. Make sure QML_XHR_ALLOW_FILE_READ=1 is set.");
-                    statusMessage = "Error: Animation file access denied (check permissions)";
-                }
-                
                 return null;
             }
         } catch (e) {
-            console.error("Exception when loading Lottie file:", e);
-            statusMessage = "Error: Exception occurred loading animation file";
+            console.error("Exception loading Lottie file:", e);
+            statusMessage = "Error: Exception loading animation file";
             return null;
         }
     }
 
     // Function to update the Lottie animation
     function updateLottieAnimation() {
-        if (currentWeatherCode) {
+        if (currentWeatherCode && lottieIconsBase && lottiePlayerPath && lottieHtmlTemplate) {
             try {
                 var lottieJsonPath = getWeatherIconPath(currentWeatherCode);
-                console.log("Getting Lottie file for weather code:", currentWeatherCode);
-                
-                // Load the animation JSON
                 var animationJson = loadLottieAnimation(lottieJsonPath);
-                
                 if (animationJson) {
-                    // Create the HTML content with the animation data
                     var htmlContent = lottieHtmlTemplate
                         .replace("%ANIMATION_DATA%", animationJson)
                         .replace("%LOTTIE_PLAYER_PATH%", lottiePlayerPath);
-                    
-                    // Load the HTML into the WebEngineView
                     weatherWeb.loadHtml(htmlContent, "file:///");
                     console.log("Updated Lottie animation successfully");
                 } else {
-                    console.error("Failed to load animation data from:", lottieJsonPath);
                     statusMessage = "Error: Failed to load weather animation";
                 }
             } catch (e) {
@@ -164,53 +140,50 @@ BaseScreen {
             }
         }
     }
+    
+    // Trigger update when the code changes
+    onCurrentWeatherCodeChanged: {
+        updateLottieAnimation();
+    }
 
-    // Function to fetch weather data
+    // --- Data Fetching Logic ---
     function fetchWeather() {
-        console.log("Attempting to fetch weather data...")
+        console.log("Attempting to fetch weather data (WeatherScreen)...")
         var xhr = new XMLHttpRequest();
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 200) {
                     try {
                         var response = JSON.parse(xhr.responseText);
-                        currentWeatherData = response;
+                        currentWeatherData = response; 
                         statusMessage = ""; 
-                        console.log("Weather data fetched successfully.")
-                        
-                        // Update the weather icon code based on fetched data
-                        if (currentWeatherData && currentWeatherData.current && 
-                            currentWeatherData.current.weather && 
-                            currentWeatherData.current.weather.length > 0) {
+                        console.log("Weather data fetched successfully (WeatherScreen).")
+                        if (currentWeatherData && currentWeatherData.current && currentWeatherData.current.weather && currentWeatherData.current.weather.length > 0) {
                             currentWeatherCode = currentWeatherData.current.weather[0].icon;
-                            console.log("Setting weather code to:", currentWeatherCode);
-                            updateLottieAnimation();
                         } else {
-                            console.warn("Could not find weather icon code in response.");
-                            currentWeatherCode = "01d"; // Default to clear day if no code available
-                            updateLottieAnimation();
+                            currentWeatherCode = "01d"; // Default
                         }
                     } catch (e) {
-                        console.error("Error parsing weather data:", e);
+                        console.error("Error parsing weather data (WeatherScreen):", e);
                         statusMessage = "Error parsing weather data.";
+                        currentWeatherData = null; currentWeatherCode = "";
                     }
                 } else {
-                    console.error("Error fetching weather data. Status:", xhr.status, xhr.statusText);
+                    console.error("Error fetching weather data (WeatherScreen). Status:", xhr.status);
                     statusMessage = "Error fetching weather data. Status: " + xhr.status;
-                    if (xhr.status === 503) {
-                         statusMessage = "Weather data not yet available from backend.";
-                    }
+                    if (xhr.status === 503) { statusMessage = "Weather data not yet available."; }
+                    currentWeatherData = null; currentWeatherCode = "";
                 }
             }
         }
-        xhr.open("GET", "http://localhost:8000/api/weather");
+        xhr.open("GET", SettingsService.httpBaseUrl + "/api/weather"); 
         xhr.send();
     }
 
     // Fetch data when the component is ready
     Component.onCompleted: {
+        console.log("WeatherScreen: Component.onCompleted running...") 
         fetchWeather();
-        // Set up a timer to refresh the data every 30 minutes
         weatherTimer.start();
     }
 
@@ -220,26 +193,28 @@ BaseScreen {
         interval: 1800000 // 30 minutes
         repeat: true
         running: false 
-        onTriggered: {
-            fetchWeather();
-        }
+        onTriggered: { fetchWeather(); }
     }
 
-    // Content Area
-    Rectangle {
-        id: weatherContent
+    // --- Content Area ---
+    Flickable { 
+        id: flickableArea
         anchors.fill: parent
-        color: "transparent"
-        
-        Column {
-            anchors.centerIn: parent
-            spacing: 20
-            width: parent.width * 0.9
+        contentHeight: contentColumn.implicitHeight 
+        clip: true 
+        flickableDirection: Flickable.VerticalFlick 
 
-            // Status Text
+        ColumnLayout { 
+            id: contentColumn 
+            width: parent.width * 0.95 
+            spacing: 15 // Consistent spacing
+            // Center the whole column horizontally within the Flickable
+            anchors.horizontalCenter: parent.horizontalCenter 
+
+            // Status Text (Displayed at the top when loading or error)
             Text {
                 id: statusText
-                width: parent.width
+                Layout.fillWidth: true
                 text: statusMessage
                 visible: statusMessage !== ""
                 color: ThemeManager.text_secondary_color
@@ -248,66 +223,117 @@ BaseScreen {
                 wrapMode: Text.WordWrap
             }
 
-            // Weather Animation Container
-            Rectangle {
-                id: weatherIconContainer
-                width: 200
-                height: 200
-                color: "transparent"
-                visible: statusMessage === ""
-                anchors.horizontalCenter: parent.horizontalCenter
-                
-                WebEngineView {
-                    id: weatherWeb
-                    anchors.fill: parent
-                    backgroundColor: Qt.rgba(0, 0, 0, 0)
-                    settings.accelerated2dCanvasEnabled: true
-                    settings.allowRunningInsecureContent: true
-                    settings.javascriptEnabled: true
-                    settings.showScrollBars: false
+            // --- Current Weather Display Elements ---
+            Column {
+                id: currentWeatherColumn // Give it an ID
+                Layout.fillWidth: true // Take available width in ColumnLayout
+                Layout.alignment: Qt.AlignHCenter // Center content horizontally
+                spacing: 10 
+                visible: statusMessage === "" // Hide when loading/error
+
+                // Weather Animation Container
+                Rectangle {
+                    id: weatherIconContainer
+                    width: 150 
+                    height: 150
+                    color: "transparent"
+                    anchors.horizontalCenter: parent.horizontalCenter // Center within this Column
                     
-                    onLoadingChanged: function(loadRequest) {
-                        if (loadRequest.status === WebEngineView.LoadSucceededStatus) {
-                            console.log("Lottie animation loaded successfully");
-                        } else if (loadRequest.status === WebEngineView.LoadFailedStatus) {
-                            console.error("Failed to load Lottie animation:", loadRequest.errorString);
-                        }
-                    }
-                    
-                    onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
-                        console.log("WebEngine JS:", message, "at line", lineNumber);
+                    WebEngineView {
+                        id: weatherWeb
+                        anchors.fill: parent
+                        backgroundColor: Qt.rgba(0, 0, 0, 0)
+                        settings.accelerated2dCanvasEnabled: true
+                        settings.allowRunningInsecureContent: true
+                        settings.javascriptEnabled: true
+                        settings.showScrollBars: false
+                        onLoadingChanged: if (loadRequest.status === WebEngineView.LoadFailedStatus) { console.error("Failed Lottie load:", loadRequest.errorString); }
+                        onJavaScriptConsoleMessage: console.log("WebEngine JS:", message);
                     }
                 }
-            }
 
-            // Current Temperature Text
-            Text {
-                id: currentTempText
-                width: parent.width
-                text: currentWeatherData ? 
-                      ("Current Temperature: " + Math.round(currentWeatherData.current.temp) + "°F") : "--"
-                visible: statusMessage === ""
-                color: ThemeManager.text_primary_color
-                font.pixelSize: 24
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-            }
-            
-            // Weather Description
-            Text {
-                id: weatherDescription
-                width: parent.width
-                text: currentWeatherData && currentWeatherData.current && 
-                      currentWeatherData.current.weather && 
-                      currentWeatherData.current.weather.length > 0 ? 
-                      currentWeatherData.current.weather[0].description.charAt(0).toUpperCase() + 
-                      currentWeatherData.current.weather[0].description.slice(1) : ""
-                visible: statusMessage === "" && text !== ""
-                color: ThemeManager.text_secondary_color
-                font.pixelSize: 18
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-            }
-        }
-    }
-}
+                // Current Temperature Text
+                Text {
+                    id: currentTempText
+                    width: parent.width // Fill width of currentWeatherColumn
+                    text: currentWeatherData ? ("Current: " + Math.round(currentWeatherData.current.temp) + "°F") : "--"
+                    color: ThemeManager.text_primary_color
+                    font.pixelSize: 22 
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                }
+                
+                // Weather Description
+                Text {
+                    id: weatherDescription
+                    width: parent.width // Fill width of currentWeatherColumn
+                    text: currentWeatherData && currentWeatherData.current && currentWeatherData.current.weather && currentWeatherData.current.weather.length > 0 ? 
+                          currentWeatherData.current.weather[0].description.charAt(0).toUpperCase() + currentWeatherData.current.weather[0].description.slice(1) : ""
+                    visible: text !== ""
+                    color: ThemeManager.text_secondary_color
+                    font.pixelSize: 16 
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                }
+            } // End Current Weather Column
+
+            // --- Forecast Display Elements ---
+            RowLayout {
+                id: forecastRowLayout
+                Layout.topMargin: 40 // Increased top margin slightly more
+                Layout.fillWidth: true // Make the RowLayout use the full width provided by parent ColumnLayout
+                spacing: 15 // Spacing between forecast days
+                visible: statusMessage === "" && currentWeatherData && currentWeatherData.daily && currentWeatherData.daily.length > 0
+
+                Repeater {
+                    model: currentWeatherData ? (currentWeatherData.daily ? currentWeatherData.daily.slice(1, 6) : []) : [] 
+
+                    delegate: Column {
+                        Layout.fillWidth: true // Distribute width evenly
+                        Layout.alignment: Qt.AlignTop 
+                        spacing: 5
+
+                        // Day and Date
+                        Text {
+                            text: formatDateToDay(modelData.dt)
+                            color: ThemeManager.text_primary_color
+                            font.pixelSize: 14 
+                            horizontalAlignment: Text.AlignHCenter
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+
+                        // Weather Icon (SVG)
+                        Image {
+                            id: forecastIcon
+                            width: 50; height: 50
+                            source: getWeatherSvgIconPath(modelData.weather[0].icon)
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            fillMode: Image.PreserveAspectFit
+                            sourceSize.width: 50; sourceSize.height: 50
+                        }
+
+                        // High / Low Temperature
+                        Text {
+                            text: Math.round(modelData.temp.max) + "° / " + Math.round(modelData.temp.min) + "°"
+                            color: ThemeManager.text_secondary_color
+                            font.pixelSize: 14
+                            horizontalAlignment: Text.AlignHCenter
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+
+                        // Chance of Rain (PoP)
+                        Text {
+                            text: modelData.pop !== undefined ? (Math.round(modelData.pop * 100) + "% rain") : "" 
+                            color: ThemeManager.text_secondary_color
+                            font.pixelSize: 12 
+                            horizontalAlignment: Text.AlignHCenter
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: modelData.pop !== undefined 
+                        }
+                    } 
+                } // End Repeater
+            } // End RowLayout (Forecast)
+
+        } // End contentColumn (ColumnLayout)
+    } // End Flickable
+} // End BaseScreen

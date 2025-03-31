@@ -6,7 +6,7 @@ Provides a simplified and unified interface for accessing and modifying
 application settings, abstracting the underlying ConfigManager.
 """
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot, Property
 from typing import Any, Optional
 
 from frontend.config_manager import ConfigManager
@@ -27,6 +27,11 @@ class SettingsService(QObject):
     _instance: Optional['SettingsService'] = None
     _initialized: bool = False
 
+    # --- QML Properties ---
+    # Read-only property for the HTTP base URL
+    _httpBaseUrlChanged = Signal()
+    _httpBaseUrl: str = "" # Internal storage
+
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -39,8 +44,15 @@ class SettingsService(QObject):
             
         super().__init__() # Initialize QObject
         self._config_manager = ConfigManager()
+        # Initialize the base URL from config
+        self._httpBaseUrl = self._config_manager.get_config('server.HTTP_BASE_URL', 'http://127.0.0.1:8000') # Provide a default
         self._initialized = True
         logger.info("SettingsService initialized.")
+
+    # Expose _httpBaseUrl as a QML property
+    @Property(str, notify=_httpBaseUrlChanged)
+    def httpBaseUrl(self):
+        return self._httpBaseUrl
 
     @Slot(str, bool, result=bool)
     def getSetting(self, path: str, default: bool = False) -> bool:
