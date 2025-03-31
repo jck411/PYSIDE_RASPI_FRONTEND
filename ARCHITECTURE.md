@@ -224,9 +224,13 @@ The Weather Screen was enhanced to display a 5-day forecast below the current we
 - **Data Source**: The forecast data is retrieved from the `daily` array within the JSON response provided by the backend's `/api/weather` endpoint. This endpoint caches data fetched by `backend/weather/fetcher.py` from the OpenWeatherMap One Call API.
 - **Displayed Information**: For each of the 5 forecast days (excluding the current day), the following is displayed:
     - Day and Date (e.g., "Mon 03/31") using the `formatDateToDay` helper function.
-    - Weather condition icon (using static SVGs from `frontend/icons/weather/` via `getWeatherSvgIconPath` helper function for performance).
+    - Weather condition icon (using PNG images from `frontend/icons/weather/PNG/` via `getWeatherPngIconPath` helper function).
     - High and Low temperatures (e.g., "75° / 55°").
     - Percentage Chance of Precipitation (PoP) (e.g., "30% rain").
+- **Icon Handling**:
+    - The current weather uses Lottie animations for rich, animated representations.
+    - The forecast weather uses PNG files for better compatibility and performance, as SVG files were causing rendering issues with Qt's SVG engine.
+    - OpenWeatherMap icon codes (e.g., "10d") are mapped to appropriate PNG file names in the `getWeatherPngIconPath` function.
 - **Layout**:
     - The forecast items are arranged horizontally using a `RowLayout`.
     - Both the current weather and the forecast sections are placed within a `ColumnLayout`.

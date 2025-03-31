@@ -17,9 +17,9 @@ BaseScreen {
     property string currentWeatherCode: "" 
     
     // --- Configuration Properties ---
-    property string lottieIconsBase: "/home/jack/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/lottie/"
-    property string lottiePlayerPath: "/home/jack/PYSIDE_RASPI_FRONTEND/frontend/assets/js/lottie.min.js"
-    property string svgIconsBase: "file:///home/jack/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/"
+    property string lottieIconsBase: "/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/lottie/"
+    property string lottiePlayerPath: "/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/frontend/assets/js/lottie.min.js"
+    property string pngIconsBase: "file:///home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/PNG/"
 
     // HTML template for Lottie 
     property string lottieHtmlTemplate: '
@@ -68,20 +68,53 @@ BaseScreen {
         return lottieIconsBase + iconMap[owmIconCode] + ".json";
     }
 
-    // --- SVG Icon Mapping Function (for Forecast) ---
-    function getWeatherSvgIconPath(owmIconCode) {
+    // --- PNG Icon Mapping Function (for Forecast) ---
+    function getWeatherPngIconPath(owmIconCode) {
+        // Simple direct mapping to the PNG files
         const iconMap = {
-            "01d": "clear-day.svg", "01n": "clear-night.svg", "02d": "partly-cloudy-day.svg", "02n": "partly-cloudy-night.svg",
-            "03d": "cloudy.svg", "03n": "cloudy.svg", "04d": "overcast-day.svg", "04n": "overcast-night.svg",
-            "09d": "drizzle.svg", "09n": "drizzle.svg", "10d": "partly-cloudy-day-rain.svg", "10n": "partly-cloudy-night-rain.svg",
-            "11d": "thunderstorms-day.svg", "11n": "thunderstorms-night.svg", "13d": "partly-cloudy-day-snow.svg", "13n": "partly-cloudy-night-snow.svg",
-            "50d": "mist.svg", "50n": "mist.svg"
+            // Clear sky
+            "01d": "clear-day.png",
+            "01n": "clear-night.png",
+            
+            // Few clouds
+            "02d": "partly-cloudy-day.png",
+            "02n": "partly-cloudy-night.png",
+            
+            // Scattered clouds
+            "03d": "cloudy.png",
+            "03n": "cloudy.png",
+            
+            // Broken clouds
+            "04d": "overcast-day.png",
+            "04n": "overcast-night.png",
+            
+            // Shower rain
+            "09d": "drizzle.png",
+            "09n": "drizzle.png",
+            
+            // Rain
+            "10d": "partly-cloudy-day-rain.png",
+            "10n": "partly-cloudy-night-rain.png",
+            
+            // Thunderstorm
+            "11d": "thunderstorms-day.png",
+            "11n": "thunderstorms-night.png",
+            
+            // Snow
+            "13d": "snow.png",
+            "13n": "snow.png",
+            
+            // Mist
+            "50d": "mist.png",
+            "50n": "mist.png"
         };
+        
         if (!iconMap[owmIconCode]) {
-            console.warn("Unknown weather icon code for SVG:", owmIconCode);
-            return svgIconsBase + "not-available.svg"; 
+            console.warn("Unknown weather icon code:", owmIconCode);
+            return pngIconsBase + "not-available.png";
         }
-        return svgIconsBase + iconMap[owmIconCode];
+        
+        return pngIconsBase + iconMap[owmIconCode];
     }
 
     // --- Date Formatting Function ---
@@ -306,7 +339,7 @@ BaseScreen {
                         Image {
                             id: forecastIcon
                             width: 50; height: 50
-                            source: getWeatherSvgIconPath(modelData.weather[0].icon)
+                            source: getWeatherPngIconPath(modelData.weather[0].icon)
                             anchors.horizontalCenter: parent.horizontalCenter
                             fillMode: Image.PreserveAspectFit
                             sourceSize.width: 50; sourceSize.height: 50
