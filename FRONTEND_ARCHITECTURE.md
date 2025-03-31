@@ -1,10 +1,10 @@
 # PySide Raspberry Pi Frontend Architecture
 
-This document provides a high-level overview of the architecture and design principles for the PySide Raspberry Pi Frontend application, serving as a guide for development.
+This document provides a high-level overview of the architecture and design principles for the **frontend** of the PySide Raspberry Pi application, serving as a guide for frontend development.
 
 ## Project Overview
 
-A Qt/QML application for Raspberry Pi providing a touch-friendly interface with Chat, Weather, Calendar, Clock, Photo Viewer, and Settings screens. Built with Python (PySide6) backend and QML frontend.
+A Qt/QML application for Raspberry Pi providing a touch-friendly **frontend** interface with Chat, Weather, Calendar, Clock, Photo Viewer, and Settings screens. Built with Python (PySide6) backend and QML frontend.
 
 ## Core Components
 

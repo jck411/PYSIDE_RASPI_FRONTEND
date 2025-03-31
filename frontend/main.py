@@ -2,9 +2,14 @@
 import sys
 import asyncio
 import signal
+import os
+import logging
+from pathlib import Path
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonInstance
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QTimer, Qt, QUrl, QObject, Slot, Signal, Property
+from PySide6.QtGui import QGuiApplication, QIcon
+from PySide6.QtWebEngineQuick import QtWebEngineQuick
 from frontend.config import logger
 from frontend.config_manager import ConfigManager
 from frontend.logic.chat_controller import ChatController
@@ -12,14 +17,23 @@ from frontend.theme_manager import ThemeManager
 from frontend.settings_service import SettingsService
 from frontend.error_handler import error_handler_instance, ErrorHandler
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("frontend.config")
+
 def main():
     # Enable touch input
-    app = QApplication(sys.argv)
+    app = QGuiApplication(sys.argv)
     app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    app.setOrganizationName("SmartScreen")
+    app.setOrganizationDomain("smartscreen.local")
     
     # Create an asyncio loop
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    
+    # Initialize QtWebEngine before creating QML engine
+    QtWebEngineQuick.initialize()
     
     # --- Configuration Loading --- 
     config_manager = ConfigManager()

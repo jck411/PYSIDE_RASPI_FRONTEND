@@ -1,0 +1,58 @@
+[
+    {
+        "text": "What's the weather tomorrow?",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow in Orlando: partly cloudy, highs around 91°F. Don't forget your sunscreen!",
+        "isUser": false
+    },
+    {
+        "text": "I'm talking about to today or actually Tuesday or Monday.",
+        "isUser": true
+    },
+    {
+        "text": "Oh, you mean today? Alright, let me check the weather for you!Today: clear skies, high around 86°F. \n\nMonday: more clouds, highs near 87°F.\n\nTuesday: still partly cloudy, highs around 89°F. Enjoy!",
+        "isUser": false
+    },
+    {
+        "text": "What are the chances of Ram today?",
+        "isUser": true
+    },
+    {
+        "text": "You mean RAM like computer memory? Or are we talking about the truck? ",
+        "isUser": false
+    },
+    {
+        "text": "No. Talking about rain.",
+        "isUser": true
+    },
+    {
+        "text": "Ah, got it! Today, there's about a 20% chance of rain. So, you might stay dry!",
+        "isUser": false
+    },
+    {
+        "text": "When is the rain coming?",
+        "isUser": true
+    },
+    {
+        "text": "Rain? Probably not today, but keep an eye out for tomorrow evening!",
+        "isUser": false
+    },
+    {
+        "text": "So the forecast is for when exactly?",
+        "isUser": true
+    },
+    {
+        "text": "The rain is expected tomorrow evening, around 5 PM. Perfect timing for a sunset shower!",
+        "isUser": false
+    },
+    {
+        "text": "On Tuesday. Any rain on Tuesday?",
+        "isUser": true
+    },
+    {
+        "text": "Yes, Tuesday has a higher chance of rain, around 40%. Better carry an umbrella just in case!",
+        "isUser": false
+    }
+]
