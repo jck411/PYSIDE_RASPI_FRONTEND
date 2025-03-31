@@ -69,8 +69,33 @@ BaseScreen {
     }
 
     // --- PNG Icon Mapping Function (for Forecast) ---
-    function getWeatherPngIconPath(owmIconCode) {
-        // Simple direct mapping to the PNG files
+    function getWeatherPngIconPath(owmIconCode, weatherDescription) {
+        console.log("Mapping weather:", weatherDescription, "Icon code:", owmIconCode);
+        
+        // Map based on description first, then fall back to icon codes
+        if (weatherDescription) {
+            if (weatherDescription.includes("clear")) {
+                return pngIconsBase + "clear-day.png";
+            } else if (weatherDescription.includes("few clouds")) {
+                return pngIconsBase + "partly-cloudy-day.png";
+            } else if (weatherDescription.includes("scattered clouds")) {
+                return pngIconsBase + "cloudy.png";
+            } else if (weatherDescription.includes("broken clouds")) {
+                return pngIconsBase + "overcast-day.png";
+            } else if (weatherDescription.includes("overcast")) {
+                return pngIconsBase + "overcast-day.png";
+            } else if (weatherDescription.includes("rain") || weatherDescription.includes("drizzle")) {
+                return pngIconsBase + "partly-cloudy-day-rain.png";
+            } else if (weatherDescription.includes("thunderstorm")) {
+                return pngIconsBase + "thunderstorms-day.png";
+            } else if (weatherDescription.includes("snow")) {
+                return pngIconsBase + "snow.png";
+            } else if (weatherDescription.includes("mist") || weatherDescription.includes("fog")) {
+                return pngIconsBase + "mist.png";
+            }
+        }
+        
+        // Fall back to icon code mapping if description doesn't match
         const iconMap = {
             // Clear sky
             "01d": "clear-day.png",
@@ -114,6 +139,7 @@ BaseScreen {
             return pngIconsBase + "not-available.png";
         }
         
+        console.log("Mapped to icon:", iconMap[owmIconCode]);
         return pngIconsBase + iconMap[owmIconCode];
     }
 
@@ -188,11 +214,31 @@ BaseScreen {
                 if (xhr.status === 200) {
                     try {
                         var response = JSON.parse(xhr.responseText);
+                        console.log("FULL WEATHER RESPONSE:", JSON.stringify(response));
+                        
+                        // Debug daily data specifically for rain probability and weather icons
+                        if (response && response.daily && response.daily.length > 0) {
+                            console.log("Daily data before transformation:");
+                            for (var i = 0; i < response.daily.length; i++) {
+                                console.log("Day " + i + 
+                                          " - Date: " + formatDateToDay(response.daily[i].dt) + 
+                                          ", PoP: " + response.daily[i].pop + 
+                                          ", Weather: " + response.daily[i].weather[0].description +
+                                          ", Icon: " + response.daily[i].weather[0].icon);
+                                
+                                // Debug info about the icon that will be shown
+                                var iconPath = getWeatherPngIconPath(response.daily[i].weather[0].icon, response.daily[i].weather[0].description);
+                                console.log("Day " + i + " icon path: " + iconPath);
+                            }
+                        }
+                        
                         currentWeatherData = response; 
                         statusMessage = ""; 
                         console.log("Weather data fetched successfully (WeatherScreen).")
                         if (currentWeatherData && currentWeatherData.current && currentWeatherData.current.weather && currentWeatherData.current.weather.length > 0) {
                             currentWeatherCode = currentWeatherData.current.weather[0].icon;
+                            console.log("Current weather code:", currentWeatherCode, 
+                                        "Description:", currentWeatherData.current.weather[0].description);
                         } else {
                             currentWeatherCode = "01d"; // Default
                         }
@@ -280,7 +326,11 @@ BaseScreen {
                         settings.allowRunningInsecureContent: true
                         settings.javascriptEnabled: true
                         settings.showScrollBars: false
-                        onLoadingChanged: if (loadRequest.status === WebEngineView.LoadFailedStatus) { console.error("Failed Lottie load:", loadRequest.errorString); }
+                        onLoadingChanged: function(loadRequest) {
+                            if (loadRequest.status === WebEngineView.LoadFailedStatus) { 
+                                console.error("Failed Lottie load:", loadRequest.errorString); 
+                            }
+                        }
                         onJavaScriptConsoleMessage: console.log("WebEngine JS:", message);
                     }
                 }
@@ -319,7 +369,12 @@ BaseScreen {
                 visible: statusMessage === "" && currentWeatherData && currentWeatherData.daily && currentWeatherData.daily.length > 0
 
                 Repeater {
-                    model: currentWeatherData ? (currentWeatherData.daily ? currentWeatherData.daily.slice(1, 6) : []) : [] 
+                    model: {
+                        console.log("WeatherScreen - Full daily data:", currentWeatherData ? currentWeatherData.daily : "No data");
+                        var slicedData = currentWeatherData ? (currentWeatherData.daily ? currentWeatherData.daily.slice(2, 8) : []) : [];
+                        console.log("WeatherScreen - Sliced forecast data:", slicedData);
+                        return slicedData;
+                    }
 
                     delegate: Column {
                         Layout.fillWidth: true // Distribute width evenly
@@ -328,18 +383,26 @@ BaseScreen {
 
                         // Day and Date
                         Text {
-                            text: formatDateToDay(modelData.dt)
+                            text: {
+                                console.log("WeatherScreen - Processing day:", modelData);
+                                console.log("WeatherScreen - Day PoP:", modelData.pop);
+                                return formatDateToDay(modelData.dt);
+                            }
                             color: ThemeManager.text_primary_color
                             font.pixelSize: 14 
                             horizontalAlignment: Text.AlignHCenter
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
 
-                        // Weather Icon (SVG)
+                        // Weather Icon
                         Image {
                             id: forecastIcon
                             width: 50; height: 50
-                            source: getWeatherPngIconPath(modelData.weather[0].icon)
+                            source: {
+                                console.log("Weather icon code:", modelData.weather[0].icon);
+                                console.log("Weather description:", modelData.weather[0].description);
+                                return getWeatherPngIconPath(modelData.weather[0].icon, modelData.weather[0].description);
+                            }
                             anchors.horizontalCenter: parent.horizontalCenter
                             fillMode: Image.PreserveAspectFit
                             sourceSize.width: 50; sourceSize.height: 50
@@ -356,12 +419,16 @@ BaseScreen {
 
                         // Chance of Rain (PoP)
                         Text {
-                            text: modelData.pop !== undefined ? (Math.round(modelData.pop * 100) + "% rain") : "" 
+                            text: {
+                                var popValue = modelData.pop;
+                                var percentage = Math.round(popValue * 100);
+                                return percentage + "% rain";
+                            }
                             color: ThemeManager.text_secondary_color
                             font.pixelSize: 12 
                             horizontalAlignment: Text.AlignHCenter
                             anchors.horizontalCenter: parent.horizontalCenter
-                            visible: modelData.pop !== undefined 
+                            visible: true 
                         }
                     } 
                 } // End Repeater

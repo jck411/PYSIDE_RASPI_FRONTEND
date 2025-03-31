@@ -14,8 +14,32 @@ Item {
     property string svgIconsBase: "file:///home/jack/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/" // Default path
 
     // --- SVG Icon Mapping Function ---
-    function getWeatherSvgIconPath(owmIconCode) {
-        // Map OpenWeatherMap icon codes to Basmilius SVG collection files
+    function getWeatherSvgIconPath(owmIconCode, weatherDescription) {
+        // Map based on description first, then fall back to icon codes
+        if (weatherDescription) {
+            console.log("Mapping weather description:", weatherDescription);
+            if (weatherDescription.includes("clear")) {
+                return svgIconsBase + "clear-day.svg";
+            } else if (weatherDescription.includes("few clouds")) {
+                return svgIconsBase + "partly-cloudy-day.svg";
+            } else if (weatherDescription.includes("scattered clouds")) {
+                return svgIconsBase + "cloudy.svg";
+            } else if (weatherDescription.includes("broken clouds")) {
+                return svgIconsBase + "overcast-day.svg";
+            } else if (weatherDescription.includes("overcast")) {
+                return svgIconsBase + "overcast-day.svg";
+            } else if (weatherDescription.includes("rain") || weatherDescription.includes("drizzle")) {
+                return svgIconsBase + "partly-cloudy-day-rain.svg";
+            } else if (weatherDescription.includes("thunderstorm")) {
+                return svgIconsBase + "thunderstorms-day.svg";
+            } else if (weatherDescription.includes("snow")) {
+                return svgIconsBase + "partly-cloudy-day-snow.svg";
+            } else if (weatherDescription.includes("mist") || weatherDescription.includes("fog")) {
+                return svgIconsBase + "mist.svg";
+            }
+        }
+        
+        // Fall back to original icon code mapping
         const iconMap = {
             "01d": "clear-day.svg",
             "01n": "clear-night.svg",
@@ -70,8 +94,13 @@ Item {
         visible: forecastRoot.statusMessage === "" && forecastRoot.currentWeatherData && forecastRoot.currentWeatherData.daily && forecastRoot.currentWeatherData.daily.length > 0
 
                 Repeater {
-                    // Take the next 5 days (index 0 is today, 1-5 are forecast)
-                    model: currentWeatherData ? (currentWeatherData.daily ? currentWeatherData.daily.slice(1, 6) : []) : [] 
+                    // Take days 2-7 to show more varied weather conditions
+                    model: {
+                        console.log("Full daily data:", currentWeatherData ? currentWeatherData.daily : "No data");
+                        var slicedData = currentWeatherData ? (currentWeatherData.daily ? currentWeatherData.daily.slice(2, 8) : []) : [];
+                        console.log("Sliced forecast data:", slicedData);
+                        return slicedData;
+                    }
 
                     delegate: Column {
                         Layout.fillWidth: true // Distribute width evenly
@@ -80,9 +109,13 @@ Item {
 
                         // Day and Date
                         Text {
-                            text: formatDateToDay(modelData.dt)
+                            text: {
+                                console.log("Processing day:", modelData);
+                                console.log("Day PoP:", modelData.pop);
+                                return formatDateToDay(modelData.dt);
+                            }
                             color: ThemeManager.text_primary_color
-                            font.pixelSize: 14 // Slightly smaller font for longer text
+                            font.pixelSize: 14
                             horizontalAlignment: Text.AlignHCenter
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
@@ -92,7 +125,7 @@ Item {
                             id: forecastIcon
                             width: 50
                             height: 50
-                            source: getWeatherSvgIconPath(modelData.weather[0].icon)
+                            source: getWeatherSvgIconPath(modelData.weather[0].icon, modelData.weather[0].description)
                             anchors.horizontalCenter: parent.horizontalCenter
                             fillMode: Image.PreserveAspectFit
                             sourceSize.width: 50
@@ -110,13 +143,20 @@ Item {
 
                         // Chance of Rain (PoP)
                         Text {
-                            // Check if pop exists, format as percentage
-                            text: modelData.pop !== undefined ? (Math.round(modelData.pop * 100) + "% rain") : ""
+                            text: {
+                                console.log("Day data:", modelData);
+                                console.log("PoP value:", modelData.pop);
+                                console.log("PoP type:", typeof modelData.pop);
+                                var popValue = modelData.pop;
+                                console.log("Raw PoP value:", popValue);
+                                var percentage = popValue !== undefined ? Math.round(popValue * 100) : 0;
+                                console.log("Calculated percentage:", percentage);
+                                return popValue !== undefined ? (percentage + "% rain") : "";
+                            }
                             color: ThemeManager.text_secondary_color
-                            font.pixelSize: 12 // Smaller font for secondary info
+                            font.pixelSize: 12
                             horizontalAlignment: Text.AlignHCenter
                             anchors.horizontalCenter: parent.horizontalCenter
-                            // Show if pop exists, even if 0%, for debugging/confirmation
                             visible: modelData.pop !== undefined
                         }
                     } // End Repeater

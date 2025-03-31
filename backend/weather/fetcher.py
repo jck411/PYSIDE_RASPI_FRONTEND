@@ -36,8 +36,7 @@ async def fetch_weather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON) -> 
         "lon": lon,
         "appid": OPENWEATHER_API_KEY,
         "units": "imperial",  # Use Fahrenheit
-        # You can exclude parts of the data if not needed, e.g., exclude=minutely,hourly
-        # "exclude": "minutely,alerts" 
+        "lang": "en"  # Ensure we get English descriptions
     }
 
     try:
@@ -46,6 +45,13 @@ async def fetch_weather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON) -> 
             response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
             data = response.json()
             logger.info(f"Successfully fetched weather data for lat={lat}, lon={lon}")
+            
+            # Debug logging for daily forecast data
+            if 'daily' in data:
+                logger.info("Daily forecast data:")
+                for day in data['daily']:
+                    logger.info(f"Date: {day.get('dt')}, PoP: {day.get('pop')}, Weather: {day.get('weather', [{}])[0].get('description')}, Icon: {day.get('weather', [{}])[0].get('icon')}")
+            
             return data
     except httpx.RequestError as exc:
         logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
