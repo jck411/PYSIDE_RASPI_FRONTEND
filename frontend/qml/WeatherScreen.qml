@@ -17,6 +17,7 @@ BaseScreen {
     
     // Define the absolute path to your Lottie files
     property string lottieIconsBase: "/home/jack/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/lottie/"
+    property string lottiePlayerPath: "/home/jack/PYSIDE_RASPI_FRONTEND/frontend/assets/js/lottie.min.js"
 
     // HTML template for displaying Lottie animations - using local lottie player
     property string lottieHtmlTemplate: '
@@ -29,10 +30,7 @@ BaseScreen {
         body { margin: 0; padding: 0; overflow: hidden; background-color: transparent; }
         #lottie { width: 100%; height: 100%; background-color: transparent; }
       </style>
-      <script>
-        // Embedded Lottie player library to avoid network dependencies
-        %LOTTIE_PLAYER%
-      </script>
+      <script src="file://%LOTTIE_PLAYER_PATH%"></script>
     </head>
     <body>
       <div id="lottie"></div>
@@ -51,9 +49,6 @@ BaseScreen {
     </body>
     </html>
     '
-
-    // Load the Lottie player code to embed in our HTML
-    property string lottiePlayerCode: '!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t="undefined"!=typeof globalThis?globalThis:t||self).lottie={})}(this,(function(t){"use strict";var e="5.9.6";function r(t){return(r="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(t){return typeof t}:function(t){return t&&"function"==typeof Symbol&&t.constructor===Symbol&&t!==Symbol.prototype?"symbol":typeof t})(t)}function i(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}function s(t,e){for(var r=0;r<e.length;r++){var i=e[r];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(t,i.key,i)}}function a(t,e,r){return e&&s(t.prototype,e),r&&s(t,r),t}function n(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function");t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,writable:!0,configurable:!0}}),e&&o(t,e)}function o(t,e){return(o=Object.setPrototypeOf||function(t,e){return t.__proto__=e,t})(t,e)}function h(t){var e=function(){if("undefined"==typeof Reflect||!Reflect.construct)return!1;if(Reflect.construct.sham)return!1;if("function"==typeof Proxy)return!0;try{return Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],(function(){}))),!0}catch(t){return!1}}());return function(){var r,i=u(t);if(e){var s=u(this).constructor;r=Reflect.construct(i,arguments,s)}else r=i.apply(this,arguments);return l(this,r)}}function l(t,e){return!e||"object"!=typeof e&&"function"!=typeof e?function(t){if(void 0===t)throw new ReferenceError("this hasn\'t been initialised - super() hasn\'t been called");return t}(t):e}function p(t){return(p=Object.setPrototypeOf?Object.getPrototypeOf:function(t){return t.__proto__||Object.getPrototypeOf(t)})(t)}'
 
     // --- Icon Mapping Function ---
     function getWeatherIconPath(owmIconCode) {
@@ -89,21 +84,53 @@ BaseScreen {
 
     // Function to load and parse Lottie JSON file
     function loadLottieAnimation(filePath) {
-        // Try to directly load the file without XMLHttpRequest
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "file://" + filePath, false); // Synchronous request
-        xhr.send(null);
+        console.log("Attempting to load Lottie file from:", filePath);
         
-        if (xhr.status === 200) {
-            console.log("Successfully loaded Lottie file:", filePath);
-            try {
-                return xhr.responseText;
-            } catch (e) {
-                console.error("Error parsing JSON:", e);
+        // Create XMLHttpRequest with better error handling
+        var xhr = new XMLHttpRequest();
+        
+        try {
+            // Use the file:// protocol explicitly and make sure the path is correctly formatted
+            var fileUrl = "file://" + filePath;
+            console.log("Loading from URL:", fileUrl);
+            
+            xhr.open("GET", fileUrl, false); // Synchronous request
+            
+            // Add error handlers
+            xhr.onerror = function() {
+                console.error("Network error occurred when trying to load Lottie file:", filePath);
+                return null;
+            };
+            
+            xhr.send(null);
+            
+            if (xhr.status === 200) {
+                console.log("Successfully loaded Lottie file:", filePath);
+                try {
+                    // Validate that we received valid JSON
+                    var jsonContent = xhr.responseText;
+                    JSON.parse(jsonContent); // This will throw if not valid JSON
+                    return jsonContent;
+                } catch (e) {
+                    console.error("Error parsing JSON from file:", filePath, e);
+                    statusMessage = "Error: Invalid JSON in animation file";
+                    return null;
+                }
+            } else {
+                console.error("Error loading Lottie file:", filePath, "Status:", xhr.status, xhr.statusText);
+                statusMessage = "Error: Could not load animation file (Status: " + xhr.status + ")";
+                
+                // Check for common error cases
+                if (xhr.status === 0) {
+                    console.error("Access denied or file not found. Make sure QML_XHR_ALLOW_FILE_READ=1 is set.");
+                    statusMessage = "Error: Animation file access denied (check permissions)";
+                }
+                
                 return null;
             }
-        } else {
-            console.error("Error loading Lottie file:", filePath, "Status:", xhr.status);
+        } catch (e) {
+            console.error("Exception when loading Lottie file:", e);
+            statusMessage = "Error: Exception occurred loading animation file";
             return null;
         }
     }
@@ -113,18 +140,27 @@ BaseScreen {
         if (currentWeatherCode) {
             try {
                 var lottieJsonPath = getWeatherIconPath(currentWeatherCode);
-                console.log("Loading Lottie file from:", lottieJsonPath);
+                console.log("Getting Lottie file for weather code:", currentWeatherCode);
                 
-                // Use direct file paths with the file:// protocol
-                var htmlContent = lottieHtmlTemplate
-                    .replace("%LOTTIE_PLAYER%", lottiePlayerCode)
-                    .replace("%ANIMATION_DATA%", loadLottieAnimation(lottieJsonPath));
+                // Load the animation JSON
+                var animationJson = loadLottieAnimation(lottieJsonPath);
                 
-                weatherWeb.loadHtml(htmlContent, "file:///");
-                console.log("Updated Lottie animation with path:", lottieJsonPath);
+                if (animationJson) {
+                    // Create the HTML content with the animation data
+                    var htmlContent = lottieHtmlTemplate
+                        .replace("%ANIMATION_DATA%", animationJson)
+                        .replace("%LOTTIE_PLAYER_PATH%", lottiePlayerPath);
+                    
+                    // Load the HTML into the WebEngineView
+                    weatherWeb.loadHtml(htmlContent, "file:///");
+                    console.log("Updated Lottie animation successfully");
+                } else {
+                    console.error("Failed to load animation data from:", lottieJsonPath);
+                    statusMessage = "Error: Failed to load weather animation";
+                }
             } catch (e) {
-                console.error("Error loading animation:", e);
-                statusMessage = "Error loading animation.";
+                console.error("Error updating animation:", e);
+                statusMessage = "Error: Exception when updating animation";
             }
         }
     }

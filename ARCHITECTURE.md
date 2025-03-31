@@ -180,6 +180,43 @@ BaseControls { /* ...buttons using BaseControlButton... */ }
 6.  **Singleton Pattern for Shared State**: Use singletons (e.g., `ChatController` registered as `ChatService`) for state persisting across screens. Access via registered name (e.g., `ChatService.method()`).
 7.  **Documentation**: Keep this document updated.
 
+## Weather Screen Implementation
+
+The Weather Screen uses Lottie animations for displaying weather conditions. These animations are implemented as follows:
+
+### Lottie Animation Integration
+
+- **Animation Files**: Stored in `frontend/icons/weather/lottie/` as JSON files.
+- **Lottie Player**: A local copy of the Lottie player (`lottie.min.js`) is stored in `frontend/assets/js/` for offline operation.
+- **Display Method**: Using WebEngineView to render HTML content with the local Lottie player.
+- **Loading Process**: 
+  - JSON animation files are loaded via XMLHttpRequest
+  - The local Lottie player script is referenced using the file:// protocol
+  - Both are combined into HTML content rendered by WebEngineView
+
+### Required Environment Configuration
+
+- The `QML_XHR_ALLOW_FILE_READ=1` environment variable must be set in `main.py` to enable loading local JSON files and JavaScript through XMLHttpRequest.
+- This configuration is essential for the Weather screen's Lottie animations to work properly.
+
+### Icon Mapping
+
+- Weather condition codes from OpenWeatherMap API are mapped to corresponding Lottie animation files in the `getWeatherIconPath` function.
+- The mapping follows this pattern:
+  ```
+  "01d": "clear-day"             // clear sky day
+  "01n": "clear-night"           // clear sky night
+  // etc.
+  ```
+
+### Error Handling
+
+- Robust error handling includes checks for:
+  - File access permissions
+  - JSON parsing errors
+  - Network/loading errors
+  - Fallback to default animations when specific ones aren't available
+
 ## Implementation Plan (Current Focus: Chat Enhancements)
 
 **Phase A: Chat Screen UI/UX Enhancements**
@@ -197,7 +234,7 @@ BaseControls { /* ...buttons using BaseControlButton... */ }
 
 **Phase D: UI Enhancements** (Renamed from "Other Screens")
 *   D.1: Add Fullscreen Toggle Setting: **DONE**
-*   D.2: Weather Screen: **NOT STARTED**
+*   D.2: Weather Screen: **DONE** (Implemented with Lottie animations)
 *   D.3: Calendar Screen: **NOT STARTED**
 *   D.4: Photo Screen: **NOT STARTED**
 

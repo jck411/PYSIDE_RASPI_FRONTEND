@@ -22,6 +22,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("frontend.config")
 
 def main():
+    # Set environment variable to allow loading local files via XMLHttpRequest
+    os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
+    logger.info("Enabled QML_XHR_ALLOW_FILE_READ for local file access")
+    
     # Enable touch input
     app = QGuiApplication(sys.argv)
     app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
