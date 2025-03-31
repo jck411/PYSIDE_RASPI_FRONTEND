@@ -129,7 +129,7 @@ Item {
                     }
                 }
                 
-                // Chat Category Header
+                // UI Category Header (Renamed from Chat)
                 Rectangle {
                     Layout.fillWidth: true
                     height: 50
@@ -138,22 +138,28 @@ Item {
                     
                     Text {
                         anchors.centerIn: parent
-                        text: "Chat Settings"
+                        text: "UI Settings" // Renamed from "Chat Settings"
                         font.pixelSize: 20
                         font.bold: true
                         color: ThemeManager.text_primary_color
                     }
                 }
                 
-                // Chat Settings Category
+                // UI Settings Category (Renamed from Chat)
                 Rectangle {
                     Layout.fillWidth: true
-                    height: chatColumn.height + 32
+                    // Adjust height dynamically based on content, maybe using childrenRect? Or just add more fixed height.
+                    // For simplicity now, let's increase fixed height guess slightly. We can refine later.
+                    // It's better to use implicitHeight of the ColumnLayout inside.
+                    // height: chatColumn.height + 32 // Old way
+                    implicitHeight: uiColumn.implicitHeight + 32 // Calculate based on inner layout
+                    Layout.preferredHeight: implicitHeight // Use implicitHeight for layout
                     color: ThemeManager.input_background_color
                     radius: 8
                     
                     ColumnLayout {
-                        id: chatColumn
+                        // id: chatColumn // Renamed ID
+                        id: uiColumn
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.top: parent.top
@@ -196,6 +202,45 @@ Item {
                                     } else {
                                         console.error("Failed to update Show Input Box setting via SettingsService")
                                         showInputBoxSwitch.checked = Qt.binding(function() { return showInputBoxEnabled; })
+                                    }
+                                }
+                            }
+                        }
+
+                        // Fullscreen Setting (New)
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+
+                            Text {
+                                text: "Fullscreen:"
+                                color: ThemeManager.text_primary_color
+                                Layout.preferredWidth: 150
+                                elide: Text.ElideRight
+
+                                ToolTip.visible: fullscreenMouseArea.containsMouse
+                                ToolTip.text: "Toggle fullscreen mode and hide the title bar"
+
+                                MouseArea {
+                                    id: fullscreenMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                }
+                            }
+
+                            Switch {
+                                id: fullscreenSwitch
+                                // Read initial state from settings
+                                checked: SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false)
+
+                                onToggled: {
+                                    var success = SettingsService.setSetting('ui.WINDOW_CONFIG.fullscreen', checked)
+                                    if (success) {
+                                        console.log("Fullscreen setting changed via SettingsService to:", checked)
+                                    } else {
+                                        console.error("Failed to update Fullscreen setting via SettingsService")
+                                        // Revert switch state if setting failed
+                                        fullscreenSwitch.checked = Qt.binding(function() { return SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false); })
                                     }
                                 }
                             }

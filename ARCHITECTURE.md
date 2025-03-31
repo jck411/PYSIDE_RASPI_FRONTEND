@@ -100,18 +100,27 @@ Key settings accessed via `SettingsService`:
 ### Settings UI Implementation (`SettingsScreen.qml`)
 
 - Directly uses `SettingsService.getSetting` and `SettingsService.setSetting`.
-- Hardcoded layout maps UI controls to config paths.
+- Layout maps UI controls to config paths.
+- Contains sections for different setting categories (e.g., STT, UI).
 
 #### Adding New Settings to the UI
 
-1.  Ensure config exists in a Python module and is loaded in `main.py` via `config_manager.load_module_config`.
-2.  Add UI controls to `SettingsScreen.qml`.
-3.  Use `SettingsService.getSetting` to initialize UI state and `SettingsService.setSetting` in event handlers.
+1.  Ensure config exists in a Python module (e.g., `frontend/ui/config.py` for UI settings) and is loaded in `main.py` via `config_manager.load_module_config` (using a key like `'ui'`).
+2.  Add UI controls to the relevant section in `SettingsScreen.qml`.
+3.  Use `SettingsService.getSetting` to initialize UI state (e.g., `'ui.WINDOW_CONFIG.fullscreen'`) and `SettingsService.setSetting` in event handlers.
+4.  If the setting affects the main window or other persistent components, ensure they connect to `SettingsService.settingChanged` signal and update accordingly (see `MainWindow.qml` for fullscreen example).
 
 #### Settings Interaction Logic (Auto Send / Show Input Box)
 
 - "Show Input Box" (`chat.CHAT_CONFIG.show_input_box`) UI is hidden if "Auto Send" (`stt.STT_CONFIG.auto_submit_utterances`) is OFF.
 - Disabling "Auto Send" forces "Show Input Box" ON via `SettingsService.setSetting`.
+
+### Adding a New Configuration Module
+
+1. Create a Python config file (e.g., `frontend/new_feature/config.py` or `frontend/ui/config.py`).
+2. Define configuration dictionaries (e.g., `WINDOW_CONFIG`).
+3. Load it in `main.py` using `config_manager.load_module_config(module_path='...', module_key='new_feature', config_vars=[...])`.
+4. Access settings via `SettingsService` using `'module_key.VARIABLE.key'` (e.g., `'ui.WINDOW_CONFIG.fullscreen'`).
 
 ## Signal Flow
 
@@ -136,12 +145,6 @@ Uses Qt's signal/slot mechanism:
 1. Create `NewScreen.qml` inheriting from `BaseScreen.qml`.
 2. Create `NewControls.qml` inheriting from `BaseControls.qml`.
 3. Add navigation in `MainWindow.qml`.
-
-### Adding a New Configuration Module
-
-1. Create `frontend/new_feature/config.py`.
-2. Load it in `main.py` using `config_manager.load_module_config(module_path='...', module_key='new_feature', config_vars=[...])`.
-3. Access settings via `SettingsService` using `'new_feature.VARIABLE.key'`.
 
 ## Component Inheritance System
 
@@ -188,14 +191,15 @@ BaseControls { /* ...buttons using BaseControlButton... */ }
 
 **Phase C: Chat History Persistence**
 *   C.1: Ensure Short-Term Persistence (Screen Switching): **DONE** (`ChatService` singleton)
-*   C.2: Implement Long-Term Conversation Storage: **PARTIALLY DONE** (Saves to JSON on clear/close via `ChatController._save_history_to_file`)
+*   C.2: Implement Long-Term Conversation Storage: **PARTIALLY DONE**
 *   C.3: Implement Loading Last Conversation on Startup: **NOT STARTED**
 *   C.4: Implement UI for Viewing Past Conversations (Deferred): **NOT STARTED**
 
-**Phase D: Other Screens** (Deferred)
-*   D.1: Weather: **NOT STARTED**
-*   D.2: Calendar: **NOT STARTED**
-*   D.3: Photo: **NOT STARTED**
+**Phase D: UI Enhancements** (Renamed from "Other Screens")
+*   D.1: Add Fullscreen Toggle Setting: **DONE**
+*   D.2: Weather Screen: **NOT STARTED**
+*   D.3: Calendar Screen: **NOT STARTED**
+*   D.4: Photo Screen: **NOT STARTED**
 
 ## Previous Implementation Plan Status (Archived)
 

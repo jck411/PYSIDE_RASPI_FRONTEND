@@ -5,6 +5,7 @@ import QtQuick.Window 2.15
 // import QtQuick.Controls.Material 2.15 // No longer needed
 // import MyScreens 1.0 // REMOVED - Module no longer defined/needed here
 import MyTheme 1.0  // Import our ThemeManager
+import MyServices 1.0 // Need this for SettingsService
 // import MyServices 1.0 // No longer needed for ErrorHandler, check if SettingsService is used directly here
 import "." // Import the current directory to find TouchFriendlyButton.qml
 
@@ -13,11 +14,26 @@ Window {
     width: 800
     height: 480
     color: ThemeManager.background_color
-    visible: true
-    title: ""
+    // Remove direct bindings for visibility and flags
+    // visibility: SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false) ? Window.FullScreen : Window.Windowed
+    // flags: SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false) ? Qt.FramelessWindowHint | Qt.Window : Qt.Window
+    title: "" // Initial title can be empty
+    visible: true // Start visible
     
     // Property to track current screen
     property var currentScreen: null
+
+    Component.onCompleted: {
+        // Set initial state based on settings
+        var startFullscreen = SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false)
+        if (startFullscreen) {
+            mainWindow.showFullScreen()
+            mainWindow.title = "" // Ensure title is clear if starting fullscreen
+        } else {
+            mainWindow.showNormal()
+            // Initial title will be set by onCurrentItemChanged when StackView loads
+        }
+    }
     
     ColumnLayout {
         anchors.fill: parent
@@ -125,7 +141,12 @@ Window {
                     
                     // Update the window title if the screen has a title
                     if (currentItem.title) {
-                        mainWindow.title = currentItem.title
+                        // Only set title if not fullscreen
+                        if (SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false) === false) {
+                            mainWindow.title = currentItem.title
+                        } else {
+                            mainWindow.title = "" // Clear title in fullscreen
+                        }
                     }
                 }
             }
@@ -166,4 +187,29 @@ Window {
         }
     }
     */
+
+    // Need a connection to react to setting changes
+    Connections {
+        target: SettingsService
+        function onSettingChanged(key, value) {
+            if (key === 'ui.WINDOW_CONFIG.fullscreen') {
+                console.log("MainWindow reacting to fullscreen change:", value)
+                // Use showFullScreen/showNormal methods
+                if (value) {
+                    mainWindow.showFullScreen()
+                } else {
+                    mainWindow.showNormal()
+                }
+                
+                // Update title logic (remains the same)
+                if (stackView.currentItem && stackView.currentItem.title) {
+                    if (value === false) {
+                        mainWindow.title = stackView.currentItem.title
+                    } else {
+                        mainWindow.title = ""
+                    }
+                }
+            }
+        }
+    }
 }

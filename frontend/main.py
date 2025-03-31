@@ -41,6 +41,12 @@ def main():
         module_key='chat',
         config_vars=['CHAT_CONFIG']
     )
+    # Load UI related configurations (NEW)
+    config_manager.load_module_config(
+        module_path='frontend.ui.config', # Use the new path
+        module_key='ui',                  # Key for accessing settings
+        config_vars=['WINDOW_CONFIG']     # The variable holding the config dict
+    )
     # ----------------------------
 
     # Create theme manager instance
