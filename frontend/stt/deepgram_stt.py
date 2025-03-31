@@ -55,6 +55,7 @@ class DeepgramSTT(QObject):
         self._is_toggling = False
         self._keepalive_task = None
         self._inactivity_timer_task = None # Task for inactivity timer
+        self._timer_start_time = None # Store timer start time (monotonic clock)
         # Initialize Deepgram client
         api_key = os.getenv('DEEPGRAM_API_KEY')
         if not api_key:
@@ -282,17 +283,26 @@ class DeepgramSTT(QObject):
                         self.microphone.finish()
                         self.microphone = None
             else: # Resuming
-                if self.use_keepalive and self.keepalive_active:
-                    self._deactivate_keepalive()
-                else:
-                    # Restart mic if not using keepalive and connection exists
-                    if not self.microphone and self.dg_connection:
-                        logger.debug("Resuming: Starting microphone (no keepalive).")
-                        self.microphone = Microphone(self.dg_connection.send)
-                        self.microphone.start()
-                # Start timer when resuming from pause
-                # VAD SpeechEnded event will handle starting it if speech just ended
-                # But if resuming into silence, we need to start it here.
+                # Regardless of keepalive, if the microphone is not running, restart it.
+                if not self.microphone and self.dg_connection:
+                    logger.info("Resuming STT: Restarting microphone.")
+                    # Ensure keepalive pings are stopped if they were active
+                    if self.use_keepalive and self.keepalive_active:
+                         self._deactivate_keepalive()
+                    # Start the microphone to send audio data
+                    self.microphone = Microphone(self.dg_connection.send)
+                    self.microphone.start()
+                elif self.microphone:
+                     # If mic exists but maybe keepalive was used, ensure keepalive is deactivated
+                     if self.use_keepalive and self.keepalive_active:
+                         logger.debug("Resuming STT: Microphone exists, ensuring keepalive is deactivated.")
+                         self._deactivate_keepalive()
+                     else:
+                         logger.debug("Resuming STT: Microphone already running (or keepalive not used).")
+                else: # No connection?
+                     logger.warning("Resuming STT: Cannot restart microphone - Deepgram connection not active?")
+
+                # Always attempt to start the inactivity timer when resuming.
                 self._start_inactivity_timer()
         else:
             logger.warning("Cannot pause/resume: Deepgram connection is not active.")
@@ -337,32 +347,24 @@ class DeepgramSTT(QObject):
             self.keepalive_active = False # Ensure flag is reset
 
     def _deactivate_keepalive(self):
-        if not self.keepalive_active:
-            return
-        logger.debug("Deactivating Deepgram KeepAlive mode")
-        self.keepalive_active = False # Set flag first
-        if self._keepalive_task and not self._keepalive_task.done():
-            # Use run_coroutine_threadsafe to schedule the cancellation
-            cancel_future = asyncio.run_coroutine_threadsafe(
-                self._cancel_task(self._keepalive_task, "KeepAlive"), self.dg_loop
-            )
-            try:
-                # Wait briefly for cancellation to be processed
-                cancel_future.result(timeout=1.0) 
-            except (asyncio.TimeoutError, concurrent.futures.TimeoutError):
-                 logger.warning("Timeout waiting for KeepAlive task cancellation.")
-            except Exception as e:
-                 logger.error(f"Error cancelling KeepAlive task: {e}")
-            finally:
-                 self._keepalive_task = None
-
-        # Restart microphone after deactivating keepalive
-        if not self.microphone and self.dg_connection and self.is_enabled and not self.is_paused:
-             logger.debug("Restarting microphone after deactivating KeepAlive.")
-             self.microphone = Microphone(self.dg_connection.send)
-             self.microphone.start()
-             # Start inactivity timer after resuming from KeepAlive pause
-             self._start_inactivity_timer()
+        """Deactivate the keepalive mechanism."""
+        if self.keepalive_active and self._keepalive_task:
+            logger.debug("Deactivating keepalive task")
+            # Cancel the task directly instead of using the old helper
+            if not self._keepalive_task.done():
+                try:
+                    self._keepalive_task.cancel()
+                    # Optional: Wait briefly for cancellation if needed, but often not necessary
+                    # asyncio.run_coroutine_threadsafe(asyncio.sleep(0.01), self.dg_loop).result(timeout=0.1)
+                except Exception as e:
+                    logger.error(f"Error cancelling keepalive task: {e}")
+            self._keepalive_task = None # Clear the reference
+            self.keepalive_active = False
+        else:
+            logger.debug("Keepalive already inactive or task not found.")
+            # Ensure state is consistent
+            self.keepalive_active = False
+            self._keepalive_task = None
 
     # --- Inactivity Timer Logic ---
 
@@ -420,71 +422,61 @@ class DeepgramSTT(QObject):
             self._inactivity_timer_task = None
 
     def _start_inactivity_timer(self):
-        """Starts or restarts the inactivity timer."""
-        if self._inactivity_timeout_sec <= 0 or not self.is_enabled or self.is_paused:
-            logger.debug("Not starting inactivity timer (disabled, STT off, or paused).")
-            return
-
-        # Cancel any existing timer first (emit stopped if one was running)
-        was_running = self._inactivity_timer_task and not self._inactivity_timer_task.done()
-        self._cancel_inactivity_timer(emit_signal=False) # Cancel without emitting here
-        # if was_running: # Re-evaluate if emitting stopped on cancel is needed here
-        #     self.inactivityTimerStopped.emit()
-
-        # logger.debug("Scheduling inactivity timer...") # Commented out scheduling log
-        # Schedule the handler in the dedicated Deepgram event loop
+        """Start or reset the inactivity timer if configured."""
+        if self._inactivity_timeout_sec <= 0 or not self.is_enabled:
+            return # Timer disabled or STT not enabled
+        
+        # Cancel any existing timer first to reset it
+        self._cancel_inactivity_timer(emit_signal=False) # Don't emit stop signal on reset
+        
+        logger.debug(f"Starting inactivity timer for {self._inactivity_timeout_sec} seconds.")
+        self._timer_start_time = self.dg_loop.time() # Record start time
         self._inactivity_timer_task = asyncio.run_coroutine_threadsafe(
             self._inactivity_timeout_handler(), 
             self.dg_loop
         )
-        # Emit started signal with duration
+        # Emit signal with total duration
         self.inactivityTimerStarted.emit(self._inactivity_timeout_ms)
 
     def _cancel_inactivity_timer(self, emit_signal=True):
-        """Cancels the running inactivity timer task."""
-        timer_was_running = False
-        if self._inactivity_timer_task and not self._inactivity_timer_task.done():
-            timer_was_running = True
-            # logger.debug("Cancelling inactivity timer task.") # Commented out cancellation log
-            # Use run_coroutine_threadsafe to schedule cancellation in the dg_loop
-            cancel_future = asyncio.run_coroutine_threadsafe(
-                 self._cancel_task(self._inactivity_timer_task, "Inactivity Timer"), self.dg_loop
-            )
+        """Cancel the inactivity timer task."""
+        cancelled = False
+        if self._inactivity_timer_task:
+            logger.debug("Cancelling inactivity timer.")
             try:
-                 # Wait briefly for cancellation (increased timeout)
-                 cancel_future.result(timeout=1.5)
-            except (asyncio.TimeoutError, concurrent.futures.TimeoutError):
-                 logger.warning("Timeout waiting for inactivity timer task cancellation (increased wait to 1.5s).")
+                self._inactivity_timer_task.cancel()
+                # We might want to await briefly if cancellation needs to propagate
+                # but run_coroutine_threadsafe makes awaiting tricky here.
+                # Let's rely on the cancellation being effective immediately.
+                cancelled = True
             except Exception as e:
-                 logger.error(f"Error cancelling inactivity timer task: {e}")
+                logger.error(f"Error cancelling inactivity timer task: {e}")
             finally:
-                 self._inactivity_timer_task = None # Clear reference after attempting cancellation
+                self._inactivity_timer_task = None
+                self._timer_start_time = None # Reset start time
         
-        # Emit stopped signal if a timer was actually running and we are asked to emit
-        if timer_was_running and emit_signal:
-            # logger.debug("Emitting inactivityTimerStopped signal due to cancellation.") # Commented out signal emission log
+        if cancelled and emit_signal:
             self.inactivityTimerStopped.emit()
+            
+    # --- Add Timer State Getters ---
+    def is_timer_running(self):
+        """Check if the inactivity timer task exists and is running."""
+        return self._inactivity_timer_task is not None and not self._inactivity_timer_task.done()
 
-    async def _cancel_task(self, task, task_name="Task"):
-         """Helper coroutine to cancel an asyncio task and log."""
-         if task and not task.done():
-             # logger.debug(f"Attempting to cancel {task_name}...") # Commented out detailed cancellation log
-             task.cancel()
-             try:
-                 # Give the event loop a chance to process the cancellation
-                 await asyncio.sleep(0) 
-                 # Optional: Wait for the task to acknowledge cancellation (can deadlock if task ignores cancellation)
-                 # await task 
-             except asyncio.CancelledError:
-                 # logger.debug(f"{task_name} cancellation processed.") # Commented out detailed cancellation log
-                 pass # Keep structure
-             except Exception as e:
-                 logger.error(f"Exception during {task_name} cancellation: {e}")
-         else:
-             # logger.debug(f"{task_name} was already done or None, no need to cancel.") # Commented out detailed cancellation log
-             pass # Keep structure
-             
-    # --- End Inactivity Timer Logic ---
+    def get_timer_remaining_ms(self):
+        """Calculate the remaining time for the inactivity timer in milliseconds."""
+        if not self.is_timer_running() or self._timer_start_time is None:
+            return 0
+        
+        try:
+            now = self.dg_loop.time()
+            elapsed_sec = now - self._timer_start_time
+            remaining_sec = self._inactivity_timeout_sec - elapsed_sec
+            return max(0, int(remaining_sec * 1000))
+        except Exception as e:
+            logger.error(f"Error calculating remaining timer time: {e}")
+            return 0
+    # --- End Timer State Getters ---
 
     def _handle_close(self):
         """Handle connection closure."""

@@ -1,0 +1,18 @@
+[
+    {
+        "text": "This is a test.",
+        "isUser": true
+    },
+    {
+        "text": "Well, you passed! What's next?",
+        "isUser": false
+    },
+    {
+        "text": "This is another test.",
+        "isUser": true
+    },
+    {
+        "text": "Wow, such variety! What's next, a test of your patience?",
+        "isUser": false
+    }
+]

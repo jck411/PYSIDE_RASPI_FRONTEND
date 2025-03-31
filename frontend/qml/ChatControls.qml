@@ -15,6 +15,39 @@ BaseControls {
     property int remainingMs: 0
     property bool timerRunning: false
 
+    // Get initial states on completion
+    Component.onCompleted: {
+        try {
+            // Get TTS State
+            ttsButton.isEnabled = ChatService.isTtsEnabled()
+            console.log("ChatControls initial TTS state:", ttsButton.isEnabled)
+            
+            // Get STT State
+            sttButton.isListening = ChatService.isSttEnabled()
+            console.log("ChatControls initial STT state:", sttButton.isListening)
+            
+            // Get Timer State (only if STT is initially active)
+            if (sttButton.isListening) {
+                chatControls.timerRunning = ChatService.isSttInactivityTimerRunning()
+                chatControls.remainingMs = ChatService.getSttInactivityTimeRemaining()
+                console.log("ChatControls initial Timer state - Running:", chatControls.timerRunning, "Remaining:", chatControls.remainingMs)
+                // Ensure remainingMs is not negative or excessively large if backend returns weird values
+                if (chatControls.remainingMs < 0) chatControls.remainingMs = 0;
+            } else {
+                chatControls.timerRunning = false
+                chatControls.remainingMs = 0
+            }
+            
+        } catch (e) {
+            console.error("ChatControls: Error getting initial state:", e)
+            // Reset all relevant states on error
+            ttsButton.isEnabled = false 
+            sttButton.isListening = false
+            chatControls.timerRunning = false
+            chatControls.remainingMs = 0
+        }
+    }
+
     // Timer for UI countdown updates
     Timer {
         id: uiTimer

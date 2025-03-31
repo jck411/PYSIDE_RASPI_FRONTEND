@@ -133,18 +133,29 @@ The Speech-to-Text system configuration can be accessed via `SettingsService` us
 To prevent STT from staying active indefinitely when no speech is detected, an inactivity timeout mechanism is implemented:
 
 -   **Configuration**: The timeout duration is set via `stt.STT_CONFIG.inactivity_timeout_ms` in `frontend/config.py` (value in milliseconds, 0 disables the feature).
--   **Logic**: Located in `frontend/stt/deepgram_stt.py`.
-    -   An internal timer (`_inactivity_timer_task`) runs in the dedicated `dg_loop`.
-    -   The timer **starts**:
+-   **Logic**: Primarily managed within `frontend/stt/deepgram_stt.py`.
+    -   An internal `asyncio.Task` (`_inactivity_timer_task`) runs the timeout handler (`_inactivity_timeout_handler`) in a dedicated event loop (`dg_loop`).
+    -   The start time (`_timer_start_time`) is recorded when the timer task begins.
+    -   The timer task **starts** (via `_start_inactivity_timer`):
         -   When STT is initially enabled (`_async_start`).
-        -   When resuming from pause (`set_paused(False)`).
+        -   When STT resumes from pause (`set_paused(False)`).
         -   After receiving a **final** transcript segment (`result.is_final` is true in `on_transcript`).
-    -   The timer **cancels**:
-        -   When STT is disabled (`set_enabled(False)`).
+    -   The timer task **cancels** (via `_cancel_inactivity_timer`):
+        -   When STT is explicitly disabled (`set_enabled(False)`).
         -   When STT is paused (`set_paused(True)`).
         -   When *any* transcript text (interim or final) is received (`transcript.strip()` is true in `on_transcript`).
-    -   If the timer completes without being cancelled, it calls `self.set_enabled(False)` to turn off STT.
--   **UI Feedback**: A visual countdown timer is displayed in `ChatControls.qml`.
+        -   On connection close/error (`_handle_close`, `_handle_error`).
+    -   If the timer completes without being cancelled, the `_inactivity_timeout_handler` calls `self.set_enabled(False)` to turn off STT.
+-   **State Querying**: `DeepgramSTT` provides `is_timer_running()` and `get_timer_remaining_ms()` methods. `SpeechManager` delegates calls to these methods. `ChatController` exposes QML-callable slots (`isSttEnabled`, `isSttInactivityTimerRunning`, `getSttInactivityTimeRemaining`) that use the `SpeechManager` methods.
+-   **UI Feedback**: 
+    - A visual countdown timer is displayed in `ChatControls.qml`, driven by the `remainingMs` property.
+    - The `inactivityTimerStarted(int durationMs)` and `inactivityTimerStopped()` signals (relayed from `DeepgramSTT` -> `SpeechManager` -> `ChatController`) notify the UI about timer state changes.
+    - On load/reload (`Component.onCompleted`), `ChatControls.qml` calls the state query methods on `ChatService` (`isSttEnabled`, `isSttInactivityTimerRunning`, etc.) to initialize the button and timer display correctly.
+
+### STT/TTS Pause Interaction
+
+- **Pausing STT during TTS**: When TTS audio starts playing, `ChatController._handle_audio_data` detects this and calls `SpeechManager.set_paused(True)`. This pauses the underlying STT engine (`DeepgramSTT`), which involves stopping the microphone (or activating KeepAlive) and cancelling the inactivity timer.
+- **Resuming STT after TTS**: When TTS audio finishes, `ChatController._handle_audio_data` calls `SpeechManager.set_paused(False)`. This resumes the STT engine, ensuring the microphone is restarted and explicitly calls `_start_inactivity_timer()` to begin a fresh inactivity countdown.
 
 ### Settings UI Implementation
 

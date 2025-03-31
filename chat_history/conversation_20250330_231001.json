@@ -1,0 +1,58 @@
+[
+    {
+        "text": "Testing one two.",
+        "isUser": true
+    },
+    {
+        "text": "Testing one two... successful! What's next?",
+        "isUser": false
+    },
+    {
+        "text": "Are you gonna win",
+        "isUser": true
+    },
+    {
+        "text": "Well, I’m not in it to win it, just here to help!",
+        "isUser": false
+    },
+    {
+        "text": "good.",
+        "isUser": true
+    },
+    {
+        "text": "Glad to hear that! What's next on your mind?",
+        "isUser": false
+    },
+    {
+        "text": "Oh, sure. We Seeing if we can with the screen off. Oh, wait.",
+        "isUser": true
+    },
+    {
+        "text": "Sounds like a riveting adventure! Need help with something?",
+        "isUser": false
+    },
+    {
+        "text": "Looks like we're carrying on a",
+        "isUser": true
+    },
+    {
+        "text": "A riveting conversation, for sure! What's next?",
+        "isUser": false
+    },
+    {
+        "text": "Either you conversation.",
+        "isUser": true
+    },
+    {
+        "text": "Sounds riveting! What's next on the agenda?",
+        "isUser": false
+    },
+    {
+        "text": "Wait for me or Sounds riveting. What's next on the agenda?",
+        "isUser": true
+    },
+    {
+        "text": "Oh, you know, just the thrilling world of small talk! What's on your mind?",
+        "isUser": false
+    }
+]

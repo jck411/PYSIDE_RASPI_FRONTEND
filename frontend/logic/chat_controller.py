@@ -310,6 +310,30 @@ class ChatController(QObject):
 
     connected = Property(bool, fget=getConnected, notify=connectionStatusChanged)
 
+    # --- Add TTS state getter --- 
+    @Slot(result=bool)
+    def isTtsEnabled(self):
+        """Returns the current enabled state of the TTS controller."""
+        return self.tts_controller.get_tts_enabled()
+    # --- End TTS state getter --- 
+
+    # --- Add STT state getters --- 
+    @Slot(result=bool)
+    def isSttEnabled(self):
+        """Returns the current enabled state of the STT manager."""
+        return self.speech_manager.is_stt_enabled()
+
+    @Slot(result=bool)
+    def isSttInactivityTimerRunning(self):
+        """Returns true if the STT inactivity timer is currently running."""
+        return self.speech_manager.is_inactivity_timer_running()
+
+    @Slot(result=int)
+    def getSttInactivityTimeRemaining(self):
+        """Returns the remaining time in milliseconds for the STT inactivity timer."""
+        return self.speech_manager.get_inactivity_time_remaining()
+    # --- End STT state getters --- 
+
     def cleanup(self):
         """
         Clean up resources on shutdown.

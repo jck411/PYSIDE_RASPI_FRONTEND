@@ -110,6 +110,22 @@ class SpeechManager(QObject):
         self.frontend_stt.set_paused(paused)
         logger.info(f"[SpeechManager] STT paused: {paused}")
 
+    # --- Timer State Getters (Delegated) --- 
+    def is_inactivity_timer_running(self):
+        """Returns true if the underlying STT inactivity timer is running."""
+        if hasattr(self.frontend_stt, 'is_timer_running'):
+            return self.frontend_stt.is_timer_running()
+        logger.warning("[SpeechManager] DeepgramSTT missing 'is_timer_running' method.")
+        return False
+
+    def get_inactivity_time_remaining(self):
+        """Returns the remaining time (ms) for the underlying STT inactivity timer."""
+        if hasattr(self.frontend_stt, 'get_timer_remaining_ms'):
+            return self.frontend_stt.get_timer_remaining_ms()
+        logger.warning("[SpeechManager] DeepgramSTT missing 'get_timer_remaining_ms' method.")
+        return 0
+    # --- End Timer State Getters ---
+
     def cleanup(self):
         """Clean up resources"""
         if hasattr(self.frontend_stt, 'stop'):
