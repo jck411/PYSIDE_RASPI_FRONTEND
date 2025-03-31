@@ -162,6 +162,16 @@ The settings UI (`SettingsScreen.qml`) directly interacts with the `SettingsServ
 
 This direct approach ensures type safety by exchanging only primitive types via the `SettingsService` and keeps the QML relatively simple.
 
+#### Settings Interaction Logic
+
+Note that within `SettingsScreen.qml`, there is specific interaction logic implemented between the "Auto Send" (`stt.STT_CONFIG.auto_submit_utterances`) and "Show Input Box" (`chat.CHAT_CONFIG.show_input_box`) settings:
+
+*   **"Show Input Box" Visibility:** The UI row containing the toggle switch for "Show Input Box" is only visible when the "Auto Send" setting is enabled (checked).
+*   **Disabling "Auto Send" forces "Show Input Box" ON:** If the user turns off the "Auto Send" switch, the code automatically forces the `chat.CHAT_CONFIG.show_input_box` setting to `true` via `SettingsService.setSetting`. The UI toggle for "Show Input Box" also becomes hidden.
+*   **User Choice when Auto Send is ON:** When "Auto Send" is enabled, the user can freely toggle the "Show Input Box" setting using its dedicated switch.
+
+This ensures that the input box is always available when STT results are not being automatically sent, while still providing the option to hide it when Auto Send is active.
+
 ## Signal Flow
 
 The application uses Qt's signal/slot mechanism for communication between components:

@@ -99,14 +99,28 @@ Item {
                                 checked: autoSendEnabled
                                 
                                 onToggled: {
-                                    // Call the SettingsService method
                                     var success = SettingsService.setSetting('stt.STT_CONFIG.auto_submit_utterances', checked)
                                     if (success) {
                                         autoSendEnabled = checked
                                         console.log("Auto Send setting changed via SettingsService to:", checked)
+
+                                        // If Auto Send was turned OFF, force Show Input Box ON
+                                        if (!checked) {
+                                            console.log("Auto Send turned OFF, forcing Input Box to be shown.")
+                                            var successShowInput = SettingsService.setSetting('chat.CHAT_CONFIG.show_input_box', true)
+                                            if (successShowInput) {
+                                                showInputBoxEnabled = true // Update local property
+                                                console.log("Successfully forced Show Input Box ON.")
+                                            } else {
+                                                console.error("Failed to force Show Input Box ON when turning Auto Send OFF.")
+                                                // Optionally revert autoSendSwitch state, but might be confusing
+                                                // autoSendSwitch.checked = Qt.binding(function() { return autoSendEnabled; })
+                                            }
+                                        }
+                                        // No need for the previous logic that checked current state
+                                        
                                     } else {
                                         console.error("Failed to update Auto Send setting via SettingsService")
-                                        // Revert the switch position without triggering events
                                         autoSendSwitch.checked = Qt.binding(function() { return autoSendEnabled; })
                                     }
                                 }
@@ -148,8 +162,10 @@ Item {
                         
                         // Show Input Box Setting
                         RowLayout {
+                            id: showInputBoxRow
                             Layout.fillWidth: true
                             spacing: 16
+                            visible: autoSendSwitch.checked
                             
                             Text {
                                 text: "Show Input Box:"
@@ -177,32 +193,8 @@ Item {
                                     if (successShowHide) {
                                         showInputBoxEnabled = checked
                                         console.log("Show Input Box setting changed via SettingsService to:", checked)
-                                        
-                                        // ---> NEW LOGIC: Force Auto Send ON if Input Box is hidden <---
-                                        if (!checked) { // If the input box is now hidden (checked is false)
-                                            console.log("Input box hidden, ensuring Auto Send is ON.")
-                                            var currentAutoSend = SettingsService.getSetting('stt.STT_CONFIG.auto_submit_utterances', false)
-                                            if (!currentAutoSend) {
-                                                var successAutoSend = SettingsService.setSetting('stt.STT_CONFIG.auto_submit_utterances', true)
-                                                if (successAutoSend) {
-                                                    console.log("Successfully forced Auto Send ON.")
-                                                    // Update the local property and UI state for the Auto Send switch
-                                                    autoSendEnabled = true 
-                                                    // autoSendSwitch.checked will update automatically due to binding
-                                                } else {
-                                                    console.error("CRITICAL: Failed to force Auto Send ON when hiding input box! STT might not work correctly.")
-                                                    // Optional: Could revert the hide action here, but might be confusing.
-                                                    // showInputBoxSwitch.checked = Qt.binding(function() { return showInputBoxEnabled; }) 
-                                                }
-                                            } else {
-                                                console.log("Auto Send was already ON.")
-                                            }
-                                        }
-                                        // ---> END NEW LOGIC <---
-                                        
                                     } else {
                                         console.error("Failed to update Show Input Box setting via SettingsService")
-                                        // Revert the switch position without triggering events
                                         showInputBoxSwitch.checked = Qt.binding(function() { return showInputBoxEnabled; })
                                     }
                                 }
