@@ -80,11 +80,14 @@ async def fetch_weather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON) -> 
             obs_response.raise_for_status()
             obs_data = obs_response.json()
             
-            # Format data to match our existing structure
-            formatted_data = format_weather_data(forecast_data, obs_data)
-            logger.info(f"Successfully fetched and formatted weather data for lat={lat}, lon={lon}")
+            # Return the raw NWS API data for the new UI
+            combined_data = {
+                "properties": obs_data.get("properties", {}),
+                "forecast": forecast_data
+            }
+            logger.info(f"Successfully fetched weather data for lat={lat}, lon={lon}")
             
-            return formatted_data
+            return combined_data
             
     except httpx.RequestError as exc:
         logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
@@ -95,84 +98,7 @@ async def fetch_weather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON) -> 
     
     return None
 
-def format_weather_data(forecast_data, observation_data):
-    """
-    Formats NWS API data to match the structure expected by our frontend.
-    """
-    try:
-        # Extract current observation data
-        current_props = observation_data.get('properties', {})
-        temperature_c = current_props.get('temperature', {}).get('value')
-        temperature_f = celsius_to_fahrenheit(temperature_c) if temperature_c is not None else None
-        
-        current = {
-            "temp": temperature_f,
-            "feels_like": temperature_f,  # NWS doesn't provide feels_like directly
-            "weather": [
-                {
-                    "description": current_props.get('textDescription', 'Unknown'),
-                    "icon": map_nws_icon_to_owm(current_props.get('icon'))
-                }
-            ]
-        }
-        
-        # Process forecast periods (format them as daily data)
-        daily = []
-        periods = forecast_data.get('properties', {}).get('periods', [])
-        
-        # NWS provides forecasts for day/night separately, combine them
-        day_index = 0
-        while day_index < len(periods):
-            if day_index + 1 < len(periods):
-                day_period = periods[day_index]
-                night_period = periods[day_index + 1]
-                
-                # Skip if the periods don't match a day/night pair
-                if "night" not in night_period.get('name', '').lower():
-                    day_index += 1
-                    continue
-                
-                # Calculate average temperature
-                day_temp = day_period.get('temperature')
-                night_temp = night_period.get('temperature')
-                
-                pop = estimate_precipitation_probability(
-                    day_period.get('shortForecast', ''),
-                    day_period.get('detailedForecast', '')
-                )
-                
-                daily_entry = {
-                    "dt": convert_nws_date_to_unix(day_period.get('startTime')),
-                    "temp": {
-                        "day": day_temp,
-                        "min": night_temp,
-                        "max": day_temp
-                    },
-                    "weather": [
-                        {
-                            "description": day_period.get('shortForecast', 'Unknown'),
-                            "icon": map_nws_icon_to_owm(day_period.get('icon'))
-                        }
-                    ],
-                    "pop": pop
-                }
-                
-                daily.append(daily_entry)
-                day_index += 2  # Move to the next day (skip night)
-            else:
-                # Handle the case with an odd number of periods
-                day_index += 1
-                
-        # Return data in format similar to OpenWeatherMap for compatibility
-        return {
-            "current": current,
-            "daily": daily
-        }
-        
-    except Exception as e:
-        logger.error(f"Error formatting weather data: {e}")
-        return None
-        
+# The following functions are kept for backward compatibility if needed
 def celsius_to_fahrenheit(celsius):
     """Convert Celsius to Fahrenheit"""
     if celsius is None:
@@ -270,4 +196,4 @@ def map_nws_icon_to_owm(nws_icon_url):
 #             # print(weather_data) # Print full response for inspection
 #         else:
 #             print("Failed to fetch weather data.")
-#     asyncio.run(main()) 
+#     asyncio.run(main())
