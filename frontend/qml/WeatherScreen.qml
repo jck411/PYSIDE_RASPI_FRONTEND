@@ -14,6 +14,7 @@ BaseScreen {
     // --- State Properties ---
     property var currentWeatherData: null
     property string statusMessage: "Loading weather..."
+    property string currentView: "current" // "current" or "forecast"
     
     // --- Configuration Properties ---
     property string lottieIconsBase: PathProvider.getAbsolutePath("frontend/icons/weather/lottie") + "/"
@@ -95,53 +96,96 @@ BaseScreen {
     }
 
     // --- Content Area ---
-    Flickable { 
-        id: flickableArea
+    StackLayout {
+        id: weatherStack
         anchors.fill: parent
-        contentHeight: contentColumn.implicitHeight 
-        clip: true 
-        flickableDirection: Flickable.VerticalFlick 
+        currentIndex: currentView === "current" ? 0 : 1
+        
+        // Current Weather View
+        Flickable { 
+            id: currentWeatherFlickable
+            contentHeight: currentWeatherColumn.implicitHeight 
+            clip: true 
+            flickableDirection: Flickable.VerticalFlick 
 
-        ColumnLayout { 
-            id: contentColumn 
-            width: parent.width * 0.95 
-            spacing: 15
-            anchors.horizontalCenter: parent.horizontalCenter 
+            ColumnLayout { 
+                id: currentWeatherColumn 
+                width: parent.width * 0.95 
+                spacing: 15
+                anchors.horizontalCenter: parent.horizontalCenter 
 
-            // Status Text (visible only when loading or error)
-            Text {
-                id: statusText
-                Layout.fillWidth: true
-                text: statusMessage
-                visible: statusMessage !== ""
-                color: ThemeManager.text_secondary_color
-                font.pixelSize: 16
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
+                // Status Text (visible only when loading or error)
+                Text {
+                    id: currentStatusText
+                    Layout.fillWidth: true
+                    text: statusMessage
+                    visible: statusMessage !== ""
+                    color: ThemeManager.text_secondary_color
+                    font.pixelSize: 16
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                }
+
+                // --- Current Weather Component ---
+                CurrentWeather {
+                    id: currentWeather
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
+                    weatherData: currentWeatherData
+                    statusMessage: weatherScreen.statusMessage
+                    lottieIconsBase: weatherScreen.lottieIconsBase
+                    lottiePlayerPath: weatherScreen.lottiePlayerPath
+                    visible: weatherScreen.statusMessage === ""
+                }
             }
+        }
+        
+        // Forecast View
+        Flickable { 
+            id: forecastFlickable
+            contentHeight: forecastColumn.implicitHeight 
+            clip: true 
+            flickableDirection: Flickable.VerticalFlick 
 
-            // --- Current Weather Component ---
-            CurrentWeather {
-                id: currentWeather
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignHCenter
-                weatherData: currentWeatherData
-                statusMessage: weatherScreen.statusMessage
-                lottieIconsBase: weatherScreen.lottieIconsBase
-                lottiePlayerPath: weatherScreen.lottiePlayerPath
-                visible: weatherScreen.statusMessage === ""
-            }
+            ColumnLayout { 
+                id: forecastColumn 
+                width: parent.width * 0.95 
+                spacing: 15
+                anchors.horizontalCenter: parent.horizontalCenter 
 
-            // --- Forecast Component ---
-            ForecastDisplay {
-                id: forecastDisplay
-                Layout.topMargin: 40
-                Layout.fillWidth: true
-                forecastData: currentWeatherData ? 
-                              (currentWeatherData.daily ? currentWeatherData.daily.slice(2, 8) : []) : []
-                statusMessage: weatherScreen.statusMessage
-                pngIconsBase: weatherScreen.pngIconsBase
-                visible: weatherScreen.statusMessage === ""
+                // Status Text (visible only when loading or error)
+                Text {
+                    id: forecastStatusText
+                    Layout.fillWidth: true
+                    text: statusMessage
+                    visible: statusMessage !== ""
+                    color: ThemeManager.text_secondary_color
+                    font.pixelSize: 16
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                }
+                
+                // Title
+                Text {
+                    Layout.fillWidth: true
+                    text: "7-Day Forecast"
+                    color: ThemeManager.text_primary_color
+                    font.pixelSize: 24
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    visible: statusMessage === "" && currentWeatherData && currentWeatherData.daily
+                }
+
+                // --- Forecast Component ---
+                ForecastDisplay {
+                    id: forecastDisplay
+                    Layout.fillWidth: true
+                    forecastData: currentWeatherData ? 
+                                (currentWeatherData.daily ? currentWeatherData.daily.slice(1, 8) : []) : []
+                    statusMessage: weatherScreen.statusMessage
+                    pngIconsBase: weatherScreen.pngIconsBase
+                    visible: weatherScreen.statusMessage === ""
+                }
             }
         }
     }

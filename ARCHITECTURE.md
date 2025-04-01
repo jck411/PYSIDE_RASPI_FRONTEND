@@ -50,10 +50,11 @@ The WeatherScreen uses:
 - PNG fallback icons
 - National Weather Service (NWS) API for data (previously used OpenWeatherMap)
 
-The screen has been modularized into reusable components:
-- **WeatherScreen.qml**: Main container component that manages data fetching
+The screen has been modularized into reusable components with navigation:
+- **WeatherScreen.qml**: Main container component that manages data fetching and screen navigation
 - **CurrentWeather.qml**: Displays current weather conditions with Lottie animations
 - **ForecastDisplay.qml**: Shows multiple day forecast with PNG icons
+- **WeatherControls.qml**: Provides navigation between Current Weather and Forecast views
 
 It uses the PathProvider to load resources with dynamic paths that work across different machines:
 ```qml

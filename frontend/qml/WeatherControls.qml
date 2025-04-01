@@ -5,15 +5,43 @@ import QtQuick.Layouts 1.15
 BaseControls {
     id: weatherControls
     
-    // Weather-specific controls can be added here
+    // Reference to the parent screen
+    property var screen: null
     
-    // Example of how to add a weather-specific button:
-    // Component.onCompleted: {
-    //     var refreshButton = createButton("../icons/refresh.svg", "Refresh Weather", 24);
-    //     if (refreshButton) {
-    //         refreshButton.onClicked.connect(function() {
-    //             // Refresh weather data
-    //         });
-    //     }
-    // }
+    // Navigation buttons for weather screens
+    TouchFriendlyButton {
+        id: currentWeatherButton
+        source: "../icons/weather.svg"
+        text: "Current Weather"
+        opacity: screen && screen.currentView === "current" ? 1.0 : 0.6
+        onClicked: {
+            if (screen) {
+                screen.currentView = "current"
+            }
+        }
+    }
+    
+    TouchFriendlyButton {
+        id: forecastButton
+        source: "../icons/calendar.svg"
+        text: "Forecast"
+        opacity: screen && screen.currentView === "forecast" ? 1.0 : 0.6
+        onClicked: {
+            if (screen) {
+                screen.currentView = "forecast"
+            }
+        }
+    }
+    
+    // Refresh button
+    TouchFriendlyButton {
+        id: refreshButton
+        source: "../icons/refresh.svg"
+        text: "Refresh"
+        onClicked: {
+            if (screen) {
+                screen.fetchWeather()
+            }
+        }
+    }
 }
