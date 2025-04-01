@@ -257,10 +257,8 @@ BaseScreen {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 300
                     Layout.maximumHeight: parent.height
-                    color: Qt.rgba(0, 0, 0, 0.1) // Semi-transparent background
+                    color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
-                    border.width: 1
-                    border.color: ThemeManager.border_color
                     
                     ColumnLayout {
                         anchors.fill: parent
@@ -381,10 +379,8 @@ BaseScreen {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 300
                     Layout.maximumHeight: parent.height
-                    color: Qt.rgba(0, 0, 0, 0.1) // Semi-transparent background
+                    color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
-                    border.width: 1
-                    border.color: ThemeManager.border_color
                     
                     ColumnLayout {
                         anchors.fill: parent
@@ -488,10 +484,8 @@ BaseScreen {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 300
                     Layout.maximumHeight: parent.height
-                    color: Qt.rgba(0, 0, 0, 0.1) // Semi-transparent background
+                    color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
-                    border.width: 1
-                    border.color: ThemeManager.border_color
                     
                     ColumnLayout {
                         anchors.fill: parent
@@ -595,10 +589,8 @@ BaseScreen {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 300
                     Layout.maximumHeight: parent.height
-                    color: Qt.rgba(0, 0, 0, 0.1) // Semi-transparent background
+                    color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
-                    border.width: 1
-                    border.color: ThemeManager.border_color
                     
                     ColumnLayout {
                         anchors.fill: parent
