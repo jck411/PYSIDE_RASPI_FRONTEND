@@ -261,10 +261,13 @@ BaseScreen {
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: "Current"
                             font.pixelSize: 16
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
                         }
                         
                         // Weather Icon Container
@@ -287,40 +290,55 @@ BaseScreen {
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: currentWeatherData && currentWeatherData.properties ? 
                                   currentWeatherData.properties.textDescription || "N/A" : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
+                            elide: Text.ElideRight
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: currentWeatherData && currentWeatherData.properties ? 
                                   (currentWeatherData.properties.temperature ? 
                                    currentWeatherData.properties.temperature.value.toFixed(1) + " °F" : "N/A") : "N/A"
                             font.pixelSize: 20
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: currentWeatherData && currentWeatherData.properties ? 
                                   "Wind: " + (currentWeatherData.properties.windSpeed ? 
                                    currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A") : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: currentWeatherData && currentWeatherData.properties ? 
                                   "Humidity: " + (currentWeatherData.properties.relativeHumidity ? 
                                    currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                     }
                 }
@@ -341,11 +359,14 @@ BaseScreen {
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 0 ? 
                                   forecastPeriods[0].name : "Current Period"
                             font.pixelSize: 16
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
                         }
                         
                         // Weather Icon Container
@@ -368,38 +389,54 @@ BaseScreen {
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 0 ? 
                                   forecastPeriods[0].shortForecast : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
+                            elide: Text.ElideRight
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 0 ? 
                                   forecastPeriods[0].temperature + " " + forecastPeriods[0].temperatureUnit : "N/A"
                             font.pixelSize: 20
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 0 ? 
                                   "Wind: " + forecastPeriods[0].windSpeed + " from " + forecastPeriods[0].windDirection : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                            wrapMode: Text.WordWrap
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 0 ? 
                                   formatTime(forecastPeriods[0].startTime) + " - " + 
                                   formatTime(forecastPeriods[0].endTime) : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                     }
                 }
@@ -420,11 +457,14 @@ BaseScreen {
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 1 ? 
                                   forecastPeriods[1].name : "Next 12 Hours"
                             font.pixelSize: 16
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
                         }
                         
                         // Weather Icon Container
@@ -447,38 +487,54 @@ BaseScreen {
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 1 ? 
                                   forecastPeriods[1].shortForecast : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
+                            elide: Text.ElideRight
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 1 ? 
                                   forecastPeriods[1].temperature + " " + forecastPeriods[1].temperatureUnit : "N/A"
                             font.pixelSize: 20
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 1 ? 
                                   "Wind: " + forecastPeriods[1].windSpeed + " from " + forecastPeriods[1].windDirection : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                            wrapMode: Text.WordWrap
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 1 ? 
                                   formatTime(forecastPeriods[1].startTime) + " - " + 
                                   formatTime(forecastPeriods[1].endTime) : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                     }
                 }
@@ -499,11 +555,14 @@ BaseScreen {
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 2 ? 
                                   forecastPeriods[2].name : "Next Day"
                             font.pixelSize: 16
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
                         }
                         
                         // Weather Icon Container
@@ -526,38 +585,54 @@ BaseScreen {
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 2 ? 
                                   forecastPeriods[2].shortForecast : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
+                            elide: Text.ElideRight
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 2 ? 
                                   forecastPeriods[2].temperature + " " + forecastPeriods[2].temperatureUnit : "N/A"
                             font.pixelSize: 20
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 2 ? 
                                   "Wind: " + forecastPeriods[2].windSpeed + " from " + forecastPeriods[2].windDirection : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                            wrapMode: Text.WordWrap
                         }
                         
                         Text {
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 2 ? 
                                   formatTime(forecastPeriods[2].startTime) + " - " + 
                                   formatTime(forecastPeriods[2].endTime) : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
                         }
                     }
                 }

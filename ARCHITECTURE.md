@@ -56,6 +56,13 @@ The screen has been modularized into reusable components with navigation:
 - **ForecastDisplay.qml**: Shows multiple day forecast with PNG icons
 - **WeatherControls.qml**: Provides navigation between Current Weather and Forecast views
 
+### Weather UI Layout
+The Weather screen layout uses a responsive design approach with:
+- Text elements that have proper width constraints and text wrapping
+- Layout.fillWidth and Layout.maximumWidth properties to prevent text overflow
+- Text.elide and Text.WordWrap properties for proper text truncation and wrapping
+- Horizontally centered content for a clean, aligned appearance
+
 It uses the PathProvider to load resources with dynamic paths that work across different machines:
 ```qml
 property string lottieIconsBase: PathProvider.getAbsolutePath("frontend/icons/weather/lottie/")
