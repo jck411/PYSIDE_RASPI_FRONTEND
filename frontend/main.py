@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonInstance
-from PySide6.QtCore import QTimer, Qt, QUrl, QObject, Slot, Signal, Property
+from PySide6.QtCore import QTimer, Qt, QUrl, QObject, Slot, Signal, Property, QDir
 from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtWebEngineQuick import QtWebEngineQuick
 from frontend.config import logger
@@ -16,6 +16,24 @@ from frontend.logic.chat_controller import ChatController
 from frontend.theme_manager import ThemeManager
 from frontend.settings_service import SettingsService
 from frontend.error_handler import error_handler_instance, ErrorHandler
+
+# Add a new path provider class
+class PathProvider(QObject):
+    def __init__(self):
+        super().__init__()
+        self._base_path = str(Path(__file__).resolve().parent.parent)
+        logger.info(f"Base application path: {self._base_path}")
+        
+    @Property(str, constant=True)
+    def basePath(self):
+        return self._base_path
+        
+    @Slot(str, result=str)
+    def getAbsolutePath(self, relativePath):
+        """Convert a relative path to an absolute path"""
+        if relativePath.startswith('/'):
+            return relativePath  # Already absolute
+        return str(Path(self._base_path) / relativePath)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -92,6 +110,12 @@ def main():
 
     # Register ChatController instance as a singleton (using MyServices seems appropriate)
     qmlRegisterSingletonInstance(ChatController, "MyServices", 1, 0, "ChatService", chat_controller_instance)
+
+    # Create PathProvider instance
+    path_provider = PathProvider()
+    
+    # Register PathProvider as a singleton
+    qmlRegisterSingletonInstance(PathProvider, "MyServices", 1, 0, "PathProvider", path_provider)
     # -----------------------------------------
 
     # Create QML engine

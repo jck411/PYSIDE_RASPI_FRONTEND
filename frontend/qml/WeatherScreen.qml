@@ -17,9 +17,9 @@ BaseScreen {
     property string currentWeatherCode: "" 
     
     // --- Configuration Properties ---
-    property string lottieIconsBase: "/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/lottie/"
-    property string lottiePlayerPath: "/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/frontend/assets/js/lottie.min.js"
-    property string pngIconsBase: "file:///home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/frontend/icons/weather/PNG/"
+    property string lottieIconsBase: PathProvider.getAbsolutePath("frontend/icons/weather/lottie") + "/"
+    property string lottiePlayerPath: PathProvider.getAbsolutePath("frontend/assets/js/lottie.min.js")
+    property string pngIconsBase: "file://" + PathProvider.getAbsolutePath("frontend/icons/weather/PNG") + "/"
 
     // HTML template for Lottie 
     property string lottieHtmlTemplate: '
@@ -262,6 +262,11 @@ BaseScreen {
     // Fetch data when the component is ready
     Component.onCompleted: {
         console.log("WeatherScreen: Component.onCompleted running...") 
+        console.log("Weather screen paths:");
+        console.log("- Lottie icons base:", lottieIconsBase);
+        console.log("- Lottie player path:", lottiePlayerPath);
+        console.log("- PNG icons base:", pngIconsBase);
+        
         fetchWeather();
         weatherTimer.start();
     }
