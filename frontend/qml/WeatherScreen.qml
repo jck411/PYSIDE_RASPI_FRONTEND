@@ -344,7 +344,6 @@ BaseScreen {
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.fillWidth: true
-                            Layout.fillHeight: true
                             Layout.maximumWidth: parent.width
                             text: currentWeatherData && currentWeatherData.properties ? 
                                   currentWeatherData.properties.textDescription || "N/A" : "N/A"
@@ -356,20 +355,22 @@ BaseScreen {
                         }
                         
                         // Humidity - fixed height
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
+                            text: currentWeatherData && currentWeatherData.properties ? 
+                                  "Humidity: " + (currentWeatherData.properties.relativeHumidity ? 
+                                   currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") : "N/A"
+                            font.pixelSize: 14
+                            color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        
+                        // Spacer to push content up
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 20
-                            
-                            Text {
-                                anchors.fill: parent
-                                text: currentWeatherData && currentWeatherData.properties ? 
-                                      "Humidity: " + (currentWeatherData.properties.relativeHumidity ? 
-                                       currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") : "N/A"
-                                font.pixelSize: 14
-                                color: ThemeManager.text_secondary_color
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
+                            Layout.fillHeight: true
                         }
                     }
                 }
