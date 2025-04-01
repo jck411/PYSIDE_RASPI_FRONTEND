@@ -48,7 +48,12 @@ Services provide functionality to QML components:
 The WeatherScreen uses:
 - Lottie animations for weather conditions
 - PNG fallback icons
-- OpenWeatherMap API for data
+- National Weather Service (NWS) API for data (previously used OpenWeatherMap)
+
+The screen has been modularized into reusable components:
+- **WeatherScreen.qml**: Main container component that manages data fetching
+- **CurrentWeather.qml**: Displays current weather conditions with Lottie animations
+- **ForecastDisplay.qml**: Shows multiple day forecast with PNG icons
 
 It uses the PathProvider to load resources with dynamic paths that work across different machines:
 ```qml
@@ -56,3 +61,5 @@ property string lottieIconsBase: PathProvider.getAbsolutePath("frontend/icons/we
 property string lottiePlayerPath: PathProvider.getAbsolutePath("frontend/assets/js/lottie.min.js")
 property string pngIconsBase: "file://" + PathProvider.getAbsolutePath("frontend/icons/weather/PNG/")
 ```
+
+The weather data is fetched from the National Weather Service API and then formatted to be compatible with the existing frontend UI structure. The backend handles the mapping of NWS weather icons and descriptions to the appropriate visual elements.

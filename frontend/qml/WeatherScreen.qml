@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtWebEngine 1.8 // Needed again for WebEngineView
+import QtWebEngine 1.8 // Required by QtWebEngine
 import MyTheme 1.0
 import MyServices 1.0 
 
@@ -14,197 +14,12 @@ BaseScreen {
     // --- State Properties ---
     property var currentWeatherData: null
     property string statusMessage: "Loading weather..."
-    property string currentWeatherCode: "" 
     
     // --- Configuration Properties ---
     property string lottieIconsBase: PathProvider.getAbsolutePath("frontend/icons/weather/lottie") + "/"
     property string lottiePlayerPath: PathProvider.getAbsolutePath("frontend/assets/js/lottie.min.js")
     property string pngIconsBase: "file://" + PathProvider.getAbsolutePath("frontend/icons/weather/PNG") + "/"
-
-    // HTML template for Lottie 
-    property string lottieHtmlTemplate: '
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { margin: 0; padding: 0; overflow: hidden; background-color: transparent; }
-        #lottie { width: 100%; height: 100%; background-color: transparent; }
-      </style>
-      <script src="file://%LOTTIE_PLAYER_PATH%"></script>
-    </head>
-    <body>
-      <div id="lottie"></div>
-      <script>
-        var animationData = %ANIMATION_DATA%;
-        var animation = lottie.loadAnimation({
-          container: document.getElementById("lottie"),
-          renderer: "svg",
-          loop: true,
-          autoplay: true,
-          animationData: animationData
-        });
-      </script>
-    </body>
-    </html>
-    '
-
-    // --- Helper Functions ---
-
-    // --- Lottie Icon Mapping Function ---
-    function getWeatherIconPath(owmIconCode) {
-        const iconMap = {
-            "01d": "clear-day", "01n": "clear-night", "02d": "partly-cloudy-day", "02n": "partly-cloudy-night",
-            "03d": "cloudy", "03n": "cloudy", "04d": "overcast-day", "04n": "overcast-night",
-            "09d": "rain", "09n": "rain", "10d": "partly-cloudy-day-rain", "10n": "partly-cloudy-night-rain",
-            "11d": "thunderstorms-day", "11n": "thunderstorms-night", "13d": "snow", "13n": "snow",
-            "50d": "mist", "50n": "mist"
-        };
-        if (!iconMap[owmIconCode]) {
-            console.warn("Unknown weather icon code:", owmIconCode);
-            return lottieIconsBase + "thermometer.json"; 
-        }
-        return lottieIconsBase + iconMap[owmIconCode] + ".json";
-    }
-
-    // --- PNG Icon Mapping Function (for Forecast) ---
-    function getWeatherPngIconPath(owmIconCode, weatherDescription) {
-        console.log("Mapping weather:", weatherDescription, "Icon code:", owmIconCode);
-        
-        // Map based on description first, then fall back to icon codes
-        if (weatherDescription) {
-            if (weatherDescription.includes("clear")) {
-                return pngIconsBase + "clear-day.png";
-            } else if (weatherDescription.includes("few clouds")) {
-                return pngIconsBase + "partly-cloudy-day.png";
-            } else if (weatherDescription.includes("scattered clouds")) {
-                return pngIconsBase + "cloudy.png";
-            } else if (weatherDescription.includes("broken clouds")) {
-                return pngIconsBase + "overcast-day.png";
-            } else if (weatherDescription.includes("overcast")) {
-                return pngIconsBase + "overcast-day.png";
-            } else if (weatherDescription.includes("rain") || weatherDescription.includes("drizzle")) {
-                return pngIconsBase + "partly-cloudy-day-rain.png";
-            } else if (weatherDescription.includes("thunderstorm")) {
-                return pngIconsBase + "thunderstorms-day.png";
-            } else if (weatherDescription.includes("snow")) {
-                return pngIconsBase + "snow.png";
-            } else if (weatherDescription.includes("mist") || weatherDescription.includes("fog")) {
-                return pngIconsBase + "mist.png";
-            }
-        }
-        
-        // Fall back to icon code mapping if description doesn't match
-        const iconMap = {
-            // Clear sky
-            "01d": "clear-day.png",
-            "01n": "clear-night.png",
-            
-            // Few clouds
-            "02d": "partly-cloudy-day.png",
-            "02n": "partly-cloudy-night.png",
-            
-            // Scattered clouds
-            "03d": "cloudy.png",
-            "03n": "cloudy.png",
-            
-            // Broken clouds
-            "04d": "overcast-day.png",
-            "04n": "overcast-night.png",
-            
-            // Shower rain
-            "09d": "drizzle.png",
-            "09n": "drizzle.png",
-            
-            // Rain
-            "10d": "partly-cloudy-day-rain.png",
-            "10n": "partly-cloudy-night-rain.png",
-            
-            // Thunderstorm
-            "11d": "thunderstorms-day.png",
-            "11n": "thunderstorms-night.png",
-            
-            // Snow
-            "13d": "snow.png",
-            "13n": "snow.png",
-            
-            // Mist
-            "50d": "mist.png",
-            "50n": "mist.png"
-        };
-        
-        if (!iconMap[owmIconCode]) {
-            console.warn("Unknown weather icon code:", owmIconCode);
-            return pngIconsBase + "not-available.png";
-        }
-        
-        console.log("Mapped to icon:", iconMap[owmIconCode]);
-        return pngIconsBase + iconMap[owmIconCode];
-    }
-
-    // --- Date Formatting Function ---
-    function formatDateToDay(unixTimestamp) {
-        var date = new Date(unixTimestamp * 1000);
-        var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        var dayName = days[date.getDay()];
-        var month = ("0" + (date.getMonth() + 1)).slice(-2); 
-        var dayNum = ("0" + date.getDate()).slice(-2);
-        return dayName + " " + month + "/" + dayNum;
-    }
-
-    // Function to load and parse Lottie JSON file
-    function loadLottieAnimation(filePath) {
-        console.log("Attempting to load Lottie file from:", filePath);
-        var xhr = new XMLHttpRequest();
-        try {
-            var fileUrl = "file://" + filePath;
-            xhr.open("GET", fileUrl, false); 
-            xhr.onerror = function() { console.error("Network error loading Lottie:", filePath); return null; };
-            xhr.send(null);
-            if (xhr.status === 200) {
-                var jsonContent = xhr.responseText;
-                JSON.parse(jsonContent); // Validate
-                return jsonContent;
-            } else {
-                console.error("Error loading Lottie file:", filePath, "Status:", xhr.status);
-                statusMessage = "Error: Could not load animation file (Status: " + xhr.status + ")";
-                return null;
-            }
-        } catch (e) {
-            console.error("Exception loading Lottie file:", e);
-            statusMessage = "Error: Exception loading animation file";
-            return null;
-        }
-    }
-
-    // Function to update the Lottie animation
-    function updateLottieAnimation() {
-        if (currentWeatherCode && lottieIconsBase && lottiePlayerPath && lottieHtmlTemplate) {
-            try {
-                var lottieJsonPath = getWeatherIconPath(currentWeatherCode);
-                var animationJson = loadLottieAnimation(lottieJsonPath);
-                if (animationJson) {
-                    var htmlContent = lottieHtmlTemplate
-                        .replace("%ANIMATION_DATA%", animationJson)
-                        .replace("%LOTTIE_PLAYER_PATH%", lottiePlayerPath);
-                    weatherWeb.loadHtml(htmlContent, "file:///");
-                    console.log("Updated Lottie animation successfully");
-                } else {
-                    statusMessage = "Error: Failed to load weather animation";
-                }
-            } catch (e) {
-                console.error("Error updating animation:", e);
-                statusMessage = "Error: Exception when updating animation";
-            }
-        }
-    }
     
-    // Trigger update when the code changes
-    onCurrentWeatherCodeChanged: {
-        updateLottieAnimation();
-    }
-
     // --- Data Fetching Logic ---
     function fetchWeather() {
         console.log("Attempting to fetch weather data (WeatherScreen)...")
@@ -216,42 +31,41 @@ BaseScreen {
                         var response = JSON.parse(xhr.responseText);
                         console.log("FULL WEATHER RESPONSE:", JSON.stringify(response));
                         
-                        // Debug daily data specifically for rain probability and weather icons
+                        // Debug daily data for forecast
                         if (response && response.daily && response.daily.length > 0) {
                             console.log("Daily data before transformation:");
                             for (var i = 0; i < response.daily.length; i++) {
                                 console.log("Day " + i + 
-                                          " - Date: " + formatDateToDay(response.daily[i].dt) + 
+                                          " - Date: " + currentWeather.formatDateToDay(response.daily[i].dt) + 
                                           ", PoP: " + response.daily[i].pop + 
                                           ", Weather: " + response.daily[i].weather[0].description +
                                           ", Icon: " + response.daily[i].weather[0].icon);
-                                
-                                // Debug info about the icon that will be shown
-                                var iconPath = getWeatherPngIconPath(response.daily[i].weather[0].icon, response.daily[i].weather[0].description);
-                                console.log("Day " + i + " icon path: " + iconPath);
                             }
                         }
                         
                         currentWeatherData = response; 
                         statusMessage = ""; 
-                        console.log("Weather data fetched successfully (WeatherScreen).")
-                        if (currentWeatherData && currentWeatherData.current && currentWeatherData.current.weather && currentWeatherData.current.weather.length > 0) {
-                            currentWeatherCode = currentWeatherData.current.weather[0].icon;
-                            console.log("Current weather code:", currentWeatherCode, 
-                                        "Description:", currentWeatherData.current.weather[0].description);
-                        } else {
-                            currentWeatherCode = "01d"; // Default
+                        console.log("Weather data fetched successfully (WeatherScreen).");
+                        
+                        // Update weather code for the current weather component 
+                        if (currentWeatherData && currentWeatherData.current && 
+                            currentWeatherData.current.weather && currentWeatherData.current.weather.length > 0) {
+                            currentWeather.weatherCode = currentWeatherData.current.weather[0].icon;
+                            console.log("Current weather code:", currentWeather.weatherCode, 
+                                       "Description:", currentWeatherData.current.weather[0].description);
                         }
                     } catch (e) {
                         console.error("Error parsing weather data (WeatherScreen):", e);
                         statusMessage = "Error parsing weather data.";
-                        currentWeatherData = null; currentWeatherCode = "";
+                        currentWeatherData = null;
                     }
                 } else {
                     console.error("Error fetching weather data (WeatherScreen). Status:", xhr.status);
                     statusMessage = "Error fetching weather data. Status: " + xhr.status;
-                    if (xhr.status === 503) { statusMessage = "Weather data not yet available."; }
-                    currentWeatherData = null; currentWeatherCode = "";
+                    if (xhr.status === 503) { 
+                        statusMessage = "Weather data not yet available."; 
+                    }
+                    currentWeatherData = null;
                 }
             }
         }
@@ -291,11 +105,10 @@ BaseScreen {
         ColumnLayout { 
             id: contentColumn 
             width: parent.width * 0.95 
-            spacing: 15 // Consistent spacing
-            // Center the whole column horizontally within the Flickable
+            spacing: 15
             anchors.horizontalCenter: parent.horizontalCenter 
 
-            // Status Text (Displayed at the top when loading or error)
+            // Status Text (visible only when loading or error)
             Text {
                 id: statusText
                 Layout.fillWidth: true
@@ -307,138 +120,29 @@ BaseScreen {
                 wrapMode: Text.WordWrap
             }
 
-            // --- Current Weather Display Elements ---
-            Column {
-                id: currentWeatherColumn // Give it an ID
-                Layout.fillWidth: true // Take available width in ColumnLayout
-                Layout.alignment: Qt.AlignHCenter // Center content horizontally
-                spacing: 10 
-                visible: statusMessage === "" // Hide when loading/error
+            // --- Current Weather Component ---
+            CurrentWeather {
+                id: currentWeather
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                weatherData: currentWeatherData
+                statusMessage: weatherScreen.statusMessage
+                lottieIconsBase: weatherScreen.lottieIconsBase
+                lottiePlayerPath: weatherScreen.lottiePlayerPath
+                visible: weatherScreen.statusMessage === ""
+            }
 
-                // Weather Animation Container
-                Rectangle {
-                    id: weatherIconContainer
-                    width: 150 
-                    height: 150
-                    color: "transparent"
-                    anchors.horizontalCenter: parent.horizontalCenter // Center within this Column
-                    
-                    WebEngineView {
-                        id: weatherWeb
-                        anchors.fill: parent
-                        backgroundColor: Qt.rgba(0, 0, 0, 0)
-                        settings.accelerated2dCanvasEnabled: true
-                        settings.allowRunningInsecureContent: true
-                        settings.javascriptEnabled: true
-                        settings.showScrollBars: false
-                        onLoadingChanged: function(loadRequest) {
-                            if (loadRequest.status === WebEngineView.LoadFailedStatus) { 
-                                console.error("Failed Lottie load:", loadRequest.errorString); 
-                            }
-                        }
-                        onJavaScriptConsoleMessage: console.log("WebEngine JS:", message);
-                    }
-                }
-
-                // Current Temperature Text
-                Text {
-                    id: currentTempText
-                    width: parent.width // Fill width of currentWeatherColumn
-                    text: currentWeatherData ? ("Current: " + Math.round(currentWeatherData.current.temp) + "°F") : "--"
-                    color: ThemeManager.text_primary_color
-                    font.pixelSize: 22 
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                }
-                
-                // Weather Description
-                Text {
-                    id: weatherDescription
-                    width: parent.width // Fill width of currentWeatherColumn
-                    text: currentWeatherData && currentWeatherData.current && currentWeatherData.current.weather && currentWeatherData.current.weather.length > 0 ? 
-                          currentWeatherData.current.weather[0].description.charAt(0).toUpperCase() + currentWeatherData.current.weather[0].description.slice(1) : ""
-                    visible: text !== ""
-                    color: ThemeManager.text_secondary_color
-                    font.pixelSize: 16 
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                }
-            } // End Current Weather Column
-
-            // --- Forecast Display Elements ---
-            RowLayout {
-                id: forecastRowLayout
-                Layout.topMargin: 40 // Increased top margin slightly more
-                Layout.fillWidth: true // Make the RowLayout use the full width provided by parent ColumnLayout
-                spacing: 15 // Spacing between forecast days
-                visible: statusMessage === "" && currentWeatherData && currentWeatherData.daily && currentWeatherData.daily.length > 0
-
-                Repeater {
-                    model: {
-                        console.log("WeatherScreen - Full daily data:", currentWeatherData ? currentWeatherData.daily : "No data");
-                        var slicedData = currentWeatherData ? (currentWeatherData.daily ? currentWeatherData.daily.slice(2, 8) : []) : [];
-                        console.log("WeatherScreen - Sliced forecast data:", slicedData);
-                        return slicedData;
-                    }
-
-                    delegate: Column {
-                        Layout.fillWidth: true // Distribute width evenly
-                        Layout.alignment: Qt.AlignTop 
-                        spacing: 5
-
-                        // Day and Date
-                        Text {
-                            text: {
-                                console.log("WeatherScreen - Processing day:", modelData);
-                                console.log("WeatherScreen - Day PoP:", modelData.pop);
-                                return formatDateToDay(modelData.dt);
-                            }
-                            color: ThemeManager.text_primary_color
-                            font.pixelSize: 14 
-                            horizontalAlignment: Text.AlignHCenter
-                            anchors.horizontalCenter: parent.horizontalCenter
-                        }
-
-                        // Weather Icon
-                        Image {
-                            id: forecastIcon
-                            width: 50; height: 50
-                            source: {
-                                console.log("Weather icon code:", modelData.weather[0].icon);
-                                console.log("Weather description:", modelData.weather[0].description);
-                                return getWeatherPngIconPath(modelData.weather[0].icon, modelData.weather[0].description);
-                            }
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            fillMode: Image.PreserveAspectFit
-                            sourceSize.width: 50; sourceSize.height: 50
-                        }
-
-                        // High / Low Temperature
-                        Text {
-                            text: Math.round(modelData.temp.max) + "° / " + Math.round(modelData.temp.min) + "°"
-                            color: ThemeManager.text_secondary_color
-                            font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                            anchors.horizontalCenter: parent.horizontalCenter
-                        }
-
-                        // Chance of Rain (PoP)
-                        Text {
-                            text: {
-                                var popValue = modelData.pop;
-                                var percentage = Math.round(popValue * 100);
-                                return percentage + "% rain";
-                            }
-                            color: ThemeManager.text_secondary_color
-                            font.pixelSize: 12 
-                            horizontalAlignment: Text.AlignHCenter
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            visible: true 
-                        }
-                    } 
-                } // End Repeater
-            } // End RowLayout (Forecast)
-
-        } // End contentColumn (ColumnLayout)
-    } // End Flickable
-} // End BaseScreen
+            // --- Forecast Component ---
+            ForecastDisplay {
+                id: forecastDisplay
+                Layout.topMargin: 40
+                Layout.fillWidth: true
+                forecastData: currentWeatherData ? 
+                              (currentWeatherData.daily ? currentWeatherData.daily.slice(2, 8) : []) : []
+                statusMessage: weatherScreen.statusMessage
+                pngIconsBase: weatherScreen.pngIconsBase
+                visible: weatherScreen.statusMessage === ""
+            }
+        }
+    }
+}
