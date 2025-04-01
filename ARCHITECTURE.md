@@ -62,6 +62,11 @@ The Weather screen layout uses a responsive design approach with:
 - Layout.fillWidth and Layout.maximumWidth properties to prevent text overflow
 - Text.elide and Text.WordWrap properties for proper text truncation and wrapping
 - Horizontally centered content for a clean, aligned appearance
+- Screen height-aware sizing with Layout.fillHeight and Layout.minimumHeight
+- Weather sections that dynamically adjust to fill available screen space
+- Responsive layout that works on different screen sizes and orientations
+- Proper height constraints with Layout.maximumHeight to ensure sections stretch appropriately
+- Flickable content area that fills the entire screen height
 
 It uses the PathProvider to load resources with dynamic paths that work across different machines:
 ```qml

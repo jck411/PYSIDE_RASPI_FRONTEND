@@ -216,13 +216,14 @@ BaseScreen {
     Flickable { 
         id: weatherFlickable
         anchors.fill: parent
-        contentHeight: weatherColumn.implicitHeight 
+        contentHeight: parent.height
         clip: true 
         flickableDirection: Flickable.VerticalFlick 
 
         ColumnLayout { 
             id: weatherColumn 
-            width: parent.width * 0.95 
+            width: parent.width * 0.95
+            height: parent.height
             spacing: 15
             anchors.horizontalCenter: parent.horizontalCenter 
 
@@ -242,13 +243,20 @@ BaseScreen {
             RowLayout {
                 id: weatherSectionsContainer
                 Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredHeight: parent.height * 0.85
+                Layout.maximumHeight: parent.height
+                Layout.bottomMargin: 40  // Add padding equal to icon height
+                Layout.topMargin: 15
                 spacing: 10
                 visible: statusMessage === ""
                 
                 // Section 1: Current Weather
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 300
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 300
+                    Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1) // Semi-transparent background
                     radius: 10
                     border.width: 1
@@ -267,6 +275,17 @@ BaseScreen {
                             font.pixelSize: 16
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
+                            text: currentWeatherData && currentWeatherData.properties ? 
+                                  "As of " + formatTime(currentWeatherData.properties.timestamp) : "N/A"
+                            font.pixelSize: 12
+                            color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
                         }
                         
@@ -346,7 +365,9 @@ BaseScreen {
                 // Section 2: Current Period
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 300
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 300
+                    Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1) // Semi-transparent background
                     radius: 10
                     border.width: 1
@@ -366,6 +387,18 @@ BaseScreen {
                             font.pixelSize: 16
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
+                            text: forecastPeriods && forecastPeriods.length > 0 ? 
+                                  formatTime(forecastPeriods[0].startTime) + " - " + 
+                                  formatTime(forecastPeriods[0].endTime) : "N/A"
+                            font.pixelSize: 12
+                            color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
                         }
                         
@@ -425,26 +458,15 @@ BaseScreen {
                             elide: Text.ElideRight
                             wrapMode: Text.WordWrap
                         }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 0 ? 
-                                  formatTime(forecastPeriods[0].startTime) + " - " + 
-                                  formatTime(forecastPeriods[0].endTime) : "N/A"
-                            font.pixelSize: 14
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
                     }
                 }
                 
                 // Section 3: Next 12 Hours
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 300
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 300
+                    Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1) // Semi-transparent background
                     radius: 10
                     border.width: 1
@@ -464,6 +486,18 @@ BaseScreen {
                             font.pixelSize: 16
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
+                            text: forecastPeriods && forecastPeriods.length > 1 ? 
+                                  formatTime(forecastPeriods[1].startTime) + " - " + 
+                                  formatTime(forecastPeriods[1].endTime) : "N/A"
+                            font.pixelSize: 12
+                            color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
                         }
                         
@@ -523,26 +557,15 @@ BaseScreen {
                             elide: Text.ElideRight
                             wrapMode: Text.WordWrap
                         }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 1 ? 
-                                  formatTime(forecastPeriods[1].startTime) + " - " + 
-                                  formatTime(forecastPeriods[1].endTime) : "N/A"
-                            font.pixelSize: 14
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
                     }
                 }
                 
                 // Section 4: 12 Hours After That
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 300
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 300
+                    Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1) // Semi-transparent background
                     radius: 10
                     border.width: 1
@@ -562,6 +585,18 @@ BaseScreen {
                             font.pixelSize: 16
                             font.bold: true
                             color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
+                            text: forecastPeriods && forecastPeriods.length > 2 ? 
+                                  formatTime(forecastPeriods[2].startTime) + " - " + 
+                                  formatTime(forecastPeriods[2].endTime) : "N/A"
+                            font.pixelSize: 12
+                            color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
                         }
                         
@@ -620,19 +655,6 @@ BaseScreen {
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
                             wrapMode: Text.WordWrap
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 2 ? 
-                                  formatTime(forecastPeriods[2].startTime) + " - " + 
-                                  formatTime(forecastPeriods[2].endTime) : "N/A"
-                            font.pixelSize: 14
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
                         }
                     }
                 }
