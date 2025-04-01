@@ -267,49 +267,84 @@ BaseScreen {
                         anchors.margins: 10
                         spacing: 5
                         
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
+                        // Heading - fixed height
+                        Item {
                             Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: "Current"
-                            font.pixelSize: 16
-                            font.bold: true
-                            color: ThemeManager.text_primary_color
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: currentWeatherData && currentWeatherData.properties ? 
-                                  "As of " + formatTime(currentWeatherData.properties.timestamp) : "N/A"
-                            font.pixelSize: 12
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        
-                        // Weather Icon Container
-                        Rectangle {
-                            Layout.alignment: Qt.AlignHCenter
-                            width: 80
-                            height: 80
-                            color: "transparent"
+                            Layout.preferredHeight: 20
                             
-                            WebEngineView {
-                                id: currentWeatherIcon
+                            Text {
                                 anchors.fill: parent
-                                backgroundColor: Qt.rgba(0, 0, 0, 0)
-                                settings.accelerated2dCanvasEnabled: true
-                                settings.allowRunningInsecureContent: true
-                                settings.javascriptEnabled: true
-                                settings.showScrollBars: false
+                                text: "Current"
+                                font.pixelSize: 16
+                                font.bold: true
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
                         
+                        // Time - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 16
+                            
+                            Text {
+                                anchors.fill: parent
+                                text: currentWeatherData && currentWeatherData.properties ? 
+                                      "As of " + formatTime(currentWeatherData.properties.timestamp) : "N/A"
+                                font.pixelSize: 12
+                                color: ThemeManager.text_secondary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        // Weather Icon - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 90
+                            
+                            Rectangle {
+                                width: 80
+                                height: 80
+                                color: "transparent"
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                
+                                WebEngineView {
+                                    id: currentWeatherIcon
+                                    anchors.fill: parent
+                                    backgroundColor: Qt.rgba(0, 0, 0, 0)
+                                    settings.accelerated2dCanvasEnabled: true
+                                    settings.allowRunningInsecureContent: true
+                                    settings.javascriptEnabled: true
+                                    settings.showScrollBars: false
+                                }
+                            }
+                        }
+                        
+                        // Temperature - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 25
+                            
+                            Text {
+                                anchors.fill: parent
+                                text: currentWeatherData && currentWeatherData.properties ? 
+                                      (currentWeatherData.properties.temperature ? 
+                                       currentWeatherData.properties.temperature.value.toFixed(1) + " °F" : "N/A") : "N/A"
+                                font.pixelSize: 20
+                                font.bold: true
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        // Description - flexible height
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.fillWidth: true
+                            Layout.fillHeight: true
                             Layout.maximumWidth: parent.width
                             text: currentWeatherData && currentWeatherData.properties ? 
                                   currentWeatherData.properties.textDescription || "N/A" : "N/A"
@@ -320,44 +355,21 @@ BaseScreen {
                             elide: Text.ElideRight
                         }
                         
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
+                        // Humidity - fixed height
+                        Item {
                             Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: currentWeatherData && currentWeatherData.properties ? 
-                                  (currentWeatherData.properties.temperature ? 
-                                   currentWeatherData.properties.temperature.value.toFixed(1) + " °F" : "N/A") : "N/A"
-                            font.pixelSize: 20
-                            font.bold: true
-                            color: ThemeManager.text_primary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: currentWeatherData && currentWeatherData.properties ? 
-                                  "Wind: " + (currentWeatherData.properties.windSpeed ? 
-                                   currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A") : "N/A"
-                            font.pixelSize: 14
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: currentWeatherData && currentWeatherData.properties ? 
-                                  "Humidity: " + (currentWeatherData.properties.relativeHumidity ? 
-                                   currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") : "N/A"
-                            font.pixelSize: 14
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
+                            Layout.preferredHeight: 20
+                            
+                            Text {
+                                anchors.fill: parent
+                                text: currentWeatherData && currentWeatherData.properties ? 
+                                      "Humidity: " + (currentWeatherData.properties.relativeHumidity ? 
+                                       currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") : "N/A"
+                                font.pixelSize: 14
+                                color: ThemeManager.text_secondary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
                         }
                     }
                 }
@@ -378,51 +390,85 @@ BaseScreen {
                         anchors.margins: 10
                         spacing: 5
                         
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
+                        // Heading - fixed height
+                        Item {
                             Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 0 ? 
-                                  forecastPeriods[0].name : "Current Period"
-                            font.pixelSize: 16
-                            font.bold: true
-                            color: ThemeManager.text_primary_color
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 0 ? 
-                                  formatTime(forecastPeriods[0].startTime) + " - " + 
-                                  formatTime(forecastPeriods[0].endTime) : "N/A"
-                            font.pixelSize: 12
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        
-                        // Weather Icon Container
-                        Rectangle {
-                            Layout.alignment: Qt.AlignHCenter
-                            width: 80
-                            height: 80
-                            color: "transparent"
+                            Layout.preferredHeight: 20
                             
-                            WebEngineView {
-                                id: currentPeriodIcon
+                            Text {
                                 anchors.fill: parent
-                                backgroundColor: Qt.rgba(0, 0, 0, 0)
-                                settings.accelerated2dCanvasEnabled: true
-                                settings.allowRunningInsecureContent: true
-                                settings.javascriptEnabled: true
-                                settings.showScrollBars: false
+                                text: forecastPeriods && forecastPeriods.length > 0 ? 
+                                      forecastPeriods[0].name : "Current Period"
+                                font.pixelSize: 16
+                                font.bold: true
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
                         
+                        // Time - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 16
+                            
+                            Text {
+                                anchors.fill: parent
+                                text: forecastPeriods && forecastPeriods.length > 0 ? 
+                                      formatTime(forecastPeriods[0].startTime) + " - " + 
+                                      formatTime(forecastPeriods[0].endTime) : "N/A"
+                                font.pixelSize: 12
+                                color: ThemeManager.text_secondary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        // Weather Icon - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 90
+                            
+                            Rectangle {
+                                width: 80
+                                height: 80
+                                color: "transparent"
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                
+                                WebEngineView {
+                                    id: currentPeriodIcon
+                                    anchors.fill: parent
+                                    backgroundColor: Qt.rgba(0, 0, 0, 0)
+                                    settings.accelerated2dCanvasEnabled: true
+                                    settings.allowRunningInsecureContent: true
+                                    settings.javascriptEnabled: true
+                                    settings.showScrollBars: false
+                                }
+                            }
+                        }
+                        
+                        // Temperature - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 25
+                            
+                            Text {
+                                anchors.fill: parent
+                                text: forecastPeriods && forecastPeriods.length > 0 ? 
+                                      forecastPeriods[0].temperature + " " + forecastPeriods[0].temperatureUnit : "N/A"
+                                font.pixelSize: 20
+                                font.bold: true
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        // Description - flexible height
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.fillWidth: true
+                            Layout.fillHeight: true
                             Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 0 ? 
                                   forecastPeriods[0].shortForecast : "N/A"
@@ -431,32 +477,6 @@ BaseScreen {
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
                             elide: Text.ElideRight
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 0 ? 
-                                  forecastPeriods[0].temperature + " " + forecastPeriods[0].temperatureUnit : "N/A"
-                            font.pixelSize: 20
-                            font.bold: true
-                            color: ThemeManager.text_primary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 0 ? 
-                                  "Wind: " + forecastPeriods[0].windSpeed + " from " + forecastPeriods[0].windDirection : "N/A"
-                            font.pixelSize: 14
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                            wrapMode: Text.WordWrap
                         }
                     }
                 }
@@ -477,51 +497,85 @@ BaseScreen {
                         anchors.margins: 10
                         spacing: 5
                         
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
+                        // Heading - fixed height
+                        Item {
                             Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 1 ? 
-                                  forecastPeriods[1].name : "Next 12 Hours"
-                            font.pixelSize: 16
-                            font.bold: true
-                            color: ThemeManager.text_primary_color
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 1 ? 
-                                  formatTime(forecastPeriods[1].startTime) + " - " + 
-                                  formatTime(forecastPeriods[1].endTime) : "N/A"
-                            font.pixelSize: 12
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        
-                        // Weather Icon Container
-                        Rectangle {
-                            Layout.alignment: Qt.AlignHCenter
-                            width: 80
-                            height: 80
-                            color: "transparent"
+                            Layout.preferredHeight: 20
                             
-                            WebEngineView {
-                                id: next12HoursIcon
+                            Text {
                                 anchors.fill: parent
-                                backgroundColor: Qt.rgba(0, 0, 0, 0)
-                                settings.accelerated2dCanvasEnabled: true
-                                settings.allowRunningInsecureContent: true
-                                settings.javascriptEnabled: true
-                                settings.showScrollBars: false
+                                text: forecastPeriods && forecastPeriods.length > 1 ? 
+                                      forecastPeriods[1].name : "Next 12 Hours"
+                                font.pixelSize: 16
+                                font.bold: true
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
                         
+                        // Time - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 16
+                            
+                            Text {
+                                anchors.fill: parent
+                                text: forecastPeriods && forecastPeriods.length > 1 ? 
+                                      formatTime(forecastPeriods[1].startTime) + " - " + 
+                                      formatTime(forecastPeriods[1].endTime) : "N/A"
+                                font.pixelSize: 12
+                                color: ThemeManager.text_secondary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        // Weather Icon - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 90
+                            
+                            Rectangle {
+                                width: 80
+                                height: 80
+                                color: "transparent"
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                
+                                WebEngineView {
+                                    id: next12HoursIcon
+                                    anchors.fill: parent
+                                    backgroundColor: Qt.rgba(0, 0, 0, 0)
+                                    settings.accelerated2dCanvasEnabled: true
+                                    settings.allowRunningInsecureContent: true
+                                    settings.javascriptEnabled: true
+                                    settings.showScrollBars: false
+                                }
+                            }
+                        }
+                        
+                        // Temperature - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 25
+                            
+                            Text {
+                                anchors.fill: parent
+                                text: forecastPeriods && forecastPeriods.length > 1 ? 
+                                      forecastPeriods[1].temperature + " " + forecastPeriods[1].temperatureUnit : "N/A"
+                                font.pixelSize: 20
+                                font.bold: true
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        // Description - flexible height
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.fillWidth: true
+                            Layout.fillHeight: true
                             Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 1 ? 
                                   forecastPeriods[1].shortForecast : "N/A"
@@ -530,32 +584,6 @@ BaseScreen {
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
                             elide: Text.ElideRight
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 1 ? 
-                                  forecastPeriods[1].temperature + " " + forecastPeriods[1].temperatureUnit : "N/A"
-                            font.pixelSize: 20
-                            font.bold: true
-                            color: ThemeManager.text_primary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 1 ? 
-                                  "Wind: " + forecastPeriods[1].windSpeed + " from " + forecastPeriods[1].windDirection : "N/A"
-                            font.pixelSize: 14
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                            wrapMode: Text.WordWrap
                         }
                     }
                 }
@@ -576,51 +604,85 @@ BaseScreen {
                         anchors.margins: 10
                         spacing: 5
                         
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
+                        // Heading - fixed height
+                        Item {
                             Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 2 ? 
-                                  forecastPeriods[2].name : "Next Day"
-                            font.pixelSize: 16
-                            font.bold: true
-                            color: ThemeManager.text_primary_color
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 2 ? 
-                                  formatTime(forecastPeriods[2].startTime) + " - " + 
-                                  formatTime(forecastPeriods[2].endTime) : "N/A"
-                            font.pixelSize: 12
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        
-                        // Weather Icon Container
-                        Rectangle {
-                            Layout.alignment: Qt.AlignHCenter
-                            width: 80
-                            height: 80
-                            color: "transparent"
+                            Layout.preferredHeight: 20
                             
-                            WebEngineView {
-                                id: nextDayIcon
+                            Text {
                                 anchors.fill: parent
-                                backgroundColor: Qt.rgba(0, 0, 0, 0)
-                                settings.accelerated2dCanvasEnabled: true
-                                settings.allowRunningInsecureContent: true
-                                settings.javascriptEnabled: true
-                                settings.showScrollBars: false
+                                text: forecastPeriods && forecastPeriods.length > 2 ? 
+                                      forecastPeriods[2].name : "Next Day"
+                                font.pixelSize: 16
+                                font.bold: true
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
                         
+                        // Time - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 16
+                            
+                            Text {
+                                anchors.fill: parent
+                                text: forecastPeriods && forecastPeriods.length > 2 ? 
+                                      formatTime(forecastPeriods[2].startTime) + " - " + 
+                                      formatTime(forecastPeriods[2].endTime) : "N/A"
+                                font.pixelSize: 12
+                                color: ThemeManager.text_secondary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        // Weather Icon - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 90
+                            
+                            Rectangle {
+                                width: 80
+                                height: 80
+                                color: "transparent"
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                
+                                WebEngineView {
+                                    id: nextDayIcon
+                                    anchors.fill: parent
+                                    backgroundColor: Qt.rgba(0, 0, 0, 0)
+                                    settings.accelerated2dCanvasEnabled: true
+                                    settings.allowRunningInsecureContent: true
+                                    settings.javascriptEnabled: true
+                                    settings.showScrollBars: false
+                                }
+                            }
+                        }
+                        
+                        // Temperature - fixed height
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 25
+                            
+                            Text {
+                                anchors.fill: parent
+                                text: forecastPeriods && forecastPeriods.length > 2 ? 
+                                      forecastPeriods[2].temperature + " " + forecastPeriods[2].temperatureUnit : "N/A"
+                                font.pixelSize: 20
+                                font.bold: true
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        // Description - flexible height
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.fillWidth: true
+                            Layout.fillHeight: true
                             Layout.maximumWidth: parent.width
                             text: forecastPeriods && forecastPeriods.length > 2 ? 
                                   forecastPeriods[2].shortForecast : "N/A"
@@ -629,32 +691,6 @@ BaseScreen {
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
                             elide: Text.ElideRight
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 2 ? 
-                                  forecastPeriods[2].temperature + " " + forecastPeriods[2].temperatureUnit : "N/A"
-                            font.pixelSize: 20
-                            font.bold: true
-                            color: ThemeManager.text_primary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
-                        
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: parent.width
-                            text: forecastPeriods && forecastPeriods.length > 2 ? 
-                                  "Wind: " + forecastPeriods[2].windSpeed + " from " + forecastPeriods[2].windDirection : "N/A"
-                            font.pixelSize: 14
-                            color: ThemeManager.text_secondary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                            wrapMode: Text.WordWrap
                         }
                     }
                 }
