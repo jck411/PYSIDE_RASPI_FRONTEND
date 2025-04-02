@@ -14,6 +14,9 @@ Item {
     property string statusMessage: ""
     property string pngIconsBase: ""
     
+    // --- Signals ---
+    signal forecastItemClicked(int index)
+    
     // --- Functions ---
     // Date Formatting Function
     function formatDateToDay(unixTimestamp) {
@@ -114,6 +117,15 @@ Item {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignTop 
                 spacing: 5
+                
+                // Add mouse area for entire forecast item
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        forecastDisplay.forecastItemClicked(index);
+                    }
+                    cursorShape: Qt.PointingHandCursor
+                }
 
                 // Day and Date
                 Text {

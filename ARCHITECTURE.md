@@ -55,6 +55,13 @@ The screen has been modularized into reusable components with navigation:
 - **CurrentWeather.qml**: Displays current weather conditions with Lottie animations
 - **ForecastDisplay.qml**: Shows multiple day forecast with PNG icons
 - **WeatherControls.qml**: Provides navigation between Current Weather and Forecast views
+- **DetailedForecastDialog.qml**: Dialog component that shows detailed forecast information when users click on a weather container
+
+### Weather UI Interaction
+The Weather screen is interactive, allowing users to:
+- Click on any weather section (current or forecast periods) to view detailed information
+- See extended forecast details in a modal dialog with comprehensive weather data
+- The dialog displays period name, time range, temperature, wind information, and detailed forecast
 
 ### Weather UI Layout
 The Weather screen layout uses a responsive design approach with:

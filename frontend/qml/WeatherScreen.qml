@@ -3,7 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtWebEngine 1.8 // Required by QtWebEngine
 import MyTheme 1.0
-import MyServices 1.0 
+import MyServices 1.0
 
 BaseScreen {
     id: weatherScreen
@@ -16,6 +16,7 @@ BaseScreen {
     property var forecastPeriods: null
     property string statusMessage: "Loading weather..."
     property string currentView: "current"  // Add this property to track the current view
+    property var selectedForecastPeriod: null
     
     // Start the animation timer when status message changes
     onStatusMessageChanged: {
@@ -192,6 +193,12 @@ BaseScreen {
         return date.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'});
     }
     
+    // Convert Celsius to Fahrenheit
+    function celsiusToFahrenheit(celsius) {
+        if (celsius === null || celsius === undefined) return null;
+        return celsius * 9/5 + 32;
+    }
+    
     // Fetch data when the component is ready
     Component.onCompleted: {
         console.log("WeatherScreen: Component.onCompleted running...") 
@@ -260,6 +267,41 @@ BaseScreen {
                     Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
+                    
+                    // Fix the MouseArea to not use forecast periods for current weather
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (currentWeatherData && currentWeatherData.properties) {
+                                // Create a forecast-compatible object for current weather
+                                var currentForecast = {
+                                    name: "Current Conditions",
+                                    startTime: currentWeatherData.properties.timestamp,
+                                    endTime: currentWeatherData.properties.timestamp, // Same for current
+                                    temperature: currentWeatherData.properties.temperature ? 
+                                                celsiusToFahrenheit(currentWeatherData.properties.temperature.value).toFixed(1) : "N/A",
+                                    temperatureUnit: "°F",
+                                    windSpeed: currentWeatherData.properties.windSpeed ? 
+                                              currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A",
+                                    windDirection: currentWeatherData.properties.windDirection ? 
+                                                  currentWeatherData.properties.windDirection.value + "°" : "N/A",
+                                    icon: currentWeatherData.properties.icon,
+                                    shortForecast: currentWeatherData.properties.textDescription || "N/A",
+                                    detailedForecast: "Temperature: " + (currentWeatherData.properties.temperature ? 
+                                                     celsiusToFahrenheit(currentWeatherData.properties.temperature.value).toFixed(1) + " °F" : "N/A") + 
+                                                     "\nHumidity: " + (currentWeatherData.properties.relativeHumidity ? 
+                                                     currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") +
+                                                     "\nWind: " + (currentWeatherData.properties.windSpeed ? 
+                                                     currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A") +
+                                                     " from " + (currentWeatherData.properties.windDirection ? 
+                                                     currentWeatherData.properties.windDirection.value + "°" : "N/A")
+                                };
+                                selectedForecastPeriod = currentForecast;
+                                detailedForecastDialog.open();
+                            }
+                        }
+                        cursorShape: Qt.PointingHandCursor
+                    }
                     
                     ColumnLayout {
                         anchors.fill: parent
@@ -330,7 +372,7 @@ BaseScreen {
                                 anchors.fill: parent
                                 text: currentWeatherData && currentWeatherData.properties ? 
                                       (currentWeatherData.properties.temperature ? 
-                                       currentWeatherData.properties.temperature.value.toFixed(1) + " °F" : "N/A") : "N/A"
+                                       celsiusToFahrenheit(currentWeatherData.properties.temperature.value).toFixed(1) + " °F" : "N/A") : "N/A"
                                 font.pixelSize: 20
                                 font.bold: true
                                 color: ThemeManager.text_primary_color
@@ -382,6 +424,17 @@ BaseScreen {
                     Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
+                    
+                    // Fix the index to use 0 to get the first forecast period
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (forecastPeriods && forecastPeriods.length > 0) {
+                                showDetailedForecast(0);
+                            }
+                        }
+                        cursorShape: Qt.PointingHandCursor
+                    }
                     
                     ColumnLayout {
                         anchors.fill: parent
@@ -488,6 +541,17 @@ BaseScreen {
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
                     
+                    // Fix the index to use 1 to get the second forecast period
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (forecastPeriods && forecastPeriods.length > 1) {
+                                showDetailedForecast(1);
+                            }
+                        }
+                        cursorShape: Qt.PointingHandCursor
+                    }
+                    
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 10
@@ -592,6 +656,17 @@ BaseScreen {
                     Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
+                    
+                    // Fix the index to use 2 to get the third forecast period
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (forecastPeriods && forecastPeriods.length > 2) {
+                                showDetailedForecast(2);
+                            }
+                        }
+                        cursorShape: Qt.PointingHandCursor
+                    }
                     
                     ColumnLayout {
                         anchors.fill: parent
@@ -740,6 +815,46 @@ BaseScreen {
                 }
             }
             
+            // Forecast View Container
+            ForecastDisplay {
+                id: forecastDisplay
+                width: parent.width
+                forecastData: currentWeatherData && currentWeatherData.forecast && currentWeatherData.forecast.daily ? 
+                              currentWeatherData.forecast.daily : []
+                statusMessage: weatherScreen.statusMessage !== "" ? weatherScreen.statusMessage : ""
+                pngIconsBase: weatherScreen.pngIconsBase
+                visible: currentView === "forecast"
+                
+                // Connect to the click signal
+                onForecastItemClicked: function(index) {
+                    // For OpenWeatherMap daily forecasts
+                    var dayForecast = currentWeatherData.forecast.daily[index];
+                    if (dayForecast) {
+                        // Convert to a format similar to forecast periods for consistent display
+                        var convertedForecast = {
+                            name: formatDateToDay(dayForecast.dt),
+                            startTime: new Date(dayForecast.dt * 1000).toISOString(),
+                            endTime: new Date(dayForecast.dt * 1000 + 86400000).toISOString(), // Add 24 hours
+                            temperature: Math.round(dayForecast.temp.max),
+                            temperatureUnit: "°F",
+                            windSpeed: Math.round(dayForecast.wind_speed) + " mph",
+                            windDirection: dayForecast.wind_deg + "°",
+                            icon: pngIconsBase + getWeatherPngIconPath(dayForecast.weather[0].icon, dayForecast.weather[0].description).replace(pngIconsBase, ""),
+                            shortForecast: dayForecast.weather[0].description.charAt(0).toUpperCase() + dayForecast.weather[0].description.slice(1),
+                            detailedForecast: "High: " + Math.round(dayForecast.temp.max) + "°F, Low: " + 
+                                            Math.round(dayForecast.temp.min) + "°F\n" +
+                                            "Chance of precipitation: " + Math.round(dayForecast.pop * 100) + "%\n" +
+                                            "Humidity: " + dayForecast.humidity + "%\n" + 
+                                            "UV Index: " + dayForecast.uvi + "\n" +
+                                            "Sunrise: " + new Date(dayForecast.sunrise * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + "\n" +
+                                            "Sunset: " + new Date(dayForecast.sunset * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                        };
+                        selectedForecastPeriod = convertedForecast;
+                        detailedForecastDialog.open();
+                    }
+                }
+            }
+            
             // Forecast Display (visible when forecast view is selected)
             ForecastDisplay {
                 id: forecastView
@@ -817,6 +932,138 @@ BaseScreen {
             }
         } catch (e) {
             console.error("Exception loading Lottie file:", e);
+        }
+    }
+
+    // --- Detailed Forecast Dialog ---
+    Dialog {
+        id: detailedForecastDialog
+        title: selectedForecastPeriod ? selectedForecastPeriod.name : "Forecast Details"
+        width: parent.width * 0.9
+        height: parent.height * 0.6
+        anchors.centerIn: parent
+        modal: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        
+        // Simple semi-transparent background
+        background: Rectangle {
+            anchors.fill: parent
+            color: ThemeManager.button_primary_color
+            opacity: 0.9
+            radius: 10
+            border.color: ThemeManager.button_primary_color
+            border.width: 1
+            
+            // Add a gradient overlay for more visual depth
+            Rectangle {
+                anchors.fill: parent
+                radius: 10
+                gradient: Gradient {
+                    GradientStop { 
+                        position: 0.0
+                        color: Qt.rgba(1, 1, 1, 0.15)
+                    }
+                    GradientStop { 
+                        position: 1.0
+                        color: Qt.rgba(0, 0, 0, 0.15)
+                    }
+                }
+            }
+        }
+        
+        // Style the title for better readability
+        header: Rectangle {
+            color: Qt.darker(ThemeManager.button_primary_color, 1.1)
+            height: titleLabel.height + 20
+            radius: 10
+            
+            Label {
+                id: titleLabel
+                text: detailedForecastDialog.title
+                font.pixelSize: 18
+                font.bold: true
+                color: "white"
+                anchors.centerIn: parent
+            }
+        }
+        
+        // --- Content ---
+        contentItem: Item {
+            anchors.fill: parent
+            
+            Flickable {
+                id: forecastFlickable
+                anchors.fill: parent
+                contentWidth: width
+                contentHeight: Math.max(parent.height, forecastRect.height + 40)
+                clip: true
+                ScrollBar.vertical: ScrollBar {}
+                
+                Rectangle {
+                    id: forecastRect
+                    width: parent.width * 0.95
+                    height: forecastText.height + 40
+                    color: Qt.rgba(ThemeManager.button_primary_color.r,
+                                 ThemeManager.button_primary_color.g,
+                                 ThemeManager.button_primary_color.b, 0.2) // 20% opacity
+                    radius: 10
+                    border.width: 0 // Remove inner border
+                    anchors.centerIn: parent
+                    
+                    Text {
+                        id: forecastText
+                        width: parent.width - 30
+                        anchors.centerIn: parent
+                        text: selectedForecastPeriod ? selectedForecastPeriod.detailedForecast : ""
+                        font.pixelSize: 16
+                        font.weight: Font.Medium // Slightly bolder for better readability
+                        color: ThemeManager.text_primary_color // Use primary text color for better contrast
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                        lineHeight: 1.3 // Increase line height for better readability
+                    }
+                }
+            }
+        }
+        
+        // --- Footer ---
+        footer: RowLayout {
+            width: parent.width
+            Item { Layout.fillWidth: true }
+            
+            Button {
+                text: "Close"
+                Layout.preferredWidth: 100
+                Layout.preferredHeight: 40
+                
+                background: Rectangle {
+                    color: ThemeManager.button_primary_color
+                    radius: 8
+                    border.width: 1
+                    border.color: Qt.darker(ThemeManager.button_primary_color, 1.2)
+                }
+                
+                contentItem: Text {
+                    text: "Close"
+                    color: "white"
+                    font.pixelSize: 16
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                
+                onClicked: detailedForecastDialog.close()
+            }
+            
+            Item { Layout.fillWidth: true }
+        }
+    }
+    
+    // --- Show Detailed Forecast Function ---
+    function showDetailedForecast(periodIndex) {
+        if (forecastPeriods && forecastPeriods.length > periodIndex) {
+            selectedForecastPeriod = forecastPeriods[periodIndex];
+            detailedForecastDialog.open();
         }
     }
 }
