@@ -1,10 +1,10 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtWebEngine 1.8 // Required by QtWebEngine
+import QtWebEngine 1.8
+import QtQuick.Effects
 import MyTheme 1.0
 import MyServices 1.0
-import QtQuick.Effects // Modern effects module for blur
 
 BaseScreen {
     id: weatherScreen
@@ -16,8 +16,13 @@ BaseScreen {
     property var currentWeatherData: null
     property var forecastPeriods: null
     property string statusMessage: "Loading weather..."
-    property string currentView: "current"  // Add this property to track the current view
+    property string currentView: "current"  // Track the current view
     property var selectedForecastPeriod: null
+    
+    // --- Configuration Properties ---
+    property string lottieIconsBase: PathProvider.getAbsolutePath("frontend/icons/weather/lottie") + "/"
+    property string lottiePlayerPath: PathProvider.getAbsolutePath("frontend/assets/js/lottie.min.js")
+    property string pngIconsBase: "file://" + PathProvider.getAbsolutePath("frontend/icons/weather/PNG") + "/"
     
     // Start the animation timer when status message changes
     onStatusMessageChanged: {
@@ -27,10 +32,131 @@ BaseScreen {
         }
     }
     
-    // --- Configuration Properties ---
-    property string lottieIconsBase: PathProvider.getAbsolutePath("frontend/icons/weather/lottie") + "/"
-    property string lottiePlayerPath: PathProvider.getAbsolutePath("frontend/assets/js/lottie.min.js")
-    property string pngIconsBase: "file://" + PathProvider.getAbsolutePath("frontend/icons/weather/PNG") + "/"
+    // --- Helper Functions ---
+    function formatTime(timeString) {
+        var date = new Date(timeString);
+        return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+    
+    function formatDate(timeString) {
+        var date = new Date(timeString);
+        return date.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'});
+    }
+    
+    // Convert Celsius to Fahrenheit
+    function celsiusToFahrenheit(celsius) {
+        if (celsius === null || celsius === undefined) return null;
+        return celsius * 9/5 + 32;
+    }
+    
+    // --- Data Fetching Logic ---
+    function fetchWeather() {
+        console.log("Attempting to fetch weather data (WeatherScreen)...")
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        console.log("FULL WEATHER RESPONSE:", JSON.stringify(response));
+                        
+                        // Process the forecast periods
+                        if (response && response.forecast && response.forecast.properties && response.forecast.properties.periods) {
+                            forecastPeriods = response.forecast.properties.periods;
+                            console.log("Forecast periods loaded:", forecastPeriods.length);
+                        }
+                        
+                        currentWeatherData = response; 
+                        statusMessage = ""; 
+                        console.log("Weather data fetched successfully (WeatherScreen).");
+                        
+                    } catch (e) {
+                        console.error("Error parsing weather data (WeatherScreen):", e);
+                        statusMessage = "Error parsing weather data.";
+                        currentWeatherData = null;
+                        forecastPeriods = null;
+                    }
+                } else {
+                    console.error("Error fetching weather data (WeatherScreen). Status:", xhr.status);
+                    statusMessage = "Error fetching weather data. Status: " + xhr.status;
+                    if (xhr.status === 503) { 
+                        statusMessage = "Weather data not yet available."; 
+                    }
+                    currentWeatherData = null;
+                    forecastPeriods = null;
+                }
+            }
+        }
+        xhr.open("GET", SettingsService.httpBaseUrl + "/api/weather"); 
+        xhr.send();
+    }
+    
+    // Create a forecast-compatible object for current weather
+    function createCurrentForecastObject() {
+        if (!currentWeatherData || !currentWeatherData.properties) {
+            return null;
+        }
+        
+        var tempValue = null;
+        if (currentWeatherData.properties.temperature && 
+            currentWeatherData.properties.temperature.value !== null && 
+            currentWeatherData.properties.temperature.value !== undefined) {
+            tempValue = celsiusToFahrenheit(currentWeatherData.properties.temperature.value);
+            tempValue = tempValue !== null ? tempValue.toFixed(1) : "N/A";
+        } else {
+            tempValue = "N/A";
+        }
+        
+        return {
+            name: "Current Conditions",
+            startTime: currentWeatherData.properties.timestamp,
+            endTime: currentWeatherData.properties.timestamp, // Same for current
+            temperature: tempValue,
+            temperatureUnit: "°F",
+            windSpeed: currentWeatherData.properties.windSpeed ? 
+                    (currentWeatherData.properties.windSpeed.value !== null ?
+                    currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A") : "N/A",
+            windDirection: currentWeatherData.properties.windDirection ? 
+                    (currentWeatherData.properties.windDirection.value !== null ?
+                    currentWeatherData.properties.windDirection.value + "°" : "N/A") : "N/A",
+            icon: currentWeatherData.properties.icon,
+            shortForecast: currentWeatherData.properties.textDescription || "N/A",
+            detailedForecast: "Temperature: " + tempValue + " °F" +
+                    "\nHumidity: " + (currentWeatherData.properties.relativeHumidity && 
+                    currentWeatherData.properties.relativeHumidity.value !== null ? 
+                    currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") +
+                    "\nWind: " + (currentWeatherData.properties.windSpeed && 
+                    currentWeatherData.properties.windSpeed.value !== null ? 
+                    currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A") +
+                    " from " + (currentWeatherData.properties.windDirection && 
+                    currentWeatherData.properties.windDirection.value !== null ? 
+                    currentWeatherData.properties.windDirection.value + "°" : "N/A")
+        };
+    }
+    
+    // Convert OpenWeatherMap daily forecast to forecast period
+    function convertDailyForecast(dayForecast) {
+        if (!dayForecast) return null;
+        
+        return {
+            name: formatDateToDay(dayForecast.dt),
+            startTime: new Date(dayForecast.dt * 1000).toISOString(),
+            endTime: new Date(dayForecast.dt * 1000 + 86400000).toISOString(), // Add 24 hours
+            temperature: Math.round(dayForecast.temp.max),
+            temperatureUnit: "°F",
+            windSpeed: Math.round(dayForecast.wind_speed) + " mph",
+            windDirection: dayForecast.wind_deg + "°",
+            icon: pngIconsBase + getWeatherPngIconPath(dayForecast.weather[0].icon, dayForecast.weather[0].description),
+            shortForecast: dayForecast.weather[0].description.charAt(0).toUpperCase() + dayForecast.weather[0].description.slice(1),
+            detailedForecast: "High: " + Math.round(dayForecast.temp.max) + "°F, Low: " + 
+                            Math.round(dayForecast.temp.min) + "°F\n" +
+                            "Chance of precipitation: " + Math.round(dayForecast.pop * 100) + "%\n" +
+                            "Humidity: " + dayForecast.humidity + "%\n" + 
+                            "UV Index: " + dayForecast.uvi + "\n" +
+                            "Sunrise: " + new Date(dayForecast.sunrise * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + "\n" +
+                            "Sunset: " + new Date(dayForecast.sunset * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+        };
+    }
     
     // --- Icon Mapping Logic ---
     function mapWeatherIcon(iconUrl) {
@@ -140,64 +266,111 @@ BaseScreen {
         console.warn("No icon mapping found for:", iconUrl);
         return "thermometer.json";
     }
-
-    // --- Data Fetching Logic ---
-    function fetchWeather() {
-        console.log("Attempting to fetch weather data (WeatherScreen)...")
-        var xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200) {
-                    try {
-                        var response = JSON.parse(xhr.responseText);
-                        console.log("FULL WEATHER RESPONSE:", JSON.stringify(response));
-                        
-                        // Process the forecast periods
-                        if (response && response.forecast && response.forecast.properties && response.forecast.properties.periods) {
-                            forecastPeriods = response.forecast.properties.periods;
-                            console.log("Forecast periods loaded:", forecastPeriods.length);
-                        }
-                        
-                        currentWeatherData = response; 
-                        statusMessage = ""; 
-                        console.log("Weather data fetched successfully (WeatherScreen).");
-                        
-                    } catch (e) {
-                        console.error("Error parsing weather data (WeatherScreen):", e);
-                        statusMessage = "Error parsing weather data.";
-                        currentWeatherData = null;
-                        forecastPeriods = null;
-                    }
-                } else {
-                    console.error("Error fetching weather data (WeatherScreen). Status:", xhr.status);
-                    statusMessage = "Error fetching weather data. Status: " + xhr.status;
-                    if (xhr.status === 503) { 
-                        statusMessage = "Weather data not yet available."; 
-                    }
-                    currentWeatherData = null;
-                    forecastPeriods = null;
-                }
-            }
+    
+    // Function to format date to day for use with forecast display
+    function formatDateToDay(unixTimestamp) {
+        var date = new Date(unixTimestamp * 1000);
+        var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        var dayName = days[date.getDay()];
+        var month = ("0" + (date.getMonth() + 1)).slice(-2); 
+        var dayNum = ("0" + date.getDate()).slice(-2);
+        return dayName + " " + month + "/" + dayNum;
+    }
+    
+    // Function to get PNG icon path for use with forecast display
+    function getWeatherPngIconPath(iconCode, description) {
+        const iconMap = {
+            // Day Icons
+            "01d": "day/clear.png",
+            "02d": "day/cloudy.png",
+            "03d": "day/cloudy.png",
+            "04d": "day/cloudy.png",
+            "09d": "day/rain.png",
+            "10d": "day/rain.png",
+            "11d": "day/thunderstorm.png",
+            "13d": "day/snow.png",
+            "50d": "day/mist.png",
+            
+            // Night Icons
+            "01n": "night/clear.png",
+            "02n": "night/cloudy.png",
+            "03n": "night/cloudy.png",
+            "04n": "night/cloudy.png",
+            "09n": "night/rain.png",
+            "10n": "night/rain.png",
+            "11n": "night/thunderstorm.png",
+            "13n": "night/snow.png",
+            "50n": "night/mist.png"
+        };
+        
+        if (!iconMap[iconCode]) {
+            console.warn("Unknown weather PNG icon code:", iconCode);
+            return "not-available.png";
         }
-        xhr.open("GET", SettingsService.httpBaseUrl + "/api/weather"); 
-        xhr.send();
-    }
-
-    // --- Helper Functions ---
-    function formatTime(timeString) {
-        var date = new Date(timeString);
-        return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        return iconMap[iconCode];
     }
     
-    function formatDate(timeString) {
-        var date = new Date(timeString);
-        return date.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'});
-    }
+    // HTML template for Lottie animations
+    property string lottieHtmlTemplate: '
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: transparent; }
+        #lottie { width: 100%; height: 100%; background-color: transparent; }
+      </style>
+      <script src="file://%LOTTIE_PLAYER_PATH%"></script>
+    </head>
+    <body>
+      <div id="lottie"></div>
+      <script>
+        var animationData = %ANIMATION_DATA%;
+        var animation = lottie.loadAnimation({
+          container: document.getElementById("lottie"),
+          renderer: "svg",
+          loop: true,
+          autoplay: true,
+          animationData: animationData
+        });
+      </script>
+    </body>
+    </html>
+    '
     
-    // Convert Celsius to Fahrenheit
-    function celsiusToFahrenheit(celsius) {
-        if (celsius === null || celsius === undefined) return null;
-        return celsius * 9/5 + 32;
+    // Function to load and parse Lottie JSON file
+    function loadLottieAnimation(webView, iconName) {
+        console.log("Attempting to load Lottie file:", iconName);
+        var filePath = lottieIconsBase + iconName;
+        var xhr = new XMLHttpRequest();
+        try {
+            var fileUrl = "file://" + filePath;
+            xhr.open("GET", fileUrl, false); 
+            xhr.onerror = function() { 
+                console.error("Network error loading Lottie:", filePath); 
+                return; 
+            };
+            xhr.send(null);
+            if (xhr.status === 200) {
+                var jsonContent = xhr.responseText;
+                try {
+                    JSON.parse(jsonContent); // Validate
+                    var htmlContent = lottieHtmlTemplate
+                        .replace("%ANIMATION_DATA%", jsonContent)
+                        .replace("%LOTTIE_PLAYER_PATH%", lottiePlayerPath);
+                    webView.loadHtml(htmlContent, "file:///");
+                    console.log("Updated Lottie animation successfully for", iconName);
+                } catch (e) {
+                    console.error("Error parsing Lottie JSON:", e);
+                }
+            } else {
+                console.error("Error loading Lottie file:", filePath, "Status:", xhr.status);
+            }
+        } catch (e) {
+            console.error("Exception loading Lottie file:", e);
+        }
     }
     
     // Fetch data when the component is ready
@@ -220,7 +393,7 @@ BaseScreen {
         running: false 
         onTriggered: { fetchWeather(); }
     }
-
+    
     // --- Content Area ---
     Flickable { 
         id: weatherFlickable
@@ -269,49 +442,15 @@ BaseScreen {
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
                     
-                    // Fix the MouseArea to not use forecast periods for current weather
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
                             if (currentWeatherData && currentWeatherData.properties) {
-                                // Create a forecast-compatible object for current weather
-                                var tempValue = null;
-                                if (currentWeatherData.properties.temperature && 
-                                    currentWeatherData.properties.temperature.value !== null && 
-                                    currentWeatherData.properties.temperature.value !== undefined) {
-                                    tempValue = celsiusToFahrenheit(currentWeatherData.properties.temperature.value);
-                                    tempValue = tempValue !== null ? tempValue.toFixed(1) : "N/A";
-                                } else {
-                                    tempValue = "N/A";
+                                var currentForecast = createCurrentForecastObject();
+                                if (currentForecast) {
+                                    selectedForecastPeriod = currentForecast;
+                                    detailedForecastDialog.open();
                                 }
-                                
-                                var currentForecast = {
-                                    name: "Current Conditions",
-                                    startTime: currentWeatherData.properties.timestamp,
-                                    endTime: currentWeatherData.properties.timestamp, // Same for current
-                                    temperature: tempValue,
-                                    temperatureUnit: "°F",
-                                    windSpeed: currentWeatherData.properties.windSpeed ? 
-                                              (currentWeatherData.properties.windSpeed.value !== null ?
-                                              currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A") : "N/A",
-                                    windDirection: currentWeatherData.properties.windDirection ? 
-                                                  (currentWeatherData.properties.windDirection.value !== null ?
-                                                  currentWeatherData.properties.windDirection.value + "°" : "N/A") : "N/A",
-                                    icon: currentWeatherData.properties.icon,
-                                    shortForecast: currentWeatherData.properties.textDescription || "N/A",
-                                    detailedForecast: "Temperature: " + tempValue + " °F" +
-                                                     "\nHumidity: " + (currentWeatherData.properties.relativeHumidity && 
-                                                     currentWeatherData.properties.relativeHumidity.value !== null ? 
-                                                     currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") +
-                                                     "\nWind: " + (currentWeatherData.properties.windSpeed && 
-                                                     currentWeatherData.properties.windSpeed.value !== null ? 
-                                                     currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A") +
-                                                     " from " + (currentWeatherData.properties.windDirection && 
-                                                     currentWeatherData.properties.windDirection.value !== null ? 
-                                                     currentWeatherData.properties.windDirection.value + "°" : "N/A")
-                                };
-                                selectedForecastPeriod = currentForecast;
-                                detailedForecastDialog.open();
                             }
                         }
                         cursorShape: Qt.PointingHandCursor
@@ -440,7 +579,6 @@ BaseScreen {
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
                     
-                    // Fix the index to use 0 to get the first forecast period
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
@@ -556,7 +694,6 @@ BaseScreen {
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
                     
-                    // Fix the index to use 1 to get the second forecast period
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
@@ -672,7 +809,6 @@ BaseScreen {
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
                     
-                    // Fix the index to use 2 to get the third forecast period
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
@@ -837,7 +973,7 @@ BaseScreen {
                 forecastData: currentWeatherData && currentWeatherData.forecast && currentWeatherData.forecast.daily ? 
                               currentWeatherData.forecast.daily : []
                 statusMessage: weatherScreen.statusMessage !== "" ? weatherScreen.statusMessage : ""
-                pngIconsBase: weatherScreen.pngIconsBase
+                pngIconsBase: pngIconsBase
                 visible: currentView === "forecast"
                 
                 // Connect to the click signal
@@ -845,111 +981,16 @@ BaseScreen {
                     // For OpenWeatherMap daily forecasts
                     var dayForecast = currentWeatherData.forecast.daily[index];
                     if (dayForecast) {
-                        // Convert to a format similar to forecast periods for consistent display
-                        var convertedForecast = {
-                            name: formatDateToDay(dayForecast.dt),
-                            startTime: new Date(dayForecast.dt * 1000).toISOString(),
-                            endTime: new Date(dayForecast.dt * 1000 + 86400000).toISOString(), // Add 24 hours
-                            temperature: Math.round(dayForecast.temp.max),
-                            temperatureUnit: "°F",
-                            windSpeed: Math.round(dayForecast.wind_speed) + " mph",
-                            windDirection: dayForecast.wind_deg + "°",
-                            icon: pngIconsBase + getWeatherPngIconPath(dayForecast.weather[0].icon, dayForecast.weather[0].description).replace(pngIconsBase, ""),
-                            shortForecast: dayForecast.weather[0].description.charAt(0).toUpperCase() + dayForecast.weather[0].description.slice(1),
-                            detailedForecast: "High: " + Math.round(dayForecast.temp.max) + "°F, Low: " + 
-                                            Math.round(dayForecast.temp.min) + "°F\n" +
-                                            "Chance of precipitation: " + Math.round(dayForecast.pop * 100) + "%\n" +
-                                            "Humidity: " + dayForecast.humidity + "%\n" + 
-                                            "UV Index: " + dayForecast.uvi + "\n" +
-                                            "Sunrise: " + new Date(dayForecast.sunrise * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + "\n" +
-                                            "Sunset: " + new Date(dayForecast.sunset * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-                        };
+                        // We use the helper function from the weather data service
+                        var convertedForecast = convertDailyForecast(dayForecast);
                         selectedForecastPeriod = convertedForecast;
                         detailedForecastDialog.open();
                     }
                 }
             }
-            
-            // Forecast Display (visible when forecast view is selected)
-            ForecastDisplay {
-                id: forecastView
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredHeight: parent.height * 0.85
-                Layout.topMargin: 15
-                Layout.bottomMargin: 40
-                visible: statusMessage === "" && currentView === "forecast"
-                forecastData: forecastPeriods
-                statusMessage: weatherScreen.statusMessage
-                pngIconsBase: weatherScreen.pngIconsBase
-            }
-            
-            // No onStatusMessageChanged handler here
         }
     }
     
-    // HTML template for Lottie animations
-    property string lottieHtmlTemplate: '
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { margin: 0; padding: 0; overflow: hidden; background-color: transparent; }
-        #lottie { width: 100%; height: 100%; background-color: transparent; }
-      </style>
-      <script src="file://%LOTTIE_PLAYER_PATH%"></script>
-    </head>
-    <body>
-      <div id="lottie"></div>
-      <script>
-        var animationData = %ANIMATION_DATA%;
-        var animation = lottie.loadAnimation({
-          container: document.getElementById("lottie"),
-          renderer: "svg",
-          loop: true,
-          autoplay: true,
-          animationData: animationData
-        });
-      </script>
-    </body>
-    </html>
-    '
-    
-    // Function to load and parse Lottie JSON file
-    function loadLottieAnimation(webView, iconName) {
-        console.log("Attempting to load Lottie file:", iconName);
-        var filePath = lottieIconsBase + iconName;
-        var xhr = new XMLHttpRequest();
-        try {
-            var fileUrl = "file://" + filePath;
-            xhr.open("GET", fileUrl, false); 
-            xhr.onerror = function() { 
-                console.error("Network error loading Lottie:", filePath); 
-                return; 
-            };
-            xhr.send(null);
-            if (xhr.status === 200) {
-                var jsonContent = xhr.responseText;
-                try {
-                    JSON.parse(jsonContent); // Validate
-                    var htmlContent = lottieHtmlTemplate
-                        .replace("%ANIMATION_DATA%", jsonContent)
-                        .replace("%LOTTIE_PLAYER_PATH%", lottiePlayerPath);
-                    webView.loadHtml(htmlContent, "file:///");
-                    console.log("Updated Lottie animation successfully for", iconName);
-                } catch (e) {
-                    console.error("Error parsing Lottie JSON:", e);
-                }
-            } else {
-                console.error("Error loading Lottie file:", filePath, "Status:", xhr.status);
-            }
-        } catch (e) {
-            console.error("Exception loading Lottie file:", e);
-        }
-    }
-
     // --- Detailed Forecast Dialog ---
     Dialog {
         id: detailedForecastDialog
@@ -959,127 +1000,62 @@ BaseScreen {
         anchors.centerIn: parent
         modal: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: 15
         
-        // Modern blur effect using MultiEffect from QtQuick.Effects
-        background: Item {
-            anchors.fill: parent
-            
-            // Capture the background for blurring - updated to fix the blur effect
-            ShaderEffectSource {
-                id: effectSource
-                sourceItem: weatherScreen // Use the complete screen as source
-                anchors.fill: parent
-                hideSource: false
-                live: true // Keep it updated
-                // Remove sourceRect as it might be causing issues
-            }
-            
-            // Apply blur effect
-            MultiEffect {
-                id: dialogBlur
-                anchors.fill: parent
-                source: effectSource
-                blurEnabled: true
-                blurMax: 64
-                blur: 0.8 // Slightly reduced blur for better performance
-            }
-            
-            // Semi-transparent colored overlay for better legibility
-            Rectangle {
-                anchors.fill: parent
-                color: ThemeManager.button_primary_color
-                opacity: 0.4 // Increased opacity for better contrast
-                radius: 10
-            }
-            
-            // Border for definition
-            Rectangle {
-                anchors.fill: parent
-                color: "transparent"
-                radius: 10
-                border.width: 1
-                border.color: ThemeManager.button_primary_color
-            }
+        background: Rectangle {
+            color: Qt.rgba(ThemeManager.button_primary_color.r, 
+                          ThemeManager.button_primary_color.g, 
+                          ThemeManager.button_primary_color.b, 0.9)
+            radius: 10
+            border.width: 1
+            border.color: ThemeManager.button_primary_color
         }
         
-        // Style the title for better readability
         header: Rectangle {
-            color: Qt.rgba(ThemeManager.button_primary_color.r * 0.8, 
-                          ThemeManager.button_primary_color.g * 0.8, 
-                          ThemeManager.button_primary_color.b * 0.8, 1.0)
-            height: titleLabel.height + 20
-            radius: 10
-            
-            // Add top highlight for depth
-            Rectangle {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    top: parent.top
-                }
-                height: 1
-                color: Qt.rgba(1, 1, 1, 0.3)
-            }
+            width: parent.width
+            height: 50
+            color: "transparent"
             
             Label {
-                id: titleLabel
+                anchors.centerIn: parent
                 text: detailedForecastDialog.title
                 font.pixelSize: 18
                 font.bold: true
-                color: "white"
-                anchors.centerIn: parent
+                color: ThemeManager.text_primary_color
             }
         }
         
-        // --- Content ---
-        contentItem: Item {
-            anchors.fill: parent
-            
-            Flickable {
-                id: forecastFlickable
-                anchors.fill: parent
-                contentWidth: width
-                contentHeight: Math.max(parent.height, forecastRect.height + 40)
-                clip: true
-                ScrollBar.vertical: ScrollBar {}
-                
-                Rectangle {
-                    id: forecastRect
-                    width: parent.width * 0.95
-                    height: forecastText.height + 40
-                    color: Qt.rgba(1, 1, 1, 0.6) // White with 60% opacity for better readability
-                    radius: 10
-                    border.width: 1 // Add a border for better definition
-                    border.color: Qt.rgba(ThemeManager.button_primary_color.r,
-                                  ThemeManager.button_primary_color.g,
-                                  ThemeManager.button_primary_color.b, 0.4) // Semi-transparent border
-                    anchors.centerIn: parent
-                    
-                    Text {
-                        id: forecastText
-                        width: parent.width - 30
-                        anchors.centerIn: parent
-                        text: selectedForecastPeriod ? selectedForecastPeriod.detailedForecast : ""
-                        font.pixelSize: 16
-                        font.weight: Font.Medium // Slightly bolder for better readability
-                        color: "black" // Use black for maximum contrast on the white background
-                        wrapMode: Text.WordWrap
-                        horizontalAlignment: Text.AlignHCenter
-                        lineHeight: 1.3 // Increase line height for better readability
-                    }
-                }
-            }
-        }
-        
-        // --- Footer ---
-        footer: RowLayout {
+        contentItem: Flickable {
             width: parent.width
-            Item { Layout.fillWidth: true }
+            height: parent.height
+            contentWidth: width
+            contentHeight: Math.max(height, forecastText.height)
+            clip: true
+            ScrollBar.vertical: ScrollBar {}
+            
+            Text {
+                id: forecastText
+                width: parent.width
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: selectedForecastPeriod ? selectedForecastPeriod.detailedForecast : ""
+                font.pixelSize: 16
+                color: ThemeManager.text_primary_color
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+                lineHeight: 1.3
+            }
+        }
+        
+        footer: Rectangle {
+            width: parent.width
+            height: 60
+            color: "transparent"
             
             Button {
                 text: "Close"
-                Layout.preferredWidth: 100
-                Layout.preferredHeight: 40
+                width: 100
+                height: 40
+                anchors.centerIn: parent
                 
                 background: Rectangle {
                     color: ThemeManager.button_primary_color
@@ -1090,7 +1066,7 @@ BaseScreen {
                 
                 contentItem: Text {
                     text: "Close"
-                    color: "white"
+                    color: ThemeManager.button_text_color
                     font.pixelSize: 16
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
@@ -1099,8 +1075,6 @@ BaseScreen {
                 
                 onClicked: detailedForecastDialog.close()
             }
-            
-            Item { Layout.fillWidth: true }
         }
     }
     

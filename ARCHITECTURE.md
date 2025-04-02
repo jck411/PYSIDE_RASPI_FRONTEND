@@ -51,9 +51,8 @@ The WeatherScreen uses:
 - PNG fallback icons
 - National Weather Service (NWS) API for data (previously used OpenWeatherMap)
 
-The screen has been modularized into reusable components with navigation:
-- **WeatherScreen.qml**: Main container component that manages data fetching and screen navigation
-- **CurrentWeather.qml**: Displays current weather conditions with Lottie animations
+The screen is built as a modular component with clear separation of concerns:
+- **WeatherScreen.qml**: Main container component that manages data fetching, UI components, and animations
 - **ForecastDisplay.qml**: Shows multiple day forecast with PNG icons
 - **WeatherControls.qml**: Provides navigation between Current Weather and Forecast views
 
@@ -90,6 +89,7 @@ The application uses modern visual effects for a polished user experience:
   - For optimal blur performance, the implementation uses ShaderEffectSource to capture the entire screen content
   - MultiEffect is configured with appropriate blur parameters for the best balance of visual quality and performance
   - Dialog backgrounds have semi-transparent color overlays to ensure content readability
+  - The detailed weather forecast popup uses a consistent visual style matching the active navigation buttons, with a solid primary button color and matching border
 - **Gradient Overlays**: Semi-transparent gradients are used to create visual depth
 - **Adaptive Theming**: All UI components respect the application's current theme settings
 
