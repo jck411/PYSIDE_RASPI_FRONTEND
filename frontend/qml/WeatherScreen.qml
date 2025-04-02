@@ -15,6 +15,7 @@ BaseScreen {
     property var currentWeatherData: null
     property var forecastPeriods: null
     property string statusMessage: "Loading weather..."
+    property string currentView: "current"  // Add this property to track the current view
     
     // Start the animation timer when status message changes
     onStatusMessageChanged: {
@@ -239,7 +240,7 @@ BaseScreen {
                 wrapMode: Text.WordWrap
             }
 
-            // Weather Sections Container
+            // Current View Container
             RowLayout {
                 id: weatherSectionsContainer
                 Layout.fillWidth: true
@@ -249,7 +250,7 @@ BaseScreen {
                 Layout.bottomMargin: 40  // Add padding equal to icon height
                 Layout.topMargin: 15
                 spacing: 10
-                visible: statusMessage === ""
+                visible: statusMessage === "" && currentView === "current"
                 
                 // Section 1: Current Weather
                 Rectangle {
@@ -737,6 +738,20 @@ BaseScreen {
                         console.log("Waiting for forecast data...");
                     }
                 }
+            }
+            
+            // Forecast Display (visible when forecast view is selected)
+            ForecastDisplay {
+                id: forecastView
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredHeight: parent.height * 0.85
+                Layout.topMargin: 15
+                Layout.bottomMargin: 40
+                visible: statusMessage === "" && currentView === "forecast"
+                forecastData: forecastPeriods
+                statusMessage: weatherScreen.statusMessage
+                pngIconsBase: weatherScreen.pngIconsBase
             }
             
             // No onStatusMessageChanged handler here
