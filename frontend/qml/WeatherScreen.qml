@@ -1003,9 +1003,7 @@ BaseScreen {
         padding: 15
         
         background: Rectangle {
-            color: Qt.rgba(ThemeManager.button_primary_color.r, 
-                          ThemeManager.button_primary_color.g, 
-                          ThemeManager.button_primary_color.b, 0.9)
+            color: ThemeManager.isDarkTheme ? ThemeManager.background_color : ThemeManager.background_color
             radius: 10
             border.width: 1
             border.color: ThemeManager.button_primary_color
