@@ -991,8 +991,25 @@ BaseScreen {
         }
     }
     
+    // --- Shade for Dialog ---
+    Rectangle {
+        id: dialogShade
+        z: 1 // Ensure shade is below dialog
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.5) // Darker semi-transparent black
+        visible: detailedForecastDialog.visible // Show only when dialog is visible
+        // Placed before the Dialog in the QML tree to render behind it.
+
+        MouseArea {
+            anchors.fill: parent
+            // Prevent clicks passing through to elements below the shade
+            onClicked: {} // Empty handler consumes the click
+        }
+    }
+    
     // --- Detailed Forecast Dialog ---
     Dialog {
+        z: 2 // Ensure dialog is above shade
         id: detailedForecastDialog
         title: selectedForecastPeriod ? selectedForecastPeriod.name : "Forecast Details"
         width: parent.width * 0.9
@@ -1019,7 +1036,7 @@ BaseScreen {
                 text: detailedForecastDialog.title
                 font.pixelSize: 18
                 font.bold: true
-                color: ThemeManager.text_primary_color
+                color: ThemeManager.text_primary_color // Already correct, no change needed here
             }
         }
         
@@ -1037,7 +1054,7 @@ BaseScreen {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: selectedForecastPeriod ? selectedForecastPeriod.detailedForecast : ""
                 font.pixelSize: 16
-                color: ThemeManager.text_primary_color
+                color: ThemeManager.text_primary_color // Already correct, no change needed here
                 wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
                 lineHeight: 1.3
@@ -1056,15 +1073,17 @@ BaseScreen {
                 anchors.centerIn: parent
                 
                 background: Rectangle {
-                    color: ThemeManager.button_primary_color
+                    color: Qt.rgba(ThemeManager.button_primary_color.r,
+                                  ThemeManager.button_primary_color.g,
+                                  ThemeManager.button_primary_color.b, 0.3)
                     radius: 8
                     border.width: 1
-                    border.color: Qt.darker(ThemeManager.button_primary_color, 1.2)
+                    border.color: ThemeManager.button_primary_color
                 }
                 
                 contentItem: Text {
                     text: "Close"
-                    color: ThemeManager.button_text_color
+                    color: ThemeManager.text_primary_color
                     font.pixelSize: 16
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter

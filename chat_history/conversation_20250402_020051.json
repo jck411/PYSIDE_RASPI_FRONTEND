@@ -1,0 +1,10 @@
+[
+    {
+        "text": "hello",
+        "isUser": true
+    },
+    {
+        "text": "Well, hello there! What's on your mind?",
+        "isUser": false
+    }
+]
