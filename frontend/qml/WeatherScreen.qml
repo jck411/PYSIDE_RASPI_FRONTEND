@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtWebEngine 1.8
-import QtQuick.Effects
+// import QtGraphicalEffects 1.15 // Reverted due to installation/compatibility issues
 import MyTheme 1.0
 import MyServices 1.0
 
@@ -441,7 +441,7 @@ BaseScreen {
                     Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
-                    
+
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
@@ -578,7 +578,7 @@ BaseScreen {
                     Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
-                    
+
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
@@ -693,7 +693,7 @@ BaseScreen {
                     Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
-                    
+
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
@@ -808,7 +808,7 @@ BaseScreen {
                     Layout.maximumHeight: parent.height
                     color: Qt.rgba(0, 0, 0, 0.1)
                     radius: 10
-                    
+
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
