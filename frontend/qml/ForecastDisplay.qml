@@ -113,10 +113,11 @@ Item {
         Repeater {
             model: forecastData
 
-            delegate: Column {
+            delegate: Item {
                 Layout.fillWidth: true
-                Layout.alignment: Qt.AlignTop 
-                spacing: 5
+                Layout.alignment: Qt.AlignTop
+                height: forecastColumn.height
+                width: forecastColumn.width
                 
                 // Add mouse area for entire forecast item
                 MouseArea {
@@ -126,43 +127,55 @@ Item {
                     }
                     cursorShape: Qt.PointingHandCursor
                 }
+                
+                Column {
+                    id: forecastColumn
+                    width: parent.width
+                    spacing: 5
+                
+                    // Day and Date
+                    Text {
+                        text: formatDateToDay(modelData.dt)
+                        color: ThemeManager.text_primary_color
+                        font.pixelSize: 14 
+                        horizontalAlignment: Text.AlignHCenter
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
 
-                // Day and Date
-                Text {
-                    text: formatDateToDay(modelData.dt)
-                    color: ThemeManager.text_primary_color
-                    font.pixelSize: 14 
-                    horizontalAlignment: Text.AlignHCenter
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
+                    // Weather Icon
+                    Image {
+                        id: forecastIcon
+                        width: 50; height: 50
+                        source: modelData && modelData.weather && modelData.weather.length > 0 ? 
+                                getWeatherPngIconPath(modelData.weather[0].icon, modelData.weather[0].description) :
+                                pngIconsBase + "not-available.png"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        fillMode: Image.PreserveAspectFit
+                        sourceSize.width: 50; sourceSize.height: 50
+                    }
 
-                // Weather Icon
-                Image {
-                    id: forecastIcon
-                    width: 50; height: 50
-                    source: getWeatherPngIconPath(modelData.weather[0].icon, modelData.weather[0].description)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    fillMode: Image.PreserveAspectFit
-                    sourceSize.width: 50; sourceSize.height: 50
-                }
+                    // High / Low Temperature
+                    Text {
+                        text: modelData && modelData.temp ? 
+                              (Math.round(modelData.temp.max || 0) + "° / " + Math.round(modelData.temp.min || 0) + "°") :
+                              "N/A"
+                        color: ThemeManager.text_secondary_color
+                        font.pixelSize: 14
+                        horizontalAlignment: Text.AlignHCenter
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
 
-                // High / Low Temperature
-                Text {
-                    text: Math.round(modelData.temp.max) + "° / " + Math.round(modelData.temp.min) + "°"
-                    color: ThemeManager.text_secondary_color
-                    font.pixelSize: 14
-                    horizontalAlignment: Text.AlignHCenter
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                // Chance of Rain (PoP)
-                Text {
-                    text: Math.round(modelData.pop * 100) + "% rain"
-                    color: ThemeManager.text_secondary_color
-                    font.pixelSize: 12 
-                    horizontalAlignment: Text.AlignHCenter
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    visible: true 
+                    // Chance of Rain (PoP)
+                    Text {
+                        text: modelData && modelData.pop !== undefined ? 
+                              (Math.round(modelData.pop * 100) + "% rain") :
+                              "N/A"
+                        color: ThemeManager.text_secondary_color
+                        font.pixelSize: 12 
+                        horizontalAlignment: Text.AlignHCenter
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: true 
+                    }
                 }
             }
         }

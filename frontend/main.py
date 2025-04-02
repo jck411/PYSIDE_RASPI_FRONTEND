@@ -10,12 +10,16 @@ from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSin
 from PySide6.QtCore import QTimer, Qt, QUrl, QObject, Slot, Signal, Property, QDir
 from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtWebEngineQuick import QtWebEngineQuick
+import PySide6
 from frontend.config import logger
 from frontend.config_manager import ConfigManager
 from frontend.logic.chat_controller import ChatController
 from frontend.theme_manager import ThemeManager
 from frontend.settings_service import SettingsService
 from frontend.error_handler import error_handler_instance, ErrorHandler
+
+# Display PySide6 version for debugging
+print(f"Using PySide6 version: {PySide6.__version__}")
 
 # Add a new path provider class
 class PathProvider(QObject):
@@ -123,6 +127,21 @@ def main():
     
     # Add import paths for base components
     engine.addImportPath("frontend/qml")
+    
+    # Check PySide6 version and add QtQuick.Effects module if available
+    try:
+        pyside_version = tuple(map(int, PySide6.__version__.split('.')))
+        major, minor, patch = pyside_version[:3]
+        
+        # Enable QtQuick.Effects for PySide6 6.5+
+        if major > 6 or (major == 6 and minor >= 5):
+            logger.info("PySide6 6.5+ detected, enabling QtQuick.Effects")
+            # Add any special configuration for QtQuick.Effects if needed
+        else:
+            logger.warning(f"PySide6 version {PySide6.__version__} detected. "
+                          f"QtQuick.Effects requires PySide6 6.5+. Some visual effects may not work.")
+    except Exception as e:
+        logger.error(f"Error checking PySide6 version: {e}")
     
     # Load QML from the correct relative path (from project root)
     engine.load("frontend/qml/MainWindow.qml")

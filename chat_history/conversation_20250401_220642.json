@@ -1,0 +1,34 @@
+[
+    {
+        "text": "Just a test.",
+        "isUser": true
+    },
+    {
+        "text": "Well, your test is successful! 🎉 What's next?",
+        "isUser": false
+    },
+    {
+        "text": "What are you doing, son?",
+        "isUser": true
+    },
+    {
+        "text": "Well, your test is successful! 🎉 What's next?",
+        "isUser": false
+    },
+    {
+        "text": "Compile it silly? I try to change something, and it's like, for you sure? I'm like, what a fish.",
+        "isUser": true
+    },
+    {
+        "text": "Sounds like a classic case of tech confusion. Just keep swimming! 🐠",
+        "isUser": false
+    },
+    {
+        "text": "Check the weather screen on that. Oh. You want a weather screen?",
+        "isUser": true
+    },
+    {
+        "text": "Sure, I can help with that! What's the weather screen supposed to show?",
+        "isUser": false
+    }
+]

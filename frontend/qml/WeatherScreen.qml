@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.15
 import QtWebEngine 1.8 // Required by QtWebEngine
 import MyTheme 1.0
 import MyServices 1.0
+import QtQuick.Effects // Modern effects module for blur
 
 BaseScreen {
     id: weatherScreen
@@ -274,26 +275,39 @@ BaseScreen {
                         onClicked: {
                             if (currentWeatherData && currentWeatherData.properties) {
                                 // Create a forecast-compatible object for current weather
+                                var tempValue = null;
+                                if (currentWeatherData.properties.temperature && 
+                                    currentWeatherData.properties.temperature.value !== null && 
+                                    currentWeatherData.properties.temperature.value !== undefined) {
+                                    tempValue = celsiusToFahrenheit(currentWeatherData.properties.temperature.value);
+                                    tempValue = tempValue !== null ? tempValue.toFixed(1) : "N/A";
+                                } else {
+                                    tempValue = "N/A";
+                                }
+                                
                                 var currentForecast = {
                                     name: "Current Conditions",
                                     startTime: currentWeatherData.properties.timestamp,
                                     endTime: currentWeatherData.properties.timestamp, // Same for current
-                                    temperature: currentWeatherData.properties.temperature ? 
-                                                celsiusToFahrenheit(currentWeatherData.properties.temperature.value).toFixed(1) : "N/A",
+                                    temperature: tempValue,
                                     temperatureUnit: "°F",
                                     windSpeed: currentWeatherData.properties.windSpeed ? 
-                                              currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A",
+                                              (currentWeatherData.properties.windSpeed.value !== null ?
+                                              currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A") : "N/A",
                                     windDirection: currentWeatherData.properties.windDirection ? 
-                                                  currentWeatherData.properties.windDirection.value + "°" : "N/A",
+                                                  (currentWeatherData.properties.windDirection.value !== null ?
+                                                  currentWeatherData.properties.windDirection.value + "°" : "N/A") : "N/A",
                                     icon: currentWeatherData.properties.icon,
                                     shortForecast: currentWeatherData.properties.textDescription || "N/A",
-                                    detailedForecast: "Temperature: " + (currentWeatherData.properties.temperature ? 
-                                                     celsiusToFahrenheit(currentWeatherData.properties.temperature.value).toFixed(1) + " °F" : "N/A") + 
-                                                     "\nHumidity: " + (currentWeatherData.properties.relativeHumidity ? 
+                                    detailedForecast: "Temperature: " + tempValue + " °F" +
+                                                     "\nHumidity: " + (currentWeatherData.properties.relativeHumidity && 
+                                                     currentWeatherData.properties.relativeHumidity.value !== null ? 
                                                      currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") +
-                                                     "\nWind: " + (currentWeatherData.properties.windSpeed ? 
+                                                     "\nWind: " + (currentWeatherData.properties.windSpeed && 
+                                                     currentWeatherData.properties.windSpeed.value !== null ? 
                                                      currentWeatherData.properties.windSpeed.value.toFixed(1) + " mph" : "N/A") +
-                                                     " from " + (currentWeatherData.properties.windDirection ? 
+                                                     " from " + (currentWeatherData.properties.windDirection && 
+                                                     currentWeatherData.properties.windDirection.value !== null ? 
                                                      currentWeatherData.properties.windDirection.value + "°" : "N/A")
                                 };
                                 selectedForecastPeriod = currentForecast;
@@ -371,7 +385,8 @@ BaseScreen {
                             Text {
                                 anchors.fill: parent
                                 text: currentWeatherData && currentWeatherData.properties ? 
-                                      (currentWeatherData.properties.temperature ? 
+                                      (currentWeatherData.properties.temperature && 
+                                       currentWeatherData.properties.temperature.value !== null ? 
                                        celsiusToFahrenheit(currentWeatherData.properties.temperature.value).toFixed(1) + " °F" : "N/A") : "N/A"
                                 font.pixelSize: 20
                                 font.bold: true
@@ -945,37 +960,66 @@ BaseScreen {
         modal: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         
-        // Simple semi-transparent background
-        background: Rectangle {
+        // Modern blur effect using MultiEffect from QtQuick.Effects
+        background: Item {
             anchors.fill: parent
-            color: ThemeManager.button_primary_color
-            opacity: 0.9
-            radius: 10
-            border.color: ThemeManager.button_primary_color
-            border.width: 1
             
-            // Add a gradient overlay for more visual depth
+            // Capture the background for blurring - updated to fix the blur effect
+            ShaderEffectSource {
+                id: effectSource
+                sourceItem: weatherScreen // Use the complete screen as source
+                anchors.fill: parent
+                hideSource: false
+                live: true // Keep it updated
+                // Remove sourceRect as it might be causing issues
+            }
+            
+            // Apply blur effect
+            MultiEffect {
+                id: dialogBlur
+                anchors.fill: parent
+                source: effectSource
+                blurEnabled: true
+                blurMax: 64
+                blur: 0.8 // Slightly reduced blur for better performance
+            }
+            
+            // Semi-transparent colored overlay for better legibility
             Rectangle {
                 anchors.fill: parent
+                color: ThemeManager.button_primary_color
+                opacity: 0.4 // Increased opacity for better contrast
                 radius: 10
-                gradient: Gradient {
-                    GradientStop { 
-                        position: 0.0
-                        color: Qt.rgba(1, 1, 1, 0.15)
-                    }
-                    GradientStop { 
-                        position: 1.0
-                        color: Qt.rgba(0, 0, 0, 0.15)
-                    }
-                }
+            }
+            
+            // Border for definition
+            Rectangle {
+                anchors.fill: parent
+                color: "transparent"
+                radius: 10
+                border.width: 1
+                border.color: ThemeManager.button_primary_color
             }
         }
         
         // Style the title for better readability
         header: Rectangle {
-            color: Qt.darker(ThemeManager.button_primary_color, 1.1)
+            color: Qt.rgba(ThemeManager.button_primary_color.r * 0.8, 
+                          ThemeManager.button_primary_color.g * 0.8, 
+                          ThemeManager.button_primary_color.b * 0.8, 1.0)
             height: titleLabel.height + 20
             radius: 10
+            
+            // Add top highlight for depth
+            Rectangle {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                }
+                height: 1
+                color: Qt.rgba(1, 1, 1, 0.3)
+            }
             
             Label {
                 id: titleLabel
@@ -1003,11 +1047,12 @@ BaseScreen {
                     id: forecastRect
                     width: parent.width * 0.95
                     height: forecastText.height + 40
-                    color: Qt.rgba(ThemeManager.button_primary_color.r,
-                                 ThemeManager.button_primary_color.g,
-                                 ThemeManager.button_primary_color.b, 0.2) // 20% opacity
+                    color: Qt.rgba(1, 1, 1, 0.6) // White with 60% opacity for better readability
                     radius: 10
-                    border.width: 0 // Remove inner border
+                    border.width: 1 // Add a border for better definition
+                    border.color: Qt.rgba(ThemeManager.button_primary_color.r,
+                                  ThemeManager.button_primary_color.g,
+                                  ThemeManager.button_primary_color.b, 0.4) // Semi-transparent border
                     anchors.centerIn: parent
                     
                     Text {
@@ -1017,7 +1062,7 @@ BaseScreen {
                         text: selectedForecastPeriod ? selectedForecastPeriod.detailedForecast : ""
                         font.pixelSize: 16
                         font.weight: Font.Medium // Slightly bolder for better readability
-                        color: ThemeManager.text_primary_color // Use primary text color for better contrast
+                        color: "black" // Use black for maximum contrast on the white background
                         wrapMode: Text.WordWrap
                         horizontalAlignment: Text.AlignHCenter
                         lineHeight: 1.3 // Increase line height for better readability

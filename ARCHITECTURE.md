@@ -12,6 +12,7 @@ PYSIDE_RASPI_FRONTEND/
 │   ├── icons/           # Application icons and images
 │   ├── qml/             # QML UI components and screens
 │   └── main.py          # Application entry point
+├── update_pyside6.sh    # Script to update PySide6 to the latest version
 ```
 
 ## Key Components
@@ -55,13 +56,13 @@ The screen has been modularized into reusable components with navigation:
 - **CurrentWeather.qml**: Displays current weather conditions with Lottie animations
 - **ForecastDisplay.qml**: Shows multiple day forecast with PNG icons
 - **WeatherControls.qml**: Provides navigation between Current Weather and Forecast views
-- **DetailedForecastDialog.qml**: Dialog component that shows detailed forecast information when users click on a weather container
 
 ### Weather UI Interaction
 The Weather screen is interactive, allowing users to:
 - Click on any weather section (current or forecast periods) to view detailed information
 - See extended forecast details in a modal dialog with comprehensive weather data
-- The dialog displays period name, time range, temperature, wind information, and detailed forecast
+- The dialog uses blur effects (via QtQuick.Effects) for a modern, frosted-glass appearance
+- The dialog displays the relevant forecast period's detailed information in a readable format
 
 ### Weather UI Layout
 The Weather screen layout uses a responsive design approach with:
@@ -80,6 +81,21 @@ It uses the PathProvider to load resources with dynamic paths that work across d
 property string lottieIconsBase: PathProvider.getAbsolutePath("frontend/icons/weather/lottie/")
 property string lottiePlayerPath: PathProvider.getAbsolutePath("frontend/assets/js/lottie.min.js")
 property string pngIconsBase: "file://" + PathProvider.getAbsolutePath("frontend/icons/weather/PNG/")
+```
+
+## Visual Effects
+The application uses modern visual effects for a polished user experience:
+
+- **Blur Effects**: The application uses QtQuick.Effects (available in PySide6 6.5+) to implement blur effects for modal dialogs and popovers
+  - For optimal blur performance, the implementation uses ShaderEffectSource to capture the entire screen content
+  - MultiEffect is configured with appropriate blur parameters for the best balance of visual quality and performance
+  - Dialog backgrounds have semi-transparent color overlays to ensure content readability
+- **Gradient Overlays**: Semi-transparent gradients are used to create visual depth
+- **Adaptive Theming**: All UI components respect the application's current theme settings
+
+To enable these visual effects, the application requires PySide6 6.5 or later. A script is provided to upgrade to the latest version:
+```bash
+./update_pyside6.sh
 ```
 
 The weather data is fetched from the National Weather Service API and then formatted to be compatible with the existing frontend UI structure. The backend handles the mapping of NWS weather icons and descriptions to the appropriate visual elements.
