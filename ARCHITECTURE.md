@@ -60,7 +60,9 @@ The PhotoScreen provides a slideshow of images and videos directly within the in
   - Uses Image component for displaying photos with smooth transitions
   - Uses QtMultimedia 6.0 for video playback with MediaPlayer and VideoOutput components
   - Displays an initial photo immediately upon loading the screen
-  - Features a gradient background with framed content for a more polished look
+  - Features a theme-adaptive gradient background that changes based on the current theme:
+    - In dark mode: The background starts with the navigation bar color and fades to black
+    - In light mode: The background starts with the navigation bar color and fades to #565f89
   - Automatically advances slideshows for images
   - Includes touch/click functionality for manual navigation (for images)
   - Shows overlay information about the current media item

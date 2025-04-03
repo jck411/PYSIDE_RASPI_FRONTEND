@@ -44,12 +44,18 @@ Item {
         }
     }
     
-    // Create a nice gradient background
+    // Create a background that adapts to theme
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.8) }
-            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.5) }
+            GradientStop { 
+                position: 0.0; 
+                color: ThemeManager.background_color 
+            }
+            GradientStop { 
+                position: 1.0; 
+                color: ThemeManager.is_dark_mode ? "#000000" : "#1a1b26" 
+            }
         }
     }
 
