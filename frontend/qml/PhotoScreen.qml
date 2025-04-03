@@ -29,9 +29,14 @@ Item {
         // Go up the parent chain until we find the Window
         while (component) {
             // Check if this is the main window (has the topBarTransparent property)
-            if (component.topBarTransparent !== undefined) {
+            // We need a reliable property. Let's assume MainWindow has an 'id: mainWindow'
+            if (component.objectName === "mainWindow") { // Check objectName instead
                 return component;
             }
+            // Check if this is the main window (has the topBarTransparent property) - Reverted this check
+            // if (component.topBarTransparent !== undefined) {
+            //     return component;
+            // }
             component = component.parent;
         }
         return null;
@@ -40,14 +45,14 @@ Item {
     Component.onCompleted: {
         console.log("PhotoScreen loaded")
         
-        // Try to get the mainWindow
-        var mainWindow = getMainWindow();
-        if (mainWindow) {
-            console.log("Found mainWindow, setting topBarTransparent to true");
-            mainWindow.topBarTransparent = true;
-        } else {
-            console.log("Could not find mainWindow");
-        }
+        // Try to get the mainWindow - No longer needed for topBarTransparent
+        // var mainWindow = getMainWindow();
+        // if (mainWindow) {
+        //     console.log("Found mainWindow, setting topBarTransparent to true");
+        //     mainWindow.topBarTransparent = true;
+        // } else {
+        //     console.log("Could not find mainWindow");
+        // }
         
         // Load the controller and request the initial media item
         PhotoController.start_slideshow()
@@ -62,12 +67,12 @@ Item {
     Component.onDestruction: {
         console.log("PhotoScreen unloading")
         try {
-            // Restore topBar to non-transparent
-            var mainWindow = getMainWindow();
-            if (mainWindow) {
-                console.log("Found mainWindow, setting topBarTransparent to false");
-                mainWindow.topBarTransparent = false;
-            }
+            // Restore topBar to non-transparent - No longer needed
+            // var mainWindow = getMainWindow();
+            // if (mainWindow) {
+            //     console.log("Found mainWindow, setting topBarTransparent to false");
+            //     mainWindow.topBarTransparent = false;
+            // }
             
             if (showingVideo && mediaPlayer) {
                 mediaPlayer.stop()
@@ -108,17 +113,12 @@ Item {
         source: currentBlurredBackground ? "file://" + currentBlurredBackground : ""
         fillMode: Image.PreserveAspectCrop
         
-        // Very light overlay for better contrast with white text, if needed
-        Rectangle {
-            anchors.fill: parent
-            color: "#20000000"  // Very light semi-transparent black overlay (12.5% opacity)
-            visible: parent.status === Image.Ready
-        }
+        // Overlay removed
     }
 
     Rectangle {
         anchors.fill: parent
-        anchors.margins: 10 // Add margins for a framed look
+        // anchors.margins: 10 // Removed margins to allow full height fill
         color: "transparent"
 
         // Image component - shown when displaying photos
@@ -126,7 +126,7 @@ Item {
             id: photoImage
             visible: !showingVideo
             anchors.fill: parent
-            fillMode: Image.PreserveAspectFit
+            fillMode: Image.PreserveAspectFit // Reverted to fit without cropping
             asynchronous: true
             cache: false
             
@@ -213,7 +213,7 @@ Item {
                 anchors.centerIn: parent
                 text: currentDateText
                 color: "#565f89"
-                font.pixelSize: 18
+                font.pixelSize: 14 // Keep the smaller font size
                 font.family: "Arial"
                 font.bold: true
             }
@@ -253,7 +253,8 @@ Item {
                 mediaPlayer.play()
             } else {
                 // Handle image
-                mediaPlayer.stop()
+                mediaPlayer.stop() // Stop video if switching to image
+                videoTimer.stop()  // Stop fallback timer
                 currentImagePath = mediaPath
                 photoImage.source = "file://" + mediaPath
             }
@@ -261,7 +262,7 @@ Item {
         
         function onBlurredBackgroundChanged(blurredPath) {
             console.log("Blurred background updated:", blurredPath)
-            currentBlurredBackground = blurredPath
+            currentBlurredBackground = blurredPath // Update local property for the internal background Image
         }
         
         function onDateTextChanged(dateText) {
