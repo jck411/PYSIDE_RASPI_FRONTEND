@@ -45,14 +45,7 @@ Item {
     Component.onCompleted: {
         console.log("PhotoScreen loaded")
         
-        // Try to get the mainWindow - No longer needed for topBarTransparent
-        // var mainWindow = getMainWindow();
-        // if (mainWindow) {
-        //     console.log("Found mainWindow, setting topBarTransparent to true");
-        //     mainWindow.topBarTransparent = true;
-        // } else {
-        //     console.log("Could not find mainWindow");
-        // }
+        // Transparency logic moved to MainWindow
         
         // Load the controller and request the initial media item
         PhotoController.start_slideshow()
@@ -67,12 +60,7 @@ Item {
     Component.onDestruction: {
         console.log("PhotoScreen unloading")
         try {
-            // Restore topBar to non-transparent - No longer needed
-            // var mainWindow = getMainWindow();
-            // if (mainWindow) {
-            //     console.log("Found mainWindow, setting topBarTransparent to false");
-            //     mainWindow.topBarTransparent = false;
-            // }
+            // Transparency logic moved to MainWindow
             
             if (showingVideo && mediaPlayer) {
                 mediaPlayer.stop()
@@ -126,7 +114,7 @@ Item {
             id: photoImage
             visible: !showingVideo
             anchors.fill: parent
-            fillMode: Image.PreserveAspectFit // Reverted to fit without cropping
+            fillMode: Image.PreserveAspectCrop // Fill the full screen area, cropping if needed
             asynchronous: true
             cache: false
             
