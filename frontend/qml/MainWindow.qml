@@ -14,11 +14,8 @@ Window {
     width: 800
     height: 480
     color: ThemeManager.background_color
-    // Remove direct bindings for visibility and flags
-    // visibility: SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false) ? Window.FullScreen : Window.Windowed
-    // flags: SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false) ? Qt.FramelessWindowHint | Qt.Window : Qt.Window
-    title: "" // Initial title can be empty
-    visible: true // Start visible
+    title: qsTr("PiPhoto")
+    visible: true
     
     // Property to track current screen
     property var currentScreen: null
@@ -33,13 +30,14 @@ Window {
             mainWindow.showNormal()
             // Initial title will be set by onCurrentItemChanged when StackView loads
         }
+        PhotoController.set_dark_mode(ThemeManager.is_dark_mode)
     }
     
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
         
-        // Simplified top bar with single RowLayout
+        // Top navigation bar
         Rectangle {
             id: topBar
             height: 50
@@ -50,7 +48,7 @@ Window {
                 anchors.fill: parent
                 anchors.leftMargin: 10
                 anchors.rightMargin: 30
-                spacing: 5  // Significantly reduced spacing between buttons
+                spacing: 5
                 
                 // Screen-specific controls
                 Loader {
@@ -71,7 +69,7 @@ Window {
                     Layout.preferredWidth: 50
                 } // Spacer
                 
-                // Navigation icons using the new TouchFriendlyButton
+                // Navigation icons
                 TouchFriendlyButton {
                     id: chatButton
                     source: "../icons/chat.svg"
@@ -210,6 +208,14 @@ Window {
                     }
                 }
             }
+        }
+    }
+
+    // Connect ThemeManager to PhotoController
+    Connections {
+        target: ThemeManager
+        function onIsDarkModeChanged() {
+            PhotoController.set_dark_mode(ThemeManager.is_dark_mode)
         }
     }
 }

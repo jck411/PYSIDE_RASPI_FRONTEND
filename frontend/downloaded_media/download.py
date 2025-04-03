@@ -3,6 +3,9 @@ import os
 import sys
 import pickle
 import requests
+import json
+from PIL import Image, ImageFilter, ImageEnhance
+from datetime import datetime
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -14,6 +17,7 @@ CREDENTIALS_PATH = '/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/google_photos_cred
 TOKEN_PICKLE = 'token.pickle'
 ALBUM_NAME = 'test'  # Change this to your desired album title.
 DOWNLOAD_DIR = '/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/frontend/downloaded_media'
+METADATA_FILE = os.path.join(DOWNLOAD_DIR, 'photo_metadata.json')
 
 def authenticate_google_photos():
     """Authenticate with Google Photos using OAuth2."""
@@ -64,7 +68,100 @@ def fetch_all_media_items(service, album_id):
             break
     return all_items
 
-def download_media_item(media, download_dir):
+def create_blurred_background(image_path):
+    """
+    Create a blurred background version of the image
+    
+    Args:
+        image_path: Path to the original image
+        
+    Returns:
+        Path to the blurred image
+    """
+    try:
+        # Skip if not an image
+        if not image_path.lower().endswith(('.jpg', '.jpeg', '.png')):
+            print(f"Skipping non-image file for blur: {image_path}")
+            return None
+            
+        # Create output path for the blurred image
+        filename = os.path.basename(image_path)
+        name, ext = os.path.splitext(filename)
+        # Always use JPG for blurred backgrounds (no need for transparency)
+        blurred_filename = f"{name}_blurred.jpg"
+        blurred_path = os.path.join(os.path.dirname(image_path), blurred_filename)
+        
+        # Check if blurred version already exists
+        if os.path.exists(blurred_path):
+            print(f"Blurred background already exists: {blurred_path}")
+            return blurred_path
+            
+        # Open the image
+        print(f"Creating blurred background for: {image_path}")
+        img = Image.open(image_path)
+        
+        # Convert to RGB mode if needed
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        # Create a low-resolution version first (for faster processing)
+        small_size = (20, 20)
+        small = img.resize(small_size, Image.LANCZOS)
+        
+        # Scale back up to create pixelation effect
+        blurred = small.resize(img.size, Image.LANCZOS)
+        
+        # Apply additional Gaussian blur
+        blurred = blurred.filter(ImageFilter.GaussianBlur(radius=5))
+        
+        # Darken the image for better contrast with foreground content
+        enhancer = ImageEnhance.Brightness(blurred)
+        blurred = enhancer.enhance(0.7)  # 70% brightness
+        
+        # Save the blurred image
+        blurred.save(blurred_path, quality=90)
+        print(f"Saved blurred background to: {blurred_path}")
+        
+        return blurred_path
+            
+    except Exception as e:
+        print(f"Error creating blurred background for {image_path}: {e}")
+        return None
+
+def format_creation_date(creation_time):
+    """Format creation date to a user-friendly string."""
+    if not creation_time:
+        return ""
+    
+    try:
+        # Parse the ISO date string from Google Photos
+        dt = datetime.fromisoformat(creation_time.replace("Z", "+00:00"))
+        # Format as "Thursday, April 3, 2025"
+        return dt.strftime("%A, %B %-d, %Y")
+    except Exception as e:
+        print(f"Error formatting date {creation_time}: {e}")
+        return ""
+
+def save_metadata(metadata_dict):
+    """Save metadata to a JSON file."""
+    try:
+        with open(METADATA_FILE, 'w') as f:
+            json.dump(metadata_dict, f, indent=2)
+        print(f"Saved metadata to {METADATA_FILE}")
+    except Exception as e:
+        print(f"Error saving metadata: {e}")
+
+def load_metadata():
+    """Load metadata from the JSON file if it exists."""
+    if os.path.exists(METADATA_FILE):
+        try:
+            with open(METADATA_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading metadata: {e}")
+    return {}
+
+def download_media_item(media, download_dir, metadata_dict):
     """
     Download a media item (image or video) to the specified folder.
     For images, saves as JPEG; for videos, saves as MP4.
@@ -82,8 +179,24 @@ def download_media_item(media, download_dir):
     
     filename = media.get('id') + ext
     file_path = os.path.join(download_dir, filename)
+    
+    # Extract and format the creation date/time
+    creation_time = media.get('mediaMetadata', {}).get('creationTime', '')
+    formatted_date = format_creation_date(creation_time)
+    
+    # Store the metadata
+    metadata_dict[filename] = {
+        'date': formatted_date,
+        'title': media.get('filename', ''),
+        'description': media.get('description', ''),
+        'creation_time': creation_time
+    }
+    
     if os.path.exists(file_path):
         print("File exists:", file_path)
+        # For images, create blurred background if it doesn't exist yet
+        if mime.startswith("image/"):
+            create_blurred_background(file_path)
         return file_path
     try:
         print("Downloading media from:", url)
@@ -94,6 +207,11 @@ def download_media_item(media, download_dir):
                     if chunk:
                         f.write(chunk)
             print("Downloaded", file_path)
+            
+            # For images, create a blurred background version
+            if mime.startswith("image/"):
+                create_blurred_background(file_path)
+                
             return file_path
         else:
             print("Failed to download", url, "Status code:", response.status_code)
@@ -107,11 +225,19 @@ def download_all_media_items(service, album, download_dir):
     album_id = album.get('id')
     media_items = fetch_all_media_items(service, album_id)
     print("Found", len(media_items), "media items in album", album.get('title'))
+    
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
+    
+    # Load existing metadata
+    metadata_dict = load_metadata()
+    
     for media in media_items:
         if media.get('mimeType', '').startswith("image/") or media.get('mimeType', '').startswith("video/"):
-            download_media_item(media, download_dir)
+            download_media_item(media, download_dir, metadata_dict)
+    
+    # Save updated metadata
+    save_metadata(metadata_dict)
 
 def main():
     creds = authenticate_google_photos()

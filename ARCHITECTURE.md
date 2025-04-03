@@ -55,14 +55,28 @@ The PhotoScreen provides a slideshow of images and videos directly within the in
   - Provides signals for media changes and slideshow state
   - Includes methods for manual navigation (next/previous)
   - Special handling for videos to ensure they play to completion before advancing
+  - Creates blurred background versions of images for an aesthetic display
+  - Emits signals when blurred backgrounds are ready for the UI to display
+
+- **PhotoProcessor**: Python class for advanced image processing
+  - Applies effects to images such as shadows and frames
+  - Creates blurred background images using PIL/Pillow
+  - Implements a multi-step blur process:
+    1. Downsampling the image to a small size (20x20 pixels)
+    2. Rescaling back up to create a pixelation effect
+    3. Applying Gaussian blur for smoothing
+    4. Darkening the result for better contrast with foreground content
+  - Caches processed images to improve performance
+  - Uses tempfile directory for storing cached images
 
 - **PhotoScreen.qml**: QML component that displays both images and videos
   - Uses Image component for displaying photos with smooth transitions
   - Uses QtMultimedia 6.0 for video playback with MediaPlayer and VideoOutput components
   - Displays an initial photo immediately upon loading the screen
-  - Features a theme-adaptive gradient background that changes based on the current theme:
-    - In dark mode: The background starts with the navigation bar color and fades to black
-    - In light mode: The background starts with the navigation bar color and fades to #565f89
+  - Features a Python-generated blurred background for photos:
+    - Uses the current image, blurred and darkened for an aesthetic background
+    - Falls back to a theme-adaptive gradient background when no image is available
+    - Handles transitions between images with synchronized background changes
   - Automatically advances slideshows for images
   - Includes touch/click functionality for manual navigation (for images)
   - Shows overlay information about the current media item
@@ -76,7 +90,7 @@ The PhotoScreen provides a slideshow of images and videos directly within the in
   - Back button to return to the previous screen
 
 The implementation follows a clean separation of concerns:
-- Python handles the media file management and slideshow logic
+- Python handles the media file management, image processing, and slideshow logic
 - QML handles the display of media and user interaction
 - The controller coordinates the interaction between the UI and the media files
 

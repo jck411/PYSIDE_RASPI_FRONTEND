@@ -2,11 +2,14 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtMultimedia 6.0
+import QtQuick.Window 2.15
+import QtQml 2.15
 import MyTheme 1.0
 import MyServices 1.0
 
 Item {
     id: photoScreen
+    objectName: "photoScreen"  // Add an object name so MainWindow can identify this screen
     
     // Property to tell MainWindow which controls to load
     property string screenControls: "PhotoControls.qml"
@@ -14,9 +17,38 @@ Item {
     // Track if showing video
     property bool showingVideo: false
     property string currentVideoPath: ""
+    property string currentImagePath: ""
+    property string currentBlurredBackground: ""
+    property string currentDateText: ""
+    
+    // Get reference to the mainWindow
+    function getMainWindow() {
+        // Start with this component
+        var component = photoScreen;
+        
+        // Go up the parent chain until we find the Window
+        while (component) {
+            // Check if this is the main window (has the topBarTransparent property)
+            if (component.topBarTransparent !== undefined) {
+                return component;
+            }
+            component = component.parent;
+        }
+        return null;
+    }
     
     Component.onCompleted: {
         console.log("PhotoScreen loaded")
+        
+        // Try to get the mainWindow
+        var mainWindow = getMainWindow();
+        if (mainWindow) {
+            console.log("Found mainWindow, setting topBarTransparent to true");
+            mainWindow.topBarTransparent = true;
+        } else {
+            console.log("Could not find mainWindow");
+        }
+        
         // Load the controller and request the initial media item
         PhotoController.start_slideshow()
         
@@ -30,6 +62,13 @@ Item {
     Component.onDestruction: {
         console.log("PhotoScreen unloading")
         try {
+            // Restore topBar to non-transparent
+            var mainWindow = getMainWindow();
+            if (mainWindow) {
+                console.log("Found mainWindow, setting topBarTransparent to false");
+                mainWindow.topBarTransparent = false;
+            }
+            
             if (showingVideo && mediaPlayer) {
                 mediaPlayer.stop()
             }
@@ -44,9 +83,11 @@ Item {
         }
     }
     
-    // Create a background that adapts to theme
+    // Create a background that adapts to theme - fallback when no image is loaded
     Rectangle {
+        id: fallbackBackground
         anchors.fill: parent
+        visible: !backgroundImage.visible
         gradient: Gradient {
             GradientStop { 
                 position: 0.0; 
@@ -56,6 +97,22 @@ Item {
                 position: 1.0; 
                 color: ThemeManager.is_dark_mode ? "#000000" : "#1a1b26" 
             }
+        }
+    }
+    
+    // Blurred background image - shown when displaying photos
+    Image {
+        id: backgroundImage
+        anchors.fill: parent
+        visible: source != "" && !showingVideo
+        source: currentBlurredBackground ? "file://" + currentBlurredBackground : ""
+        fillMode: Image.PreserveAspectCrop
+        
+        // Very light overlay for better contrast with white text, if needed
+        Rectangle {
+            anchors.fill: parent
+            color: "#20000000"  // Very light semi-transparent black overlay (12.5% opacity)
+            visible: parent.status === Image.Ready
         }
     }
 
@@ -136,23 +193,28 @@ Item {
             font.bold: true
         }
         
-        // Content information overlay - shown at bottom of screen
+        // Date display (bottom left) - shown when displaying photos
         Rectangle {
+            id: dateTextBackground
+            visible: currentDateText !== "" && (photoImage.status === Image.Ready || showingVideo)
             anchors.left: parent.left
-            anchors.right: parent.right
             anchors.bottom: parent.bottom
-            height: 40
-            color: Qt.rgba(0, 0, 0, 0.5) // Semi-transparent background
-            visible: photoImage.status === Image.Ready || showingVideo
-            radius: 5
+            anchors.leftMargin: 20
+            anchors.bottomMargin: 20
+            color: Qt.rgba(0, 0, 0, 0.5)  // Simple semi-transparent background
+            radius: 4
+            border.width: 1
+            border.color: "#565f89"
+            width: dateText.width + 20
+            height: dateText.height + 10
             
             Text {
-                id: mediaInfoText
-                anchors.fill: parent
-                anchors.margins: 10
-                color: "white"
-                elide: Text.ElideMiddle
-                font.pixelSize: 14
+                id: dateText
+                anchors.centerIn: parent
+                text: currentDateText
+                color: "#565f89"
+                font.pixelSize: 18
+                font.family: "Arial"
                 font.bold: true
             }
         }
@@ -189,14 +251,22 @@ Item {
                 console.log("Setting video source:", "file://" + mediaPath)
                 mediaPlayer.source = "file://" + mediaPath
                 mediaPlayer.play()
-                
-                mediaInfoText.text = "Video: " + mediaPath.split('/').pop()
             } else {
                 // Handle image
                 mediaPlayer.stop()
+                currentImagePath = mediaPath
                 photoImage.source = "file://" + mediaPath
-                mediaInfoText.text = "Photo: " + mediaPath.split('/').pop()
             }
+        }
+        
+        function onBlurredBackgroundChanged(blurredPath) {
+            console.log("Blurred background updated:", blurredPath)
+            currentBlurredBackground = blurredPath
+        }
+        
+        function onDateTextChanged(dateText) {
+            console.log("Date text updated:", dateText)
+            currentDateText = dateText
         }
     }
 }
