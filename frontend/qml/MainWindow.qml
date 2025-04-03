@@ -118,6 +118,8 @@ Window {
     } // End ColumnLayout
     // --- End Main Layout ---
 
+    // Exit signal connection removed
+
     // --- Floating Screen Controls Loader ---
     Loader { // Positioned absolutely, outside ColumnLayout
         id: screenControlsLoader
@@ -132,7 +134,11 @@ Window {
         onStatusChanged: {
             if (status === Loader.Ready && item) {
                 // Ensure stackView is accessible, might need mainWindow.stackView if scope is tricky
-                item.screen = stackView.currentItem 
+                item.screen = stackView.currentItem
+                // Pass the main stackView reference to the loaded controls if property exists
+                if (item.hasOwnProperty("mainStackView")) {
+                    item.mainStackView = stackView;
+                }
             }
         }
     }

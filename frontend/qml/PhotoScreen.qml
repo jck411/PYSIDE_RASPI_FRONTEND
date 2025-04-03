@@ -8,6 +8,7 @@ import MyTheme 1.0
 import MyServices 1.0
 
 Item {
+    // exitRequested signal removed
     id: photoScreen
     objectName: "photoScreen"  // Add an object name so MainWindow can identify this screen
     
@@ -195,11 +196,13 @@ Item {
         Rectangle {
             id: dateTextBackground
             visible: currentDateText !== "" && (photoImage.status === Image.Ready || showingVideo)
-            anchors.left: parent.left
+            // anchors.left: parent.left // Removed left anchor
+            anchors.right: parent.right // Added right anchor
             anchors.bottom: parent.bottom
-            anchors.leftMargin: 20
+            // anchors.leftMargin: 20 // Removed left margin
+            anchors.rightMargin: 20 // Added right margin
             anchors.bottomMargin: 20
-            color: Qt.rgba(0, 0, 0, 0.5)  // Original dark semi-transparent background
+            color: "transparent" // Remove background color
             radius: 4
             border.width: 0 // Remove border
             // border.color: "#565f89" // No longer needed
@@ -210,10 +213,12 @@ Item {
                 id: dateText
                 anchors.centerIn: parent
                 text: currentDateText
-                color: "#565f89"
+                color: "#FFFFFF" // Make text white for better contrast with outline
                 font.pixelSize: 14 // Keep the smaller font size
                 font.family: "Arial"
                 font.bold: true
+                style: Text.Outline // Add outline style
+                styleColor: "#000000" // Black outline color
             }
         }
         
@@ -256,7 +261,7 @@ Item {
                 currentImagePath = mediaPath
                 photoImage.source = "file://" + mediaPath
             }
-        }
+        } // End of onCurrentMediaChanged function
         
         function onBlurredBackgroundChanged(blurredPath) {
             console.log("Blurred background updated:", blurredPath)
@@ -267,5 +272,7 @@ Item {
             console.log("Date text updated:", dateText)
             currentDateText = dateText
         }
-    }
-}
+    } // End Connections
+
+    // Exit button moved to PhotoControls.qml
+} // End main Item (photoScreen)

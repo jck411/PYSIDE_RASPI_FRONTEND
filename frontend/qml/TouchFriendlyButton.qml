@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import MyTheme 1.0
+// QtQuick.Effects import removed
 
 Item {
     id: root
@@ -44,7 +45,12 @@ Item {
         height: 24
         sourceSize.width: 24
         sourceSize.height: 24
+        
+        // layer.enabled removed
+        // layer.effect removed
     }
+    
+    // DropShadow effect removed
     
     // Touch area with ripple effect
     MouseArea {
