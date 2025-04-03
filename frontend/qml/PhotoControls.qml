@@ -6,21 +6,29 @@ import MyTheme 1.0
 
 RowLayout {
     id: photoControls
-    spacing: 8
+    spacing: 10
     
     property var screen
     
     // Previous button
-    Button {
+    TouchFriendlyButton {
+        id: previousButton
+        source: "../icons/chevron_left.svg"
         text: "Previous"
+        implicitWidth: 60
+        implicitHeight: 40
         onClicked: {
             PhotoController.go_to_previous()
         }
     }
     
     // Play/Pause button
-    Button {
+    TouchFriendlyButton {
+        id: playPauseButton
+        source: PhotoController.is_running ? "../icons/pause_presentation.svg" : "../icons/play_circle.svg"
         text: PhotoController.is_running ? "Pause" : "Play"
+        implicitWidth: 60
+        implicitHeight: 40
         onClicked: {
             if (PhotoController.is_running) {
                 PhotoController.stop_slideshow()
@@ -29,18 +37,23 @@ RowLayout {
             }
         }
         
-        // Update button text based on slideshow state
+        // Update button text and icon based on slideshow state
         Connections {
             target: PhotoController
             function onSlideshowRunningChanged(running) {
-                parent.text = running ? "Pause" : "Play"
+                playPauseButton.source = running ? "../icons/pause_presentation.svg" : "../icons/play_circle.svg"
+                playPauseButton.text = running ? "Pause" : "Play"
             }
         }
     }
     
     // Next button
-    Button {
+    TouchFriendlyButton {
+        id: nextButton
+        source: "../icons/chevron_right.svg"
         text: "Next"
+        implicitWidth: 60
+        implicitHeight: 40
         onClicked: {
             PhotoController.advance_to_next()
         }
@@ -52,8 +65,12 @@ RowLayout {
     }
     
     // Back button
-    Button {
+    TouchFriendlyButton {
+        id: backButton
+        source: "../icons/back.svg"
         text: "Back"
+        implicitWidth: 60
+        implicitHeight: 40
         onClicked: {
             // Navigate back to the previous screen
             if (screen && screen.stackView) {
