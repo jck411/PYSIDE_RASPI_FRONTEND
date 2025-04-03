@@ -41,9 +41,8 @@ class PhotoProcessor(QObject):
             # Check if we already have a cached version - fix the cache key naming
             filename = os.path.basename(image_path)
             name, ext = os.path.splitext(filename)
-            theme_suffix = "dark" if is_dark_mode else "light"
-            # Always use PNG for output since we're adding transparency
-            cache_key = f"{name}_{theme_suffix}.png"
+            # Always use PNG for output since we ensure RGBA
+            cache_key = f"{name}.png" # Simplified cache key, shadow removed
             cached_path = os.path.join(self.cache_dir, cache_key)
             
             # Return cached version if it exists
@@ -60,28 +59,14 @@ class PhotoProcessor(QObject):
                 logger.info(f"Converting image from {img.mode} to RGBA")
                 img = img.convert('RGBA')
                 
-            # Create a larger canvas for the shadow
-            shadow_width = img.width + 20
-            shadow_height = img.height + 20
-            shadow = Image.new('RGBA', (shadow_width, shadow_height), (0, 0, 0, 0))
-            
-            # Create the shadow layer (black with transparency)
-            shadow_layer = Image.new('RGBA', img.size, (0, 0, 0, 100 if is_dark_mode else 60))
-            
-            # Apply blur to the shadow
-            shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(radius=10))
-            
-            # Paste the shadow
-            shadow.paste(shadow_layer, (10, 10), shadow_layer)
-            
-            # Paste the original image on top
-            shadow.paste(img, (0, 0), img)
+            # Shadow creation steps removed. We just use the 'img' (converted to RGBA).
+            processed_image = img
             
             # Save the processed image to cache
             logger.info(f"Saving processed image to: {cached_path}")
-            shadow.save(cached_path)
+            processed_image.save(cached_path)
             
-            logger.info(f"Successfully added shadow effect to {image_path}")
+            logger.info(f"Saved processed (no shadow) image to {cached_path}")
             return cached_path
             
         except Exception as e:

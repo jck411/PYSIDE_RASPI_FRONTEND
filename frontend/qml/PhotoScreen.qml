@@ -96,16 +96,26 @@ Item {
     // Blurred background image - shown when displaying photos
     Image {
         id: backgroundImage
-        anchors.fill: parent
+        // anchors.fill: parent // Replaced with specific anchors
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.topMargin: -50 // Pull up by topBar height
+        height: parent.height + 50 // Increase height to compensate
         visible: source != "" && !showingVideo
         source: currentBlurredBackground ? "file://" + currentBlurredBackground : ""
-        fillMode: Image.PreserveAspectCrop
+        fillMode: Image.PreserveAspectCrop // Crop the background to fill
         
-        // Overlay removed
+        // Note: The dark overlay was previously removed here.
     }
 
     Rectangle {
-        anchors.fill: parent
+        // anchors.fill: parent // Replaced with specific anchors
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.topMargin: -50 // Pull up by topBar height
+        height: parent.height + 50 // Increase height to compensate
         // anchors.margins: 10 // Removed margins to allow full height fill
         color: "transparent"
 
@@ -114,7 +124,7 @@ Item {
             id: photoImage
             visible: !showingVideo
             anchors.fill: parent
-            fillMode: Image.PreserveAspectCrop // Fill the full screen area, cropping if needed
+            fillMode: Image.PreserveAspectFit // Fit the image without cropping
             asynchronous: true
             cache: false
             
@@ -189,10 +199,10 @@ Item {
             anchors.bottom: parent.bottom
             anchors.leftMargin: 20
             anchors.bottomMargin: 20
-            color: Qt.rgba(0, 0, 0, 0.5)  // Simple semi-transparent background
+            color: Qt.rgba(0, 0, 0, 0.5)  // Original dark semi-transparent background
             radius: 4
-            border.width: 1
-            border.color: "#565f89"
+            border.width: 0 // Remove border
+            // border.color: "#565f89" // No longer needed
             width: dateText.width + 20
             height: dateText.height + 10
             
