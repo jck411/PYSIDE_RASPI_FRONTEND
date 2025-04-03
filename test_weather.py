@@ -13,20 +13,23 @@ base_url = "https://api.weather.gov"
 # Required headers: /points endpoint uses JSON-LD; others use JSON.
 headers_points = {
     "User-Agent": "WeatherTerminalApp/1.0 (youremail@example.com)",
-    "Accept": "application/ld+json"
+    "Accept": "application/ld+json",
 }
 headers_json = {
     "User-Agent": "WeatherTerminalApp/1.0 (youremail@example.com)",
-    "Accept": "application/json"
+    "Accept": "application/json",
 }
+
 
 def c_to_f(c):
     """Convert Celsius to Fahrenheit."""
-    return c * 9/5 + 32
+    return c * 9 / 5 + 32
+
 
 def mps_to_mph(mps):
     """Convert meters per second to miles per hour."""
     return mps * 2.23694
+
 
 def format_time(iso_str):
     """Convert ISO-8601 time string (UTC) to local Eastern Time in a friendly format."""
@@ -37,6 +40,7 @@ def format_time(iso_str):
     except Exception:
         return iso_str
 
+
 def get_points_data(lat, lon):
     """Retrieve grid point data from the NWS /points endpoint."""
     url = f"{base_url}/points/{lat},{lon}"
@@ -44,11 +48,13 @@ def get_points_data(lat, lon):
     response.raise_for_status()
     return response.json()
 
+
 def get_forecast_data(forecast_url):
     """Retrieve forecast data from the provided forecast URL."""
     response = requests.get(forecast_url, headers=headers_json)
     response.raise_for_status()
     return response.json()
+
 
 def get_observation_data(stations_url):
     """Retrieve current observations from the first available observation station."""
@@ -66,11 +72,13 @@ def get_observation_data(stations_url):
     obs_response.raise_for_status()
     return obs_response.json()
 
+
 def print_raw_forecast(forecast_data):
     """Print raw forecast JSON data."""
     print("\n=== Raw Forecast Data ===\n")
     print(json.dumps(forecast_data, indent=2))
     print("\n" + "=" * 50)
+
 
 def print_readable_forecast(forecast_data):
     """Print a more detailed human-readable version of the forecast."""
@@ -80,11 +88,13 @@ def print_readable_forecast(forecast_data):
         return
 
     # Get the current local Eastern Time for display
-    current_local_time = datetime.now(ZoneInfo("America/New_York")).strftime("%A, %b %d at %I:%M %p")
-    
+    current_local_time = datetime.now(ZoneInfo("America/New_York")).strftime(
+        "%A, %b %d at %I:%M %p"
+    )
+
     print("\n=== Human-Readable Forecast ===\n")
     print(f"Current Time: {current_local_time}\n")
-    
+
     for period in periods:
         name = period.get("name", "N/A")
         start_time = format_time(period.get("startTime", "N/A"))
@@ -107,11 +117,13 @@ def print_readable_forecast(forecast_data):
         print(f"  Icon URL:           {icon}\n")
     print("=" * 50)
 
+
 def print_raw_current(obs_data):
     """Print raw current observation JSON data."""
     print("\n=== Raw Current Observation Data ===\n")
     print(json.dumps(obs_data, indent=2))
     print("\n" + "=" * 50)
+
 
 def print_readable_current(obs_data):
     """Print a human-readable summary of current weather observations."""
@@ -124,7 +136,7 @@ def print_readable_current(obs_data):
     wind_speed_mph = mps_to_mph(wind_speed_mps) if wind_speed_mps is not None else "N/A"
     wind_direction = props.get("windDirection", {}).get("value", "N/A")
     conditions = props.get("textDescription", "N/A")
-    
+
     print("\n=== Human-Readable Current Observations ===\n")
     print(f"As of {timestamp}, the current conditions are:")
     if isinstance(temperature_f, float):
@@ -139,6 +151,7 @@ def print_readable_current(obs_data):
     print(f"  Conditions: {conditions}")
     print("\n" + "=" * 50)
 
+
 def main():
     try:
         # Step 1: Get grid point data.
@@ -150,7 +163,9 @@ def main():
     forecast_url = points_data.get("forecast")
     stations_url = points_data.get("observationStations")
     if not forecast_url or not stations_url:
-        print("Error: Forecast or observationStations URL not found in the /points response.")
+        print(
+            "Error: Forecast or observationStations URL not found in the /points response."
+        )
         sys.exit(1)
 
     try:
@@ -174,6 +189,7 @@ def main():
     # Then print human-readable summaries.
     print_readable_forecast(forecast_data)
     print_readable_current(obs_data)
+
 
 if __name__ == "__main__":
     main()

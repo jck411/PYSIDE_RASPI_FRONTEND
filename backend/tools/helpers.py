@@ -1,6 +1,7 @@
 import inspect
-from typing import Callable, Dict, Tuple
+from typing import Callable, Tuple
 import json
+
 
 def check_args(function: Callable, args: dict) -> bool:
     sig = inspect.signature(function)
@@ -13,7 +14,10 @@ def check_args(function: Callable, args: dict) -> bool:
             return False
     return True
 
-def get_function_and_args(tool_call: dict, available_functions: dict) -> Tuple[Callable, dict]:
+
+def get_function_and_args(
+    tool_call: dict, available_functions: dict
+) -> Tuple[Callable, dict]:
     function_name = tool_call["function"]["name"]
     function_args = json.loads(tool_call["function"]["arguments"])
     if function_name not in available_functions:

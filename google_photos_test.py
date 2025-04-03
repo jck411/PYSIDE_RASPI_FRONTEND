@@ -15,15 +15,16 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 # OAuth scope and credentials file.
-SCOPES = ['https://www.googleapis.com/auth/photoslibrary.readonly']
-CREDENTIALS_PATH = '/home/jack/PYSIDE_RASPI_FRONTEND/google_photos_credentials.json'
-TOKEN_PICKLE = 'token.pickle'
+SCOPES = ["https://www.googleapis.com/auth/photoslibrary.readonly"]
+CREDENTIALS_PATH = "/home/jack/PYSIDE_RASPI_FRONTEND/google_photos_credentials.json"
+TOKEN_PICKLE = "token.pickle"
+
 
 def authenticate_google_photos():
     """Authenticate with Google Photos using OAuth2."""
     creds = None
     if os.path.exists(TOKEN_PICKLE):
-        with open(TOKEN_PICKLE, 'rb') as token:
+        with open(TOKEN_PICKLE, "rb") as token:
             creds = pickle.load(token)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -31,42 +32,48 @@ def authenticate_google_photos():
         else:
             flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_PATH, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open(TOKEN_PICKLE, 'wb') as token:
+        with open(TOKEN_PICKLE, "wb") as token:
             pickle.dump(creds, token)
     return creds
 
+
 def get_google_photos_service(creds):
     """Build the Google Photos service client."""
-    return build('photoslibrary', 'v1', credentials=creds, static_discovery=False)
+    return build("photoslibrary", "v1", credentials=creds, static_discovery=False)
+
 
 def find_album_by_title(service, album_title):
     """Search for an album by title."""
     next_page_token = None
     while True:
-        response = service.albums().list(pageSize=50, pageToken=next_page_token).execute()
-        albums = response.get('albums', [])
+        response = (
+            service.albums().list(pageSize=50, pageToken=next_page_token).execute()
+        )
+        albums = response.get("albums", [])
         for album in albums:
-            if album.get('title') == album_title:
+            if album.get("title") == album_title:
                 return album
-        next_page_token = response.get('nextPageToken')
+        next_page_token = response.get("nextPageToken")
         if not next_page_token:
             break
     return None
+
 
 def fetch_all_media_items(service, album_id):
     """Fetch all media items in the given album."""
     all_items = []
     next_page_token = None
     while True:
-        body = {'albumId': album_id, 'pageSize': 100}
+        body = {"albumId": album_id, "pageSize": 100}
         if next_page_token:
-            body['pageToken'] = next_page_token
+            body["pageToken"] = next_page_token
         response = service.mediaItems().search(body=body).execute()
-        all_items.extend(response.get('mediaItems', []))
-        next_page_token = response.get('nextPageToken')
+        all_items.extend(response.get("mediaItems", []))
+        next_page_token = response.get("nextPageToken")
         if not next_page_token:
             break
     return all_items
+
 
 def download_media_item(media, download_folder):
     """
@@ -74,17 +81,17 @@ def download_media_item(media, download_folder):
     Determines the URL and file extension based on the mime type.
     Returns the local file path if successful.
     """
-    mime = media.get('mimeType', '')
+    mime = media.get("mimeType", "")
     if mime.startswith("image/"):
         ext = ".jpg"
-        url = media.get('baseUrl') + "=w1280-h720"
+        url = media.get("baseUrl") + "=w1280-h720"
     elif mime.startswith("video/"):
         ext = ".mp4"
-        url = media.get('baseUrl') + "=dv"
+        url = media.get("baseUrl") + "=dv"
     else:
         return None
 
-    local_filename = os.path.join(download_folder, media.get('id') + ext)
+    local_filename = os.path.join(download_folder, media.get("id") + ext)
     if os.path.exists(local_filename):
         print(f"File exists: {local_filename}")
         return local_filename
@@ -93,7 +100,7 @@ def download_media_item(media, download_folder):
         print("Downloading media from:", url)
         response = requests.get(url, stream=True)
         if response.status_code == 200:
-            with open(local_filename, 'wb') as f:
+            with open(local_filename, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
@@ -106,6 +113,7 @@ def download_media_item(media, download_folder):
         print("Error downloading media:", e)
         return None
 
+
 def download_all_media_items(media_items, download_folder):
     """Download all media items into the specified folder."""
     if not os.path.exists(download_folder):
@@ -113,27 +121,29 @@ def download_all_media_items(media_items, download_folder):
     for media in media_items:
         local_path = download_media_item(media, download_folder)
         if local_path:
-            media['local_path'] = local_path
+            media["local_path"] = local_path
+
 
 class PhotoWidget(QtWidgets.QWidget):
     """
     A widget that displays a photo with a blurred background and an overlay
     showing the full date in the bottom left.
     """
+
     def __init__(self, photo, parent=None):
         super().__init__(parent)
         self.photo = photo
         self.overlay_text = self.compute_overlay_text()
         # Load the pixmap from the local file.
-        if 'local_path' in photo:
-            self.pixmap = QtGui.QPixmap(photo['local_path'])
+        if "local_path" in photo:
+            self.pixmap = QtGui.QPixmap(photo["local_path"])
         else:
             self.pixmap = None
         self.setMinimumSize(100, 100)
-    
+
     def compute_overlay_text(self):
-        metadata = self.photo.get('mediaMetadata', {})
-        creation_time = metadata.get('creationTime', '')
+        metadata = self.photo.get("mediaMetadata", {})
+        creation_time = metadata.get("creationTime", "")
         if creation_time:
             try:
                 dt = datetime.fromisoformat(creation_time.replace("Z", "+00:00"))
@@ -141,17 +151,23 @@ class PhotoWidget(QtWidgets.QWidget):
             except Exception as e:
                 print("Error parsing creation time:", e)
         return ""
-    
+
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
         if self.pixmap:
             # Create a blurred background.
-            small = self.pixmap.scaled(20, 20, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation)
-            blurred = small.scaled(self.size(), QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation)
+            small = self.pixmap.scaled(
+                20, 20, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation
+            )
+            blurred = small.scaled(
+                self.size(), QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation
+            )
             painter.drawPixmap(0, 0, blurred)
             # Draw the centered sharp image.
-            scaled_pixmap = self.pixmap.scaled(self.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+            scaled_pixmap = self.pixmap.scaled(
+                self.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
+            )
             x = (self.width() - scaled_pixmap.width()) // 2
             y = (self.height() - scaled_pixmap.height()) // 2
             painter.drawPixmap(x, y, scaled_pixmap)
@@ -166,18 +182,24 @@ class PhotoWidget(QtWidgets.QWidget):
             y_text = self.height() - margin
             shadow_offset = 2
             painter.setPen(QtGui.QColor(0, 0, 0, 160))
-            painter.drawText(x_text + shadow_offset, y_text + shadow_offset - text_height // 4, self.overlay_text)
+            painter.drawText(
+                x_text + shadow_offset,
+                y_text + shadow_offset - text_height // 4,
+                self.overlay_text,
+            )
             painter.setPen(QtGui.QColor(255, 255, 255))
             painter.drawText(x_text, y_text - text_height // 4, self.overlay_text)
         painter.end()
+
 
 class VideoWidget(QtWidgets.QWidget):
     """
     A widget that plays a video from a local file using QMediaPlayer and QVideoWidget.
     Emits a 'finished' signal when the video finishes.
     """
+
     finished = QtCore.Signal()
-    
+
     def __init__(self, media, parent=None):
         super().__init__(parent)
         self.media = media
@@ -197,13 +219,14 @@ class VideoWidget(QtWidgets.QWidget):
         else:
             print("Local video file not found.")
         self.player.mediaStatusChanged.connect(self.on_media_status_changed)
-    
+
     def on_media_status_changed(self, status):
         if status == QMediaPlayer.EndOfMedia:
             self.finished.emit()
-    
+
     def stop(self):
         self.player.stop()
+
 
 def create_media_widget(media):
     """Return a PhotoWidget if media is a photo, or a VideoWidget if it’s a video."""
@@ -213,12 +236,14 @@ def create_media_widget(media):
     else:
         return PhotoWidget(media)
 
+
 class SlideshowViewer(QtWidgets.QWidget):
     """
     A widget that displays a slideshow from the album.
     Photos transition automatically every 15 seconds with fade or slide effects,
     while videos play until finished. Clicking the widget advances immediately.
     """
+
     def __init__(self, media_items, service, album_id):
         super().__init__()
         self.media_items = media_items
@@ -281,8 +306,8 @@ class SlideshowViewer(QtWidgets.QWidget):
         else:
             if not self.transition_timer.isActive():
                 self.transition_timer.start(15000)
-        effect = random.choice(['fade', 'slide'])
-        if effect == 'fade':
+        effect = random.choice(["fade", "slide"])
+        if effect == "fade":
             self.fade_transition()
         else:
             self.slide_transition()
@@ -318,8 +343,8 @@ class SlideshowViewer(QtWidgets.QWidget):
         width = container_rect.width()
         height = container_rect.height()
         current_geo = self.current_widget.geometry()
-        direction = random.choice(['left', 'right'])
-        if direction == 'left':
+        direction = random.choice(["left", "right"])
+        if direction == "left":
             start_geo_next = QtCore.QRect(width, 0, width, height)
             end_geo_current = QtCore.QRect(-width, 0, width, height)
         else:
@@ -349,6 +374,7 @@ class SlideshowViewer(QtWidgets.QWidget):
         self.current_widget.setGeometry(self.container.rect())
         self.container.setCurrentWidget(self.current_widget)
 
+
 def main():
     creds = authenticate_google_photos()
     service = get_google_photos_service(creds)
@@ -356,20 +382,21 @@ def main():
     if not album:
         print("Album 'test' not found.")
         sys.exit(1)
-    media_items = fetch_all_media_items(service, album['id'])
+    media_items = fetch_all_media_items(service, album["id"])
     if not media_items:
         print("No media items found in album.")
         sys.exit(1)
-    
+
     # Download all media items into a local folder.
     download_folder = os.path.join(os.path.dirname(__file__), "downloaded_media")
     print("Downloading all media items to:", download_folder)
     download_all_media_items(media_items, download_folder)
-    
+
     app = QtWidgets.QApplication(sys.argv)
-    viewer = SlideshowViewer(media_items, service, album['id'])
+    viewer = SlideshowViewer(media_items, service, album["id"])
     viewer.show()
     sys.exit(app.exec())
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

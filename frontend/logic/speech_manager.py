@@ -1,46 +1,53 @@
 #!/usr/bin/env python3
 import asyncio
-import logging
 
 from PySide6.QtCore import QObject, Signal, Slot
 
-from frontend.config import logger, STT_CONFIG
+from frontend.config import logger
 from frontend.stt.deepgram_stt import DeepgramSTT
 from frontend.config_manager import ConfigManager
+
 
 class SpeechManager(QObject):
     """
     Manages speech recognition and synthesis states.
     """
+
     # Signals
-    sttTextReceived = Signal(str)           # Emitted when partial or final STT text arrives
-    sttStateChanged = Signal(bool)          # Emitted when STT state toggles
-    sttInputTextReceived = Signal(str)      # Emitted when complete STT utterance should be set as input text
-    autoSubmitUtterance = Signal(str)       # Emitted when a complete utterance should be auto-submitted to chat
+    sttTextReceived = Signal(str)  # Emitted when partial or final STT text arrives
+    sttStateChanged = Signal(bool)  # Emitted when STT state toggles
+    sttInputTextReceived = Signal(
+        str
+    )  # Emitted when complete STT utterance should be set as input text
+    autoSubmitUtterance = Signal(
+        str
+    )  # Emitted when a complete utterance should be auto-submitted to chat
     # Signals relayed from DeepgramSTT for UI timer
-    inactivityTimerStarted = Signal(int)    # Relays timeout duration in ms
-    inactivityTimerStopped = Signal()       # Relays timer stop event
+    inactivityTimerStarted = Signal(int)  # Relays timeout duration in ms
+    inactivityTimerStopped = Signal()  # Relays timer stop event
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.stt_listening = False
         self.is_toggling_stt = False
         self.tts_audio_playing = False
-        
+
         # Initialize configuration manager
         self.config_manager = ConfigManager()
-        
+
         # Initialize Deepgram STT
         self.frontend_stt = DeepgramSTT()
 
         # Connect to STT signals
         self.frontend_stt.transcription_received.connect(self.handle_interim_stt_text)
-        self.frontend_stt.complete_utterance_received.connect(self.handle_frontend_stt_text)
+        self.frontend_stt.complete_utterance_received.connect(
+            self.handle_frontend_stt_text
+        )
         self.frontend_stt.state_changed.connect(self.handle_frontend_stt_state)
         # Relay inactivity timer signals
         self.frontend_stt.inactivityTimerStarted.connect(self.inactivityTimerStarted)
         self.frontend_stt.inactivityTimerStopped.connect(self.inactivityTimerStopped)
-        
+
         logger.info("[SpeechManager] Initialized with Deepgram STT")
 
     def handle_interim_stt_text(self, text):
@@ -54,14 +61,18 @@ class SpeechManager(QObject):
         if text.strip():
             logger.info(f"[SpeechManager] Complete utterance: {text}")
             self.sttTextReceived.emit(text)
-            
+
             # Check if we should auto-submit complete utterances
             # Use ConfigManager to get the most up-to-date setting value
-            auto_submit = self.config_manager.get_config("stt.STT_CONFIG.auto_submit_utterances", False)
+            auto_submit = self.config_manager.get_config(
+                "stt.STT_CONFIG.auto_submit_utterances", False
+            )
             logger.info(f"[SpeechManager] Auto-submit setting value: {auto_submit}")
-            
+
             if auto_submit:
-                logger.info(f"[SpeechManager] Auto-submitting utterance to chat: {text}")
+                logger.info(
+                    f"[SpeechManager] Auto-submitting utterance to chat: {text}"
+                )
                 self.autoSubmitUtterance.emit(text)
             else:
                 # Default behavior: just populate the input field
@@ -75,7 +86,9 @@ class SpeechManager(QObject):
             self.sttStateChanged.emit(is_listening)
             logger.info(f"[SpeechManager] STT state changed: {is_listening}")
         except asyncio.exceptions.CancelledError:
-            logger.warning("[SpeechManager] STT state update task was cancelled - expected during shutdown")
+            logger.warning(
+                "[SpeechManager] STT state update task was cancelled - expected during shutdown"
+            )
         except Exception as e:
             logger.error(f"[SpeechManager] Error updating STT state: {e}")
 
@@ -88,19 +101,23 @@ class SpeechManager(QObject):
             return
         self.is_toggling_stt = True
         try:
-            if hasattr(self.frontend_stt, 'toggle'):
+            if hasattr(self.frontend_stt, "toggle"):
                 self.frontend_stt.toggle()
             else:
-                logger.error("[SpeechManager] Frontend STT implementation missing toggle method")
+                logger.error(
+                    "[SpeechManager] Frontend STT implementation missing toggle method"
+                )
                 self.handle_frontend_stt_state(not self.stt_listening)
         except asyncio.exceptions.CancelledError:
-            logger.warning("[SpeechManager] STT toggle task was cancelled - expected during shutdown")
+            logger.warning(
+                "[SpeechManager] STT toggle task was cancelled - expected during shutdown"
+            )
         except Exception as e:
             logger.error(f"[SpeechManager] Error toggling STT: {e}")
             self.handle_frontend_stt_state(not self.stt_listening)
         finally:
             self.is_toggling_stt = False
-    
+
     def is_stt_enabled(self):
         """Returns whether STT is currently enabled"""
         return self.frontend_stt.is_enabled
@@ -110,24 +127,27 @@ class SpeechManager(QObject):
         self.frontend_stt.set_paused(paused)
         logger.info(f"[SpeechManager] STT paused: {paused}")
 
-    # --- Timer State Getters (Delegated) --- 
+    # --- Timer State Getters (Delegated) ---
     def is_inactivity_timer_running(self):
         """Returns true if the underlying STT inactivity timer is running."""
-        if hasattr(self.frontend_stt, 'is_timer_running'):
+        if hasattr(self.frontend_stt, "is_timer_running"):
             return self.frontend_stt.is_timer_running()
         logger.warning("[SpeechManager] DeepgramSTT missing 'is_timer_running' method.")
         return False
 
     def get_inactivity_time_remaining(self):
         """Returns the remaining time (ms) for the underlying STT inactivity timer."""
-        if hasattr(self.frontend_stt, 'get_timer_remaining_ms'):
+        if hasattr(self.frontend_stt, "get_timer_remaining_ms"):
             return self.frontend_stt.get_timer_remaining_ms()
-        logger.warning("[SpeechManager] DeepgramSTT missing 'get_timer_remaining_ms' method.")
+        logger.warning(
+            "[SpeechManager] DeepgramSTT missing 'get_timer_remaining_ms' method."
+        )
         return 0
+
     # --- End Timer State Getters ---
 
     def cleanup(self):
         """Clean up resources"""
-        if hasattr(self.frontend_stt, 'stop'):
+        if hasattr(self.frontend_stt, "stop"):
             self.frontend_stt.stop()
             logger.info("[SpeechManager] Stopped Deepgram STT")

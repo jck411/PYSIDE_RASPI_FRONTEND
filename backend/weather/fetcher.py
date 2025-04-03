@@ -7,12 +7,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Default to Winter Park, FL
-DEFAULT_LAT = os.getenv("DEFAULT_LAT", "28.5988")  
+DEFAULT_LAT = os.getenv("DEFAULT_LAT", "28.5988")
 DEFAULT_LON = os.getenv("DEFAULT_LON", "-81.3583")
 
 logger = logging.getLogger(__name__)
 
-async def fetch_weather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON) -> dict | None:
+
+async def fetch_weather_data(
+    lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON
+) -> dict | None:
     """
     Fetches weather data from National Weather Service API.
 
@@ -23,87 +26,97 @@ async def fetch_weather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON) -> 
     Returns:
         A dictionary containing the weather data, or None if an error occurs.
     """
-    base_url = 'https://api.weather.gov'
+    base_url = "https://api.weather.gov"
     headers = {
-        'User-Agent': 'RaspberryPi-WeatherApp/1.0 (pyside-weather-app)',
-        'Accept': 'application/json'
+        "User-Agent": "RaspberryPi-WeatherApp/1.0 (pyside-weather-app)",
+        "Accept": "application/json",
     }
 
     try:
         # First, get the grid point information
-        points_url = f'{base_url}/points/{lat},{lon}'
+        points_url = f"{base_url}/points/{lat},{lon}"
         logger.info(f"Fetching gridpoints for lat={lat}, lon={lon} from {points_url}")
-        
+
         async with httpx.AsyncClient() as client:
             # Get grid points
             points_response = await client.get(points_url, headers=headers)
             points_response.raise_for_status()
             points_data = points_response.json()
-            
+
             # Extract forecast URL and other relevant information
-            forecast_url = points_data.get('properties', {}).get('forecast')
-            observation_stations_url = points_data.get('properties', {}).get('observationStations')
-            
+            forecast_url = points_data.get("properties", {}).get("forecast")
+            observation_stations_url = points_data.get("properties", {}).get(
+                "observationStations"
+            )
+
             if not forecast_url:
                 logger.error("Forecast URL not found in points response")
                 return None
-                
+
             if not observation_stations_url:
                 logger.error("Observation stations URL not found in points response")
                 return None
-                
+
             # Get forecast data
             logger.info(f"Fetching forecast from {forecast_url}")
             forecast_response = await client.get(forecast_url, headers=headers)
             forecast_response.raise_for_status()
             forecast_data = forecast_response.json()
-            
+
             # Get observation stations
-            logger.info(f"Fetching observation stations from {observation_stations_url}")
-            stations_response = await client.get(observation_stations_url, headers=headers)
+            logger.info(
+                f"Fetching observation stations from {observation_stations_url}"
+            )
+            stations_response = await client.get(
+                observation_stations_url, headers=headers
+            )
             stations_response.raise_for_status()
             stations_data = stations_response.json()
-            
-            if not stations_data.get('features') or len(stations_data['features']) == 0:
+
+            if not stations_data.get("features") or len(stations_data["features"]) == 0:
                 logger.error("No observation stations found")
                 return None
-                
+
             # Get the first station's observations
-            station_url = stations_data['features'][0]['properties'].get('@id')
+            station_url = stations_data["features"][0]["properties"].get("@id")
             if not station_url:
                 logger.error("Station URL not found")
                 return None
-                
+
             observations_url = f"{station_url}/observations/latest"
             logger.info(f"Fetching latest observations from {observations_url}")
             obs_response = await client.get(observations_url, headers=headers)
             obs_response.raise_for_status()
             obs_data = obs_response.json()
-            
+
             # Return the raw NWS API data for the new UI
             combined_data = {
                 "properties": obs_data.get("properties", {}),
-                "forecast": forecast_data
+                "forecast": forecast_data,
             }
             logger.info(f"Successfully fetched weather data for lat={lat}, lon={lon}")
-            
+
             return combined_data
-            
+
     except httpx.RequestError as exc:
         logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
     except httpx.HTTPStatusError as exc:
-        logger.error(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}: {exc.response.text}")
+        logger.error(
+            f"Error response {exc.response.status_code} while requesting {exc.request.url!r}: {exc.response.text}"
+        )
     except Exception as exc:
         logger.error(f"An unexpected error occurred: {exc}")
-    
+
     return None
+
 
 # The following functions are kept for backward compatibility if needed
 def celsius_to_fahrenheit(celsius):
     """Convert Celsius to Fahrenheit"""
     if celsius is None:
         return None
-    return (celsius * 9/5) + 32
+    return (celsius * 9 / 5) + 32
+
 
 def convert_nws_date_to_unix(date_string):
     """Convert NWS ISO date string to Unix timestamp"""
@@ -112,11 +125,13 @@ def convert_nws_date_to_unix(date_string):
     try:
         from datetime import datetime
         import time
-        dt = datetime.fromisoformat(date_string.replace('Z', '+00:00'))
+
+        dt = datetime.fromisoformat(date_string.replace("Z", "+00:00"))
         return int(time.mktime(dt.timetuple()))
     except Exception as e:
         logger.error(f"Error converting date {date_string}: {e}")
         return int(time.time())  # Return current time as fallback
+
 
 def estimate_precipitation_probability(short_forecast, detailed_forecast):
     """
@@ -124,15 +139,17 @@ def estimate_precipitation_probability(short_forecast, detailed_forecast):
     NWS doesn't always provide direct probability values, so we need to extract from text
     """
     probability = 0.0
-    
+
     # Check for percentage mentions in text
     import re
-    
+
     # Look for patterns like "30 percent chance of rain" or "chance of rain 30 percent"
-    percentage_matches = re.findall(r'(\d+)\s*percent(?:\s*chance)?', detailed_forecast.lower())
+    percentage_matches = re.findall(
+        r"(\d+)\s*percent(?:\s*chance)?", detailed_forecast.lower()
+    )
     if percentage_matches:
         # Use the highest percentage found
-        probability = max([float(p)/100 for p in percentage_matches])
+        probability = max([float(p) / 100 for p in percentage_matches])
     else:
         # Estimate based on wording
         if "slight chance" in detailed_forecast.lower():
@@ -141,10 +158,14 @@ def estimate_precipitation_probability(short_forecast, detailed_forecast):
             probability = 0.4
         elif "likely" in detailed_forecast.lower():
             probability = 0.7
-        elif any(term in detailed_forecast.lower() for term in ["rain", "showers", "thunderstorms", "snow"]):
+        elif any(
+            term in detailed_forecast.lower()
+            for term in ["rain", "showers", "thunderstorms", "snow"]
+        ):
             probability = 0.9
-    
+
     return probability
+
 
 def map_nws_icon_to_owm(nws_icon_url):
     """
@@ -152,13 +173,13 @@ def map_nws_icon_to_owm(nws_icon_url):
     """
     if not nws_icon_url:
         return "01d"  # Default to clear day
-        
+
     # Extract the icon name from URL
     # Example URL: https://api.weather.gov/icons/land/day/skc?size=medium
-    icon_name = nws_icon_url.split('/')[-1].split('?')[0]
-    is_day = '/day/' in nws_icon_url
+    icon_name = nws_icon_url.split("/")[-1].split("?")[0]
+    is_day = "/day/" in nws_icon_url
     suffix = "d" if is_day else "n"
-    
+
     # Map NWS icons to OpenWeatherMap codes
     icon_map = {
         "skc": f"01{suffix}",  # clear sky
@@ -179,12 +200,13 @@ def map_nws_icon_to_owm(nws_icon_url):
         "sleet": f"13{suffix}",  # sleet
         "fog": f"50{suffix}",  # fog
     }
-    
+
     for key, value in icon_map.items():
         if key in icon_name:
             return value
-            
+
     return f"01{suffix}"  # Default to clear sky
+
 
 # Example usage (for testing)
 # if __name__ == "__main__":

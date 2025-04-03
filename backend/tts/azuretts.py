@@ -3,34 +3,34 @@ import asyncio
 import azure.cognitiveservices.speech as speechsdk
 from backend.config.config import CONFIG
 
+
 class AzureTTS:
     def __init__(self):
         self.speech_config = speechsdk.SpeechConfig(
             subscription=os.getenv("AZURE_SPEECH_KEY"),
-            region=os.getenv("AZURE_SPEECH_REGION")
+            region=os.getenv("AZURE_SPEECH_REGION"),
         )
         self.audio_format = getattr(
             speechsdk.SpeechSynthesisOutputFormat,
-            CONFIG["TTS_MODELS"]["AZURE_TTS"]["AUDIO_FORMAT"]
+            CONFIG["TTS_MODELS"]["AZURE_TTS"]["AUDIO_FORMAT"],
         )
         self.speech_config.set_speech_synthesis_output_format(self.audio_format)
-        
+
     async def stream_to_audio(self, text):
         audio_queue = asyncio.Queue()
         stop_event = asyncio.Event()
-        
+
         push_stream_callback = PushAudioOutputStreamCallback(audio_queue, stop_event)
         push_stream = speechsdk.audio.PushAudioOutputStream(push_stream_callback)
         audio_cfg = speechsdk.audio.AudioOutputConfig(stream=push_stream)
-        
+
         synthesizer = speechsdk.SpeechSynthesizer(
-            speech_config=self.speech_config, 
-            audio_config=audio_cfg
+            speech_config=self.speech_config, audio_config=audio_cfg
         )
-        
+
         ssml = self._create_ssml(text)
         result_future = synthesizer.speak_ssml_async(ssml)
-        
+
         try:
             await asyncio.get_event_loop().run_in_executor(None, result_future.get)
             while True:
@@ -41,7 +41,7 @@ class AzureTTS:
         except Exception:
             stop_event.set()
             yield None
-            
+
     def _create_ssml(self, text):
         voice = CONFIG["TTS_MODELS"]["AZURE_TTS"]["TTS_VOICE"]
         prosody = CONFIG["TTS_MODELS"]["AZURE_TTS"]["PROSODY"]
@@ -54,6 +54,7 @@ class AzureTTS:
     </voice>
 </speak>
 """
+
 
 class PushAudioOutputStreamCallback(speechsdk.audio.PushAudioOutputStreamCallback):
     def __init__(self, audio_queue: asyncio.Queue, stop_event: asyncio.Event):
@@ -71,19 +72,20 @@ class PushAudioOutputStreamCallback(speechsdk.audio.PushAudioOutputStreamCallbac
     def close(self):
         self.loop.call_soon_threadsafe(self.audio_queue.put_nowait, None)
 
-async def azure_text_to_speech_processor(phrase_queue: asyncio.Queue,
-                                           audio_queue: asyncio.Queue,
-                                           stop_event: asyncio.Event):
+
+async def azure_text_to_speech_processor(
+    phrase_queue: asyncio.Queue, audio_queue: asyncio.Queue, stop_event: asyncio.Event
+):
     try:
         speech_config = speechsdk.SpeechConfig(
             subscription=os.getenv("AZURE_SPEECH_KEY"),
-            region=os.getenv("AZURE_SPEECH_REGION")
+            region=os.getenv("AZURE_SPEECH_REGION"),
         )
         prosody = CONFIG["TTS_MODELS"]["AZURE_TTS"]["PROSODY"]
         voice = CONFIG["TTS_MODELS"]["AZURE_TTS"]["TTS_VOICE"]
         audio_format = getattr(
             speechsdk.SpeechSynthesisOutputFormat,
-            CONFIG["TTS_MODELS"]["AZURE_TTS"]["AUDIO_FORMAT"]
+            CONFIG["TTS_MODELS"]["AZURE_TTS"]["AUDIO_FORMAT"],
         )
         speech_config.set_speech_synthesis_output_format(audio_format)
 
@@ -107,10 +109,16 @@ async def azure_text_to_speech_processor(phrase_queue: asyncio.Queue,
     </voice>
 </speak>
 """
-                push_stream_callback = PushAudioOutputStreamCallback(audio_queue, stop_event)
-                push_stream = speechsdk.audio.PushAudioOutputStream(push_stream_callback)
+                push_stream_callback = PushAudioOutputStreamCallback(
+                    audio_queue, stop_event
+                )
+                push_stream = speechsdk.audio.PushAudioOutputStream(
+                    push_stream_callback
+                )
                 audio_cfg = speechsdk.audio.AudioOutputConfig(stream=push_stream)
-                synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_cfg)
+                synthesizer = speechsdk.SpeechSynthesizer(
+                    speech_config=speech_config, audio_config=audio_cfg
+                )
                 result_future = synthesizer.speak_ssml_async(ssml_phrase)
                 await asyncio.get_event_loop().run_in_executor(None, result_future.get)
             except Exception:

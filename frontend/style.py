@@ -8,7 +8,7 @@ DARK_COLORS = {
     "button_hover": "#3d59a1",
     "button_pressed": "#2ac3de",
     "input_background": "#24283b",
-    "input_border": "#414868"
+    "input_border": "#414868",
 }
 
 LIGHT_COLORS = {
@@ -21,8 +21,9 @@ LIGHT_COLORS = {
     "button_hover": "#0A6CA8",
     "button_pressed": "#084E7A",
     "input_background": "#FFFFFF",
-    "input_border": "#D3D7DC"
+    "input_border": "#D3D7DC",
 }
+
 
 def generate_main_stylesheet(colors):
     return f"""
@@ -73,6 +74,7 @@ def generate_main_stylesheet(colors):
         border: none;
     }}
     """
+
 
 def get_message_bubble_stylesheet(is_user, colors):
     if is_user:

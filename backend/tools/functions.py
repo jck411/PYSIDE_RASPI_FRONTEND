@@ -7,16 +7,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def fetch_weather(lat=28.5383, lon=-81.3792, exclude="minutely", units="metric", lang="en"):
-    api_key = os.getenv('OPENWEATHER_API_KEY')
+
+def fetch_weather(
+    lat=28.5383, lon=-81.3792, exclude="minutely", units="metric", lang="en"
+):
+    api_key = os.getenv("OPENWEATHER_API_KEY")
     if not api_key:
-        raise ValueError("API key not found. Please set OPENWEATHER_API_KEY in your .env file.")
+        raise ValueError(
+            "API key not found. Please set OPENWEATHER_API_KEY in your .env file."
+        )
     url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&appid={api_key}&units={units}&lang={lang}"
     if exclude:
         url += f"&exclude={exclude}"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()
+
 
 def get_time(lat=28.5383, lon=-81.3792):
     tf = TimezoneFinder()
@@ -26,6 +32,7 @@ def get_time(lat=28.5383, lon=-81.3792):
     local_tz = pytz.timezone(tz_name)
     local_time = datetime.now(local_tz)
     return local_time.strftime("%H:%M:%S")
+
 
 def get_tools():
     return [
@@ -41,13 +48,22 @@ def get_tools():
                     "properties": {
                         "lat": {"type": "number", "description": "Latitude..."},
                         "lon": {"type": "number", "description": "Longitude..."},
-                        "exclude": {"type": "string", "description": "Data to exclude..."},
-                        "units": {"type": "string", "description": "Units of measurement..."},
-                        "lang": {"type": "string", "description": "Language of the response..."}
+                        "exclude": {
+                            "type": "string",
+                            "description": "Data to exclude...",
+                        },
+                        "units": {
+                            "type": "string",
+                            "description": "Units of measurement...",
+                        },
+                        "lang": {
+                            "type": "string",
+                            "description": "Language of the response...",
+                        },
                     },
-                    "additionalProperties": False
-                }
-            }
+                    "additionalProperties": False,
+                },
+            },
         },
         {
             "type": "function",
@@ -60,16 +76,14 @@ def get_tools():
                     "required": ["lat", "lon"],
                     "properties": {
                         "lat": {"type": "number", "description": "Latitude..."},
-                        "lon": {"type": "number", "description": "Longitude..."}
+                        "lon": {"type": "number", "description": "Longitude..."},
                     },
-                    "additionalProperties": False
-                }
-            }
-        }
+                    "additionalProperties": False,
+                },
+            },
+        },
     ]
 
+
 def get_available_functions():
-    return {
-        "fetch_weather": fetch_weather,
-        "get_time": get_time
-    }
+    return {"fetch_weather": fetch_weather, "get_time": get_time}

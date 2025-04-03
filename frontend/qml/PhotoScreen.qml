@@ -18,9 +18,10 @@ Item {
     // Track if showing video
     property bool showingVideo: false
     property string currentVideoPath: ""
-    property string currentImagePath: ""
+    property string currentImagePath: ""      // Path of the currently visible image
     property string currentBlurredBackground: ""
     property string currentDateText: ""
+    // Removed transition state properties
     
     // Get reference to the mainWindow
     function getMainWindow() {
@@ -76,6 +77,8 @@ Item {
             console.error("Error during cleanup:", e)
         }
     }
+
+    // Removed handleImageStatusChange helper function
     
     // Create a background that adapts to theme - fallback when no image is loaded
     Rectangle {
@@ -120,28 +123,27 @@ Item {
         // anchors.margins: 10 // Removed margins to allow full height fill
         color: "transparent"
 
-        // Image component - shown when displaying photos
+        // --- Single Image Display (Reverted) ---
         Image {
-            id: photoImage
-            visible: !showingVideo
+            id: photoImage // Renamed back from image1
+            visible: !showingVideo // Only visible when not showing video
             anchors.fill: parent
-            fillMode: Image.PreserveAspectFit // Fit the image without cropping
+            fillMode: Image.PreserveAspectFit
             asynchronous: true
             cache: false
-            
-            // Fade transition effect
-            Behavior on opacity {
-                NumberAnimation { duration: 500 }
-            }
-            
-            // Apply fade-in effect when loaded
-            onStatusChanged: {
-                if (status === Image.Ready) {
-                    opacity = 0
-                    opacity = 1
-                }
-            }
+            // source set via Connections
+            opacity: 1 // Default opacity
+
+             onStatusChanged: {
+                 if (status === Image.Error) {
+                     console.error("Image failed to load:", source)
+                 } else if (status === Image.Ready) {
+                     console.log("Image loaded successfully:", source)
+                 }
+             }
         }
+        // Removed image2 and all animations
+        // --- End Single Image Display ---
         
         // Video components for QtMultimedia 6.0
         MediaPlayer {
@@ -184,7 +186,8 @@ Item {
         
         // No media message - shown when no media available
         Text {
-            visible: photoImage.status !== Image.Ready && !showingVideo
+            // Visible if not showing video AND image isn't ready
+            visible: !showingVideo && photoImage.status !== Image.Ready
             text: "No media available"
             color: ThemeManager.text_primary_color
             anchors.centerIn: parent
@@ -195,7 +198,8 @@ Item {
         // Date display (bottom left) - shown when displaying photos
         Rectangle {
             id: dateTextBackground
-            visible: currentDateText !== "" && (photoImage.status === Image.Ready || showingVideo)
+            // Visible if date text exists AND (video is showing OR image is ready)
+            visible: currentDateText !== "" && (showingVideo || photoImage.status === Image.Ready)
             // anchors.left: parent.left // Removed left anchor
             anchors.right: parent.right // Added right anchor
             anchors.bottom: parent.bottom
@@ -237,29 +241,23 @@ Item {
     Connections {
         target: PhotoController
         
+        // Simplified handler - reverted
         function onCurrentMediaChanged(mediaPath, isVideo) {
-            console.log("Loading media:", mediaPath, "isVideo:", isVideo)
-            showingVideo = isVideo
-            currentVideoPath = mediaPath
+            console.log("Simplified onCurrentMediaChanged - Path:", mediaPath, "isVideo:", isVideo);
+            showingVideo = isVideo;
             
             if (isVideo) {
-                // Handle video - mediaPath should be the full path to the video file
-                // Stop any currently playing media first
-                mediaPlayer.stop()
-                
-                // Start a timer as fallback in case video doesn't play properly
-                videoTimer.restart()
-                
-                // Load and play the video
-                console.log("Setting video source:", "file://" + mediaPath)
-                mediaPlayer.source = "file://" + mediaPath
-                mediaPlayer.play()
+                currentVideoPath = mediaPath;
+                photoImage.source = ""; // Clear image source
+                mediaPlayer.stop();
+                videoTimer.restart();
+                mediaPlayer.source = "file://" + mediaPath;
+                mediaPlayer.play();
             } else {
-                // Handle image
-                mediaPlayer.stop() // Stop video if switching to image
-                videoTimer.stop()  // Stop fallback timer
-                currentImagePath = mediaPath
-                photoImage.source = "file://" + mediaPath
+                mediaPlayer.stop(); // Stop video if switching to image
+                videoTimer.stop();  // Stop fallback timer
+                currentImagePath = mediaPath; // Update path
+                photoImage.source = "file://" + mediaPath; // Set source directly
             }
         } // End of onCurrentMediaChanged function
         

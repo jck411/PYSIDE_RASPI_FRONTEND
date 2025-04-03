@@ -9,10 +9,12 @@ from backend.config.config import CONFIG
 from backend.tools.functions import get_tools, get_available_functions
 from backend.tools.helpers import get_function_and_args
 
+
 def log_segment(segment: str) -> None:
     """Prints the segment if logging is enabled in the config."""
     if CONFIG.get("LOGGING", {}).get("PRINT_SEGMENTS", False):
         print(f"Segment: {segment}")
+
 
 def log_tool_calls(tool_calls: List[Dict[str, Any]]) -> None:
     """Prints the tool call schema if logging is enabled in the config."""
@@ -20,17 +22,20 @@ def log_tool_calls(tool_calls: List[Dict[str, Any]]) -> None:
         print("Tool Call Schema:")
         print(json.dumps(tool_calls, indent=4))
 
+
 def log_function_call_result(function_name: str, result: Any) -> None:
     """Prints the output of a function call if logging is enabled in the config."""
     if CONFIG.get("LOGGING", {}).get("PRINT_FUNCTION_CALLS", False):
         print(f"Function {function_name} output:")
         print(json.dumps(result, indent=4))
 
+
 def extract_content_from_openai_chunk(chunk: Any) -> Optional[str]:
     try:
         return chunk.choices[0].delta.content
     except (IndexError, AttributeError):
         return None
+
 
 def compile_delimiter_pattern(delimiters: List[str]) -> Optional[re.Pattern]:
     if not delimiters:
@@ -40,11 +45,14 @@ def compile_delimiter_pattern(delimiters: List[str]) -> Optional[re.Pattern]:
     pattern = "|".join(escaped)
     return re.compile(pattern)
 
-async def process_chunks(chunk_queue: asyncio.Queue,
-                         phrase_queue: asyncio.Queue,
-                         delimiter_pattern: Optional[re.Pattern],
-                         use_segmentation: bool,
-                         character_max: int):
+
+async def process_chunks(
+    chunk_queue: asyncio.Queue,
+    phrase_queue: asyncio.Queue,
+    delimiter_pattern: Optional[re.Pattern],
+    use_segmentation: bool,
+    character_max: int,
+):
     working_string = ""
     chars_processed = 0
     segmentation_active = use_segmentation
@@ -79,37 +87,66 @@ async def process_chunks(chunk_queue: asyncio.Queue,
                     else:
                         break
 
-async def validate_messages_for_ws(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+
+async def validate_messages_for_ws(
+    messages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
     if not isinstance(messages, list):
         raise HTTPException(status_code=400, detail="'messages' must be a list.")
     prepared = []
     for idx, msg in enumerate(messages):
         if not isinstance(msg, dict):
-            raise HTTPException(status_code=400, detail=f"Message at index {idx} must be a dictionary.")
+            raise HTTPException(
+                status_code=400, detail=f"Message at index {idx} must be a dictionary."
+            )
         sender = msg.get("sender")
         text = msg.get("text")
         if not sender or not isinstance(sender, str):
-            raise HTTPException(status_code=400, detail=f"Message at index {idx} missing valid 'sender'.")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Message at index {idx} missing valid 'sender'.",
+            )
         if not text or not isinstance(text, str):
-            raise HTTPException(status_code=400, detail=f"Message at index {idx} missing valid 'text'.")
-        role = 'user' if sender.lower() == 'user' else 'assistant' if sender.lower() == 'assistant' else None
+            raise HTTPException(
+                status_code=400, detail=f"Message at index {idx} missing valid 'text'."
+            )
+        role = (
+            "user"
+            if sender.lower() == "user"
+            else "assistant" if sender.lower() == "assistant" else None
+        )
         if role is None:
-            raise HTTPException(status_code=400, detail=f"Invalid sender at index {idx}.")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid sender at index {idx}."
+            )
         prepared.append({"role": role, "content": text})
     system_prompt = {"role": "system", "content": CONFIG["SYSTEM_PROMPT"]["CONTENT"]}
     prepared.insert(0, system_prompt)
     return prepared
 
-async def stream_openai_completion(client, model: str, messages: Sequence[Dict[str, Union[str, Any]]],
-                                   phrase_queue: asyncio.Queue,
-                                   stop_event: asyncio.Event) -> AsyncIterator[str]:
-    delimiter_pattern = compile_delimiter_pattern(CONFIG["PROCESSING_PIPELINE"]["DELIMITERS"])
+
+async def stream_openai_completion(
+    client,
+    model: str,
+    messages: Sequence[Dict[str, Union[str, Any]]],
+    phrase_queue: asyncio.Queue,
+    stop_event: asyncio.Event,
+) -> AsyncIterator[str]:
+    delimiter_pattern = compile_delimiter_pattern(
+        CONFIG["PROCESSING_PIPELINE"]["DELIMITERS"]
+    )
     use_segmentation = CONFIG["PROCESSING_PIPELINE"]["USE_SEGMENTATION"]
     character_max = CONFIG["PROCESSING_PIPELINE"]["CHARACTER_MAXIMUM"]
 
     chunk_queue = asyncio.Queue()
     chunk_processor_task = asyncio.create_task(
-        process_chunks(chunk_queue, phrase_queue, delimiter_pattern, use_segmentation, character_max)
+        process_chunks(
+            chunk_queue,
+            phrase_queue,
+            delimiter_pattern,
+            use_segmentation,
+            character_max,
+        )
     )
 
     try:
@@ -133,7 +170,11 @@ async def stream_openai_completion(client, model: str, messages: Sequence[Dict[s
                     pass
                 break
 
-            delta = chunk.choices[0].delta if chunk.choices and chunk.choices[0].delta else None
+            delta = (
+                chunk.choices[0].delta
+                if chunk.choices and chunk.choices[0].delta
+                else None
+            )
             if delta and delta.content:
                 yield delta.content
                 await chunk_queue.put(chunk)
@@ -141,7 +182,13 @@ async def stream_openai_completion(client, model: str, messages: Sequence[Dict[s
                 tc_list = delta.tool_calls
                 for tc_chunk in tc_list:
                     while len(tool_calls) <= tc_chunk.index:
-                        tool_calls.append({"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
+                        tool_calls.append(
+                            {
+                                "id": "",
+                                "type": "function",
+                                "function": {"name": "", "arguments": ""},
+                            }
+                        )
                     tc = tool_calls[tc_chunk.index]
                     if tc_chunk.id:
                         tc["id"] += tc_chunk.id
@@ -159,14 +206,18 @@ async def stream_openai_completion(client, model: str, messages: Sequence[Dict[s
                     fn, fn_args = get_function_and_args(tc, funcs)
                     resp = fn(**fn_args)
                     log_function_call_result(fn.__name__, resp)
-                    messages.append({
-                        "tool_call_id": tc["id"],
-                        "role": "tool",
-                        "name": fn.__name__,
-                        "content": json.dumps(resp)
-                    })
+                    messages.append(
+                        {
+                            "tool_call_id": tc["id"],
+                            "role": "tool",
+                            "name": fn.__name__,
+                            "content": json.dumps(resp),
+                        }
+                    )
                 except ValueError as e:
-                    messages.append({"role": "assistant", "content": f"[Error]: {str(e)}"})
+                    messages.append(
+                        {"role": "assistant", "content": f"[Error]: {str(e)}"}
+                    )
             if not stop_event.is_set():
                 follow_up = await client.chat.completions.create(
                     model=model,

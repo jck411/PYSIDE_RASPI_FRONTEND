@@ -5,4 +5,13 @@ PySide6-Addons==6.6.2
 websockets
 deepgram-sdk
 azure-cognitiveservices-speech
-numpy<2
+requests
+google-auth-oauthlib
+google-api-python-client
+fastapi
+openai
+aiohttp
+Pillow
+pytz
+timezonefinder
+uvicorn

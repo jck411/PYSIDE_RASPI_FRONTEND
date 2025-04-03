@@ -2,15 +2,16 @@
 """
 Settings Service for the PySide Raspberry Pi Frontend
 
-Provides a simplified and unified interface for accessing and modifying 
+Provides a simplified and unified interface for accessing and modifying
 application settings, abstracting the underlying ConfigManager.
 """
 
 from PySide6.QtCore import QObject, Signal, Slot, Property
-from typing import Any, Optional
+from typing import Optional
 
 from frontend.config_manager import ConfigManager
 from frontend.config import logger
+
 
 class SettingsService(QObject):
     """
@@ -19,18 +20,18 @@ class SettingsService(QObject):
     This service wraps the ConfigManager to offer a stable API for other parts
     of the application. It also provides signals for observing setting changes.
     """
-    
+
     # Signal emitted when a setting's value is successfully changed.
     # Arguments: setting_path (str), new_value (Any)
     settingChanged = Signal(str, object)
 
-    _instance: Optional['SettingsService'] = None
+    _instance: Optional["SettingsService"] = None
     _initialized: bool = False
 
     # --- QML Properties ---
     # Read-only property for the HTTP base URL
     _httpBaseUrlChanged = Signal()
-    _httpBaseUrl: str = "" # Internal storage
+    _httpBaseUrl: str = ""  # Internal storage
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -41,11 +42,13 @@ class SettingsService(QObject):
         """Initialize the SettingsService."""
         if self._initialized:
             return
-            
-        super().__init__() # Initialize QObject
+
+        super().__init__()  # Initialize QObject
         self._config_manager = ConfigManager()
         # Initialize the base URL from config
-        self._httpBaseUrl = self._config_manager.get_config('server.HTTP_BASE_URL', 'http://127.0.0.1:8000') # Provide a default
+        self._httpBaseUrl = self._config_manager.get_config(
+            "server.HTTP_BASE_URL", "http://127.0.0.1:8000"
+        )  # Provide a default
         self._initialized = True
         logger.info("SettingsService initialized.")
 
@@ -91,14 +94,17 @@ class SettingsService(QObject):
             logger.info(f"Setting '{path}' updated successfully.")
             try:
                 # Emit signal after successful change
-                self.settingChanged.emit(path, value) 
+                self.settingChanged.emit(path, value)
             except Exception as e:
-                 # Log if signal emission fails, but don't block the set operation
-                 logger.error(f"Error emitting settingChanged signal for path '{path}': {e}")
+                # Log if signal emission fails, but don't block the set operation
+                logger.error(
+                    f"Error emitting settingChanged signal for path '{path}': {e}"
+                )
         else:
             logger.warning(f"Failed to set setting '{path}'.")
-            
+
         return success
+
 
 # Optional: Add an observeSetting method if more complex observation logic is needed later.
 # For now, components can connect directly to the settingChanged signal.
@@ -106,14 +112,14 @@ class SettingsService(QObject):
 # --- Example Usage ---
 # if __name__ == '__main__':
 #     # This is just for demonstration, normally initialized in main.py
-#     
+#
 #     # Need a Qt Application context for signals
 #     from PySide6.QtWidgets import QApplication
 #     import sys
-#     app = QApplication(sys.argv) 
+#     app = QApplication(sys.argv)
 #
 #     settings_service = SettingsService()
-#     
+#
 #     def on_setting_changed(path, value):
 #         print(f"Setting changed via signal! Path: {path}, New Value: {value}")
 #
@@ -127,11 +133,11 @@ class SettingsService(QObject):
 #     # Example: Set a value (this should trigger the signal)
 #     print("Setting dark mode to True...")
 #     settings_service.setSetting('user.theme.is_dark_mode', not initial_dark_mode)
-#     
+#
 #     # Example: Get the new value
 #     new_dark_mode = settings_service.getSetting('user.theme.is_dark_mode')
 #     print(f"New dark mode: {new_dark_mode}")
-#     
+#
 #     # Example: Set a module override
 #     print("Setting STT auto_start...")
 #     settings_service.setSetting('stt.STT_CONFIG.auto_start', True)
@@ -139,4 +145,4 @@ class SettingsService(QObject):
 #
 #     # Need to run the Qt event loop briefly for signals to process in this example
 #     # In the main app, the event loop runs continuously.
-#     app.processEvents() 
+#     app.processEvents()
