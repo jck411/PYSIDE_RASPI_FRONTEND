@@ -17,6 +17,7 @@ from frontend.logic.chat_controller import ChatController
 from frontend.theme_manager import ThemeManager
 from frontend.settings_service import SettingsService
 from frontend.error_handler import error_handler_instance, ErrorHandler
+from frontend.photo_controller import PhotoController
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -98,11 +99,12 @@ def main():
     # --- Create Singleton Instances ---
     # Create the single ChatController instance
     chat_controller_instance = ChatController()
+    
+    # Create the single PhotoController instance
+    photo_controller_instance = PhotoController()
     # ----------------------------------
 
     # --- Register QML Types and Singletons ---
-    # qmlRegisterType(ChatController, "MyScreens", 1, 0, "ChatLogic") # REMOVE: No longer registering as type
-
     # Register ThemeManager as a singleton
     qmlRegisterSingletonInstance(ThemeManager, "MyTheme", 1, 0, "ThemeManager", theme_manager)
     
@@ -112,8 +114,11 @@ def main():
     # Register ErrorHandler as a singleton
     qmlRegisterSingletonInstance(ErrorHandler, "MyServices", 1, 0, "ErrorHandler", error_handler_instance)
 
-    # Register ChatController instance as a singleton (using MyServices seems appropriate)
+    # Register ChatController instance as a singleton
     qmlRegisterSingletonInstance(ChatController, "MyServices", 1, 0, "ChatService", chat_controller_instance)
+
+    # Register PhotoController instance as a singleton
+    qmlRegisterSingletonInstance(PhotoController, "MyServices", 1, 0, "PhotoController", photo_controller_instance)
 
     # Create PathProvider instance
     path_provider = PathProvider()

@@ -34,7 +34,7 @@ The application includes multiple screens that can be navigated via the tab bar:
 - **WeatherScreen**: Displays weather information with animated Lottie icons
 - **CalendarScreen**: Shows calendar events
 - **ClockScreen**: Displays time and date
-- **PhotoScreen**: Displays photos
+- **PhotoScreen**: Displays photos and videos in a slideshow
 - **SettingsScreen**: Application settings
 
 ### Services
@@ -44,6 +44,48 @@ Services provide functionality to QML components:
 - **SettingsService**: Manages application settings
 - **ErrorHandler**: Centralized error handling
 - **ChatService**: Handles chat interactions
+- **PhotoController**: Manages photo and video slideshow functionality
+
+## Photo Screen Implementation
+The PhotoScreen provides a slideshow of images and videos directly within the interface:
+
+- **PhotoController**: Python class that manages the slideshow logic
+  - Loads media files (both images and videos) from a specified directory
+  - Handles automatic advancement for images using a QTimer
+  - Provides signals for media changes and slideshow state
+  - Includes methods for manual navigation (next/previous)
+  - Special handling for videos to ensure they play to completion before advancing
+
+- **PhotoScreen.qml**: QML component that displays both images and videos
+  - Uses Image component for displaying photos with smooth transitions
+  - Uses a simplified approach for video handling with a placeholder interface
+  - Displays video information with file name and automatic advancement after 10 seconds
+  - Includes a "Next" button for manual advancement during video playback
+  - Automatically advances slideshows for images
+  - Includes touch/click functionality for manual navigation (for images)
+  - Shows overlay information about the current media item
+  - Gracefully handles component cleanup during application shutdown
+
+- **PhotoControls.qml**: Provides navigation controls
+  - Play/Pause button to control automatic advancement
+  - Next/Previous buttons for manual navigation
+  - Back button to return to the previous screen
+
+The implementation follows a clean separation of concerns:
+- Python handles the media file management and slideshow logic
+- QML handles the display of media and user interaction
+- The controller coordinates the interaction between the UI and the media files
+
+### Video Handling
+The application supports videos in the slideshow but uses a simplified approach:
+- When a video file is detected, a placeholder screen is shown instead of attempting direct playback
+- This approach avoids Qt Multimedia compatibility issues on various platforms
+- The video placeholder includes:
+  - The video filename
+  - A "Next" button for manual advancement
+  - A timer that automatically advances after 10 seconds (configurable)
+- The PhotoController uses the `video_finished()` signal to continue the slideshow after the video would have played
+- This simple approach ensures reliable operation across different Qt versions and platforms
 
 ## Weather Screen Implementation
 The WeatherScreen uses:
