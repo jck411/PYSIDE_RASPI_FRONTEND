@@ -17,7 +17,14 @@ Item {
     
     Component.onCompleted: {
         console.log("PhotoScreen loaded")
+        // Load the controller and request the initial media item
         PhotoController.start_slideshow()
+        
+        // Force display of the first item
+        if (PhotoController.media_files && PhotoController.media_files.length > 0) {
+            var firstItem = PhotoController.media_files[0]
+            PhotoController.currentMediaChanged(firstItem[0], firstItem[1])
+        }
     }
 
     Component.onDestruction: {
@@ -37,9 +44,19 @@ Item {
         }
     }
     
+    // Create a nice gradient background
     Rectangle {
         anchors.fill: parent
-        color: ThemeManager.background_color
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.8) }
+            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.5) }
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: 10 // Add margins for a framed look
+        color: "transparent"
 
         // Image component - shown when displaying photos
         Image {
@@ -110,6 +127,7 @@ Item {
             color: ThemeManager.text_primary_color
             anchors.centerIn: parent
             font.pixelSize: 24
+            font.bold: true
         }
         
         // Content information overlay - shown at bottom of screen
@@ -120,6 +138,7 @@ Item {
             height: 40
             color: Qt.rgba(0, 0, 0, 0.5) // Semi-transparent background
             visible: photoImage.status === Image.Ready || showingVideo
+            radius: 5
             
             Text {
                 id: mediaInfoText
@@ -128,6 +147,7 @@ Item {
                 color: "white"
                 elide: Text.ElideMiddle
                 font.pixelSize: 14
+                font.bold: true
             }
         }
         

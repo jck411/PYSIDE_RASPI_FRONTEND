@@ -13,7 +13,7 @@ RowLayout {
     // Previous button
     TouchFriendlyButton {
         id: previousButton
-        source: "../icons/chevron_left.svg"
+        source: "../icons/arrow_left.svg"
         text: "Previous"
         implicitWidth: 60
         implicitHeight: 40
@@ -25,7 +25,7 @@ RowLayout {
     // Play/Pause button
     TouchFriendlyButton {
         id: playPauseButton
-        source: PhotoController.is_running ? "../icons/pause_presentation.svg" : "../icons/play_circle.svg"
+        source: PhotoController.is_running ? "../icons/pause_circle.svg" : "../icons/play_circle.svg.svg"
         text: PhotoController.is_running ? "Pause" : "Play"
         implicitWidth: 60
         implicitHeight: 40
@@ -41,7 +41,7 @@ RowLayout {
         Connections {
             target: PhotoController
             function onSlideshowRunningChanged(running) {
-                playPauseButton.source = running ? "../icons/pause_presentation.svg" : "../icons/play_circle.svg"
+                playPauseButton.source = running ? "../icons/pause_circle.svg" : "../icons/play_circle.svg.svg"
                 playPauseButton.text = running ? "Pause" : "Play"
             }
         }
@@ -50,7 +50,7 @@ RowLayout {
     // Next button
     TouchFriendlyButton {
         id: nextButton
-        source: "../icons/chevron_right.svg"
+        source: "../icons/arrow_right.svg"
         text: "Next"
         implicitWidth: 60
         implicitHeight: 40
@@ -62,20 +62,5 @@ RowLayout {
     // Flexible space
     Item {
         Layout.fillWidth: true
-    }
-    
-    // Back button
-    TouchFriendlyButton {
-        id: backButton
-        source: "../icons/back.svg"
-        text: "Back"
-        implicitWidth: 60
-        implicitHeight: 40
-        onClicked: {
-            // Navigate back to the previous screen
-            if (screen && screen.stackView) {
-                screen.stackView.pop()
-            }
-        }
     }
 } 

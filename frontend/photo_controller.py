@@ -58,6 +58,11 @@ class PhotoController(QObject):
     def start_slideshow(self):
         """Start the slideshow timer"""
         if self.media_files:
+            # Immediately emit the current media item to ensure something is displayed
+            current_path, is_video = self.media_files[self.current_index]
+            self.currentMediaChanged.emit(current_path, is_video)
+            
+            # Start the timer for automatic advancement
             self.timer.start()
             self._is_running = True
             self.slideshowRunningChanged.emit(True)

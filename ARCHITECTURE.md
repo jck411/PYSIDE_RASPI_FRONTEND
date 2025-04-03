@@ -58,16 +58,18 @@ The PhotoScreen provides a slideshow of images and videos directly within the in
 
 - **PhotoScreen.qml**: QML component that displays both images and videos
   - Uses Image component for displaying photos with smooth transitions
-  - Uses a simplified approach for video handling with a placeholder interface
-  - Displays video information with file name and automatic advancement after 10 seconds
-  - Includes a "Next" button for manual advancement during video playback
+  - Uses QtMultimedia 6.0 for video playback with MediaPlayer and VideoOutput components
+  - Displays an initial photo immediately upon loading the screen
+  - Features a gradient background with framed content for a more polished look
   - Automatically advances slideshows for images
   - Includes touch/click functionality for manual navigation (for images)
   - Shows overlay information about the current media item
   - Gracefully handles component cleanup during application shutdown
 
 - **PhotoControls.qml**: Provides navigation controls
-  - Play/Pause button to control automatic advancement
+  - Uses TouchFriendlyButton components for consistent styling with other controls
+  - Includes SVG icons with tooltips for better usability
+  - Play/Pause button to control automatic advancement (with icon that changes based on state)
   - Next/Previous buttons for manual navigation
   - Back button to return to the previous screen
 
@@ -77,15 +79,13 @@ The implementation follows a clean separation of concerns:
 - The controller coordinates the interaction between the UI and the media files
 
 ### Video Handling
-The application supports videos in the slideshow but uses a simplified approach:
-- When a video file is detected, a placeholder screen is shown instead of attempting direct playback
-- This approach avoids Qt Multimedia compatibility issues on various platforms
-- The video placeholder includes:
-  - The video filename
-  - A "Next" button for manual advancement
-  - A timer that automatically advances after 10 seconds (configurable)
-- The PhotoController uses the `video_finished()` signal to continue the slideshow after the video would have played
-- This simple approach ensures reliable operation across different Qt versions and platforms
+The application fully supports videos in the slideshow using QtMultimedia 6.0:
+- Videos are played directly in the UI using the MediaPlayer and VideoOutput components
+- Automatic advancement after the video completes playing
+- Fallback mechanism with a timer if video fails to play
+- Error handling for problematic video files
+- Visual feedback during video playback
+- Automatic detection of video formats based on file extension
 
 ## Weather Screen Implementation
 The WeatherScreen uses:
