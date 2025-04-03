@@ -54,7 +54,7 @@ The WeatherScreen uses:
 The screen is built as a modular component with clear separation of concerns:
 - **WeatherScreen.qml**: Main container component that manages data fetching, UI components, and animations
 - **ForecastDisplay.qml**: Original component for OpenWeatherMap forecasts (maintained for compatibility)
-- **SevenDayForecast.qml**: Component that displays forecasts for the next 12 periods (skipping the first 2 periods shown in the 72-hour view) with static PNG icons in a stacked row layout, showing detailed forecast information in each row
+- **SevenDayForecast.qml**: Component that displays a 7-day forecast with static PNG icons in a stacked row layout, showing detailed forecast information in each row
 - **WeatherControls.qml**: Provides navigation between Current Weather (72 Hour) and 7-Day Forecast views
 
 ### Weather UI Interaction
@@ -79,16 +79,15 @@ The Weather screen layout uses a responsive design approach with:
 
 ### 7-Day Forecast Layout
 The 7-day forecast view uses:
-- A structured grid layout with dedicated columns for each data element
-- Each row displays:
-  - The date in a dedicated column
-  - Day/Night indicator as plain text in its own column
-  - Weather icon column
-  - Temperature column
-  - Detailed forecast description with text wrapping
+- A stacked row layout for each day
 - Alternating background colors for better readability
-- Fixed height rows with proper spacing between columns
-- Better alignment of elements using GridLayout instead of nested rows
+- Each row displays:
+  - The day and date
+  - Weather icon from the PNG collection
+  - Temperature value
+  - Detailed forecast description limited to 3 lines with ellipsis for longer text
+- Fixed height rows with proper spacing and margins
+- Clean vertical layout with aligned elements
 
 ### Weather Icon Implementation
 The application supports two types of weather icons:

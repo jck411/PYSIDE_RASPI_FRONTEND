@@ -48,10 +48,10 @@ BaseControls {
     
     Button {
         id: forecastButton
-        text: "7 Day"
+        text: "7 Day Forecast"
         font.pixelSize: 16
         font.bold: true
-        implicitWidth: 90
+        implicitWidth: 120
         implicitHeight: 40
         
         background: Rectangle {

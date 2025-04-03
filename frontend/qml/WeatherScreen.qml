@@ -966,7 +966,18 @@ BaseScreen {
                 }
             }
             
-            // Forecast View Container
+            // 7 Day Forecast View Container
+            SevenDayForecast {
+                id: sevenDayForecast
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                forecastPeriods: weatherScreen.forecastPeriods
+                statusMessage: weatherScreen.statusMessage !== "" ? weatherScreen.statusMessage : ""
+                pngIconsBase: weatherScreen.pngIconsBase
+                visible: currentView === "forecast"
+            }
+            
+            // Original Forecast View Container (now hidden, replaced by SevenDayForecast)
             ForecastDisplay {
                 id: forecastDisplay
                 width: parent.width
@@ -974,7 +985,7 @@ BaseScreen {
                               currentWeatherData.forecast.daily : []
                 statusMessage: weatherScreen.statusMessage !== "" ? weatherScreen.statusMessage : ""
                 pngIconsBase: pngIconsBase
-                visible: currentView === "forecast"
+                visible: false // Hide this component since we're using SevenDayForecast now
                 
                 // Connect to the click signal
                 onForecastItemClicked: function(index) {
