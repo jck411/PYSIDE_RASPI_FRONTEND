@@ -32,14 +32,20 @@ Rectangle {
         implicitWidth: 60
         implicitHeight: 40
         onClicked: {
-            PhotoController.go_to_previous()
+            // Use the screen's goToPrevious function that respects history
+            if (screen && typeof screen.goToPrevious === 'function') {
+                screen.goToPrevious();
+            } else {
+                // Fallback to controller's method if screen function not available
+                PhotoController.go_to_previous();
+            }
         }
     }
     
     // Play/Pause button
     TouchFriendlyButton {
         id: playPauseButton
-        source: PhotoController.is_running ? "../icons/pause_circle.svg" : "../icons/play_circle.svg.svg"
+        source: PhotoController.is_running ? "../icons/pause_circle.svg" : "../icons/play_circle.svg"
         text: PhotoController.is_running ? "Pause" : "Play"
         implicitWidth: 60
         implicitHeight: 40
@@ -55,7 +61,7 @@ Rectangle {
         Connections {
             target: PhotoController
             function onSlideshowRunningChanged(running) {
-                playPauseButton.source = running ? "../icons/pause_circle.svg" : "../icons/play_circle.svg.svg"
+                playPauseButton.source = running ? "../icons/pause_circle.svg" : "../icons/play_circle.svg"
                 playPauseButton.text = running ? "Pause" : "Play"
             }
         }
@@ -69,7 +75,13 @@ Rectangle {
         implicitWidth: 60
         implicitHeight: 40
         onClicked: {
-            PhotoController.advance_to_next()
+            // Use the screen's advanceToNext function that tracks history
+            if (screen && typeof screen.advanceToNext === 'function') {
+                screen.advanceToNext();
+            } else {
+                // Fallback to controller's method if screen function not available
+                PhotoController.advance_to_next();
+            }
         }
     }
     

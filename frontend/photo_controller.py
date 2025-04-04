@@ -34,7 +34,7 @@ class PhotoController(QObject):
         self._is_running = False
         self._current_blurred_bg = ""
         self._current_date_text = ""
-
+        
         # Load metadata if it exists
         self.load_metadata()
 
@@ -76,6 +76,9 @@ class PhotoController(QObject):
                     # Skip the metadata file
                     if filename == "photo_metadata.json":
                         continue
+                    # Skip Python scripts
+                    if filename.endswith(".py"):
+                        continue
 
                     file_path = os.path.join(self.media_folder, filename)
                     if filename.lower().endswith(
@@ -84,7 +87,7 @@ class PhotoController(QObject):
                         is_video = filename.lower().endswith((".mp4", ".mov", ".webm"))
                         self.media_files.append((file_path, is_video))
 
-                # Sort files by name
+                # Sort files by name - this ensures a consistent order
                 self.media_files.sort(key=lambda x: x[0])
 
                 logger.info(
@@ -232,6 +235,7 @@ class PhotoController(QObject):
         if not self.media_files:
             return
 
+        # Simple index advancement in the fixed order
         self.current_index = (self.current_index + 1) % len(self.media_files)
         current_path, is_video = self.media_files[self.current_index]
 
@@ -257,6 +261,7 @@ class PhotoController(QObject):
         if not self.media_files:
             return
 
+        # Simple previous in the fixed order
         self.current_index = (self.current_index - 1) % len(self.media_files)
         current_path, is_video = self.media_files[self.current_index]
 
@@ -274,6 +279,33 @@ class PhotoController(QObject):
         self.currentMediaChanged.emit(processed_path, is_video)
         logger.debug(
             f"Showing media {self.current_index + 1}/{len(self.media_files)}: {processed_path}"
+        )
+        
+    @Slot(int)
+    def go_to_specific_index(self, index):
+        """Go to a specific media item by index"""
+        if not self.media_files or index < 0 or index >= len(self.media_files):
+            logger.error(f"Invalid index {index} for media files of length {len(self.media_files)}")
+            return
+
+        # Set current index to the specified index
+        self.current_index = index
+        current_path, is_video = self.media_files[self.current_index]
+
+        # Process the image before sending to UI
+        processed_path = self.process_media_path(current_path, is_video)
+
+        # Update date text
+        self.update_date_text(current_path)
+
+        # Create and emit blurred background if this is an image
+        if not is_video:
+            self.find_blurred_background(current_path)
+
+        # Emit the new media item
+        self.currentMediaChanged.emit(processed_path, is_video)
+        logger.debug(
+            f"Direct jump to media {self.current_index + 1}/{len(self.media_files)}: {processed_path}"
         )
 
     @Slot()

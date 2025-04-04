@@ -21,7 +21,7 @@ Item {
     property string currentImagePath: ""      // Path of the currently visible image
     property string currentBlurredBackground: ""
     property string currentDateText: ""
-    // Removed transition state properties
+    property bool isImage1Active: true        // Track which image is currently active
     
     // Get reference to the mainWindow
     function getMainWindow() {
@@ -123,27 +123,65 @@ Item {
         // anchors.margins: 10 // Removed margins to allow full height fill
         color: "transparent"
 
-        // --- Single Image Display (Reverted) ---
+        // --- Dual Image Display for Crossfade ---
         Image {
-            id: photoImage // Renamed back from image1
-            visible: !showingVideo // Only visible when not showing video
+            id: photoImage1
+            visible: !showingVideo
             anchors.fill: parent
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             cache: false
-            // source set via Connections
-            opacity: 1 // Default opacity
+            opacity: isImage1Active ? 1.0 : 0.0
 
-             onStatusChanged: {
-                 if (status === Image.Error) {
-                     console.error("Image failed to load:", source)
-                 } else if (status === Image.Ready) {
-                     console.log("Image loaded successfully:", source)
-                 }
-             }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 1000
+                    easing.type: Easing.InOutQuad
+                }
+            }
+
+            onStatusChanged: {
+                if (status === Image.Error) {
+                    console.error("Image 1 failed to load:", source)
+                } else if (status === Image.Ready) {
+                    console.log("Image 1 loaded successfully:", source)
+                    // If this image just loaded and isn't currently active, make it active
+                    if (!isImage1Active) {
+                        isImage1Active = true;
+                    }
+                }
+            }
         }
-        // Removed image2 and all animations
-        // --- End Single Image Display ---
+
+        Image {
+            id: photoImage2
+            visible: !showingVideo
+            anchors.fill: parent
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+            cache: false
+            opacity: isImage1Active ? 0.0 : 1.0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 1000
+                    easing.type: Easing.InOutQuad
+                }
+            }
+
+            onStatusChanged: {
+                if (status === Image.Error) {
+                    console.error("Image 2 failed to load:", source)
+                } else if (status === Image.Ready) {
+                    console.log("Image 2 loaded successfully:", source)
+                    // If this image just loaded and isn't currently active, make it active
+                    if (isImage1Active) {
+                        isImage1Active = false;
+                    }
+                }
+            }
+        }
+        // --- End Dual Image Display ---
         
         // Video components for QtMultimedia 6.0
         MediaPlayer {
@@ -186,8 +224,9 @@ Item {
         
         // No media message - shown when no media available
         Text {
-            // Visible if not showing video AND image isn't ready
-            visible: !showingVideo && photoImage.status !== Image.Ready
+            // Visible if not showing video AND neither image is ready
+            visible: !showingVideo && 
+                     (isImage1Active ? photoImage1.status !== Image.Ready : photoImage2.status !== Image.Ready)
             text: "No media available"
             color: ThemeManager.text_primary_color
             anchors.centerIn: parent
@@ -198,8 +237,10 @@ Item {
         // Date display (bottom left) - shown when displaying photos
         Rectangle {
             id: dateTextBackground
-            // Visible if date text exists AND (video is showing OR image is ready)
-            visible: currentDateText !== "" && (showingVideo || photoImage.status === Image.Ready)
+            // Visible if date text exists AND (video is showing OR either image is ready)
+            visible: currentDateText !== "" && 
+                    (showingVideo || 
+                    (isImage1Active ? photoImage1.status === Image.Ready : photoImage2.status === Image.Ready))
             // anchors.left: parent.left // Removed left anchor
             anchors.right: parent.right // Added right anchor
             anchors.bottom: parent.bottom
@@ -232,23 +273,35 @@ Item {
             enabled: !showingVideo
             onClicked: {
                 // Advance to next media on click
-                PhotoController.advance_to_next()
+                advanceToNext()
             }
         }
+    }
+    
+    // Simple functions to handle navigation
+    function advanceToNext() {
+        // Simply use the controller's method
+        PhotoController.advance_to_next()
+    }
+    
+    function goToPrevious() {
+        // Simply use the controller's method
+        PhotoController.go_to_previous()
     }
     
     // Handle media changes from controller
     Connections {
         target: PhotoController
         
-        // Simplified handler - reverted
         function onCurrentMediaChanged(mediaPath, isVideo) {
-            console.log("Simplified onCurrentMediaChanged - Path:", mediaPath, "isVideo:", isVideo);
+            console.log("Enhanced onCurrentMediaChanged - Path:", mediaPath, "isVideo:", isVideo);
             showingVideo = isVideo;
             
             if (isVideo) {
                 currentVideoPath = mediaPath;
-                photoImage.source = ""; // Clear image source
+                // Clear both image sources when showing video
+                photoImage1.source = "";
+                photoImage2.source = "";
                 mediaPlayer.stop();
                 videoTimer.restart();
                 mediaPlayer.source = "file://" + mediaPath;
@@ -257,7 +310,16 @@ Item {
                 mediaPlayer.stop(); // Stop video if switching to image
                 videoTimer.stop();  // Stop fallback timer
                 currentImagePath = mediaPath; // Update path
-                photoImage.source = "file://" + mediaPath; // Set source directly
+                
+                // Load the new image into the inactive image element
+                if (isImage1Active) {
+                    photoImage2.source = "file://" + mediaPath;
+                } else {
+                    photoImage1.source = "file://" + mediaPath;
+                }
+                
+                // We'll toggle the active state in the image's onStatusChanged handler
+                // when the new image is actually loaded and ready to be displayed
             }
         } // End of onCurrentMediaChanged function
         
