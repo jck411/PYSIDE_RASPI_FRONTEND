@@ -11,6 +11,17 @@ Item {
     // exitRequested signal removed
     id: photoScreen
     objectName: "photoScreen"  // Add an object name so MainWindow can identify this screen
+
+    // Handle visibility changes to pause/resume the slideshow timer
+    onVisibleChanged: {
+        if (visible) {
+            console.log("PhotoScreen became visible, attempting to resume timer.")
+            PhotoController.resume_timer()
+        } else {
+            console.log("PhotoScreen became hidden, pausing timer.")
+            PhotoController.pause_timer()
+        }
+    }
     
     // Property to tell MainWindow which controls to load
     property string screenControls: "PhotoControls.qml"
@@ -234,7 +245,24 @@ Item {
             font.bold: true
         }
         
-        // Date display (bottom left) - shown when displaying photos
+        // Clock display (bottom left)
+        Text {
+            id: photoScreenTimeText // Unique ID
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: 20
+            anchors.bottomMargin: 20
+            text: "00:00:00" // Initial text
+            color: "#FFFFFF" // White text
+            font.pixelSize: 20 // Slightly larger than date, but smaller than main clock
+            font.family: "Arial"
+            font.bold: true
+            style: Text.Outline // Add outline style
+            styleColor: "#000000" // Black outline color
+            visible: true // Always visible
+        }
+
+        // Date display (bottom right) - shown when displaying photos
         Rectangle {
             id: dateTextBackground
             // Visible if date text exists AND (video is showing OR either image is ready)
@@ -289,6 +317,22 @@ Item {
         PhotoController.go_to_previous()
     }
     
+    // Timer for the bottom-left clock
+    Timer {
+        id: photoScreenClockTimer // Unique ID
+        interval: 1000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            var date = new Date()
+            // Update only the time text element we just added
+            if (typeof photoScreenTimeText !== 'undefined' && photoScreenTimeText) {
+                 photoScreenTimeText.text = date.toLocaleTimeString(Qt.locale(), "hh:mm:ss")
+            }
+        }
+    }
+
     // Handle media changes from controller
     Connections {
         target: PhotoController

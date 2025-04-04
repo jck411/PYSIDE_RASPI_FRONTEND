@@ -34,6 +34,7 @@ class PhotoController(QObject):
         self._is_running = False
         self._current_blurred_bg = ""
         self._current_date_text = ""
+        self._user_paused = False # Flag to track user-initiated pause
         
         # Load metadata if it exists
         self.load_metadata()
@@ -140,6 +141,7 @@ class PhotoController(QObject):
             # Start the timer for automatic advancement
             self.timer.start()
             self._is_running = True
+            self._user_paused = False # Reset user pause flag when starting
             self.slideshowRunningChanged.emit(True)
             logger.info("Slideshow started")
 
@@ -155,6 +157,7 @@ class PhotoController(QObject):
         """Stop the slideshow timer"""
         self.timer.stop()
         self._is_running = False
+        self._user_paused = True # Set user pause flag when stopping via controls/cleanup
         self.slideshowRunningChanged.emit(False)
         logger.info("Slideshow stopped")
 
@@ -328,3 +331,31 @@ class PhotoController(QObject):
     def current_date_text(self):
         """Return the date text for the current media"""
         return self._current_date_text
+
+    @Slot()
+    def pause_timer(self):
+        """Pause the automatic advancement timer (e.g., when screen is hidden)."""
+        if self._is_running:
+            self.timer.stop()
+            self._is_running = False
+            self.slideshowRunningChanged.emit(False)
+            logger.info("Slideshow timer paused (e.g., screen hidden).")
+
+    @Slot()
+    def resume_timer(self):
+        """Resume the automatic advancement timer if not paused by user."""
+        # Only resume if not manually paused by user and slideshow isn't already running
+        if not self._user_paused and not self._is_running and self.media_files:
+            current_path, is_video = self.media_files[self.current_index]
+            # Only start timer if the current item is an image
+            if not is_video:
+                self.timer.start()
+                self._is_running = True
+                self.slideshowRunningChanged.emit(True)
+                logger.info("Slideshow timer resumed (e.g., screen shown).")
+            else:
+                logger.info("Screen shown, but current item is video. Timer not resumed.")
+        elif self._user_paused:
+            logger.info("Screen shown, but slideshow was paused by user. Timer not resumed.")
+        elif self._is_running:
+             logger.info("Screen shown, but timer is already running.")
