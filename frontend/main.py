@@ -16,6 +16,7 @@ from frontend.theme_manager import ThemeManager
 from frontend.settings_service import SettingsService
 from frontend.error_handler import error_handler_instance, ErrorHandler
 from frontend.photo_controller import PhotoController
+from frontend.logic.calendar_controller import CalendarController # Add import
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -103,6 +104,9 @@ def main():
 
     # Create the single PhotoController instance
     photo_controller_instance = PhotoController()
+
+    # Create the single CalendarController instance
+    calendar_controller_instance = CalendarController()
     # ----------------------------------
 
     # --- Register QML Types and Singletons ---
@@ -142,6 +146,16 @@ def main():
     # Register PathProvider as a singleton
     qmlRegisterSingletonInstance(
         PathProvider, "MyServices", 1, 0, "PathProvider", path_provider
+    )
+
+    # Register CalendarController instance as a singleton
+    qmlRegisterSingletonInstance(
+        CalendarController,
+        "MyServices",
+        1,
+        0,
+        "CalendarController", # Name exposed to QML
+        calendar_controller_instance,
     )
     # -----------------------------------------
 

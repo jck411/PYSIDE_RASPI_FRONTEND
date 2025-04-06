@@ -223,6 +223,150 @@ To enable these visual effects, the application requires PySide6 6.5 or later. A
 
 The weather data is fetched from the National Weather Service API and then formatted to be compatible with the existing frontend UI structure. The backend handles the mapping of NWS weather icons and descriptions to the appropriate visual elements.
 
+## Calendar Screen Implementation (Design - April 2025)
+
+The CalendarScreen provides a read-only monthly view of events, designed to eventually sync with Google Calendar. It allows users to view events from multiple calendars and toggle their visibility.
+
+### Key Features
+- **Monthly Grid View:** Standard calendar layout displaying days of the selected month.
+- **Read-Only Display:** Events are displayed as sourced (initially mocked, later from Google Calendar) without in-app editing capabilities.
+- **Event Representation:**
+    - Events are shown within their respective day cells.
+    - Timed events display their start time; all-day events do not.
+    - Event titles are displayed clearly ("small print").
+    - Events use color coding based on their source calendar or specific event color.
+    - Multiple events stack vertically within a day cell.
+- **Navigation:** Controls for moving to the previous/next month and returning to the current day ("Today").
+- **Calendar Visibility Control:** Users can select which synced calendars (e.g., "Work", "Personal") are currently displayed via checkboxes.
+- **Theme Integration:** Adheres to the application's light/dark theme.
+
+### Architecture
+The implementation follows the project's standard pattern of separating Python logic (Controller) from QML presentation (View).
+
+- **`CalendarController.py` (Python - Implemented):**
+    - Inherits from `QObject`.
+    - Manages calendar state (current month/year via `_current_date`).
+    - Handles navigation logic (`goToNextMonth`, `goToPreviousMonth`, `goToToday`).
+    - Stores the list of available calendars (`_available_calendars`) including their ID, name, color, and user-defined visibility state (`is_visible`).
+    - Provides a method `setCalendarVisibility(calendarId, isVisible)` callable from QML.
+    - Fetches event data (`_get_mock_events`) and filters it (`_filter_events`) based on calendar visibility.
+    - Calculates the data for the grid (`_calculate_days_model`) including padding days and associated filtered events for each day.
+    - Exposes properties to QML via `@Property`:
+        - `currentMonthName` (string, notify=`currentMonthYearChanged`)
+        - `currentYear` (int, notify=`currentMonthYearChanged`)
+        - `daysInMonthModel` (list, notify=`daysInMonthModelChanged`) - This list contains dictionaries for each cell in the 6x7 grid. Each dictionary includes `dayNumber`, `isCurrentMonth`, `isToday`, and a list of `events` for that day.
+        - `availableCalendarsModel` (list, notify=`availableCalendarsChanged`) - List of available calendar dictionaries.
+    - Uses `QTimer.singleShot(0, ...)` to emit `daysInMonthModelChanged` signal slightly delayed after updates to mitigate potential QML binding issues during rapid transitions.
+
+- **`CalendarScreen.qml` (QML - Update):**
+    - Main container using a `GridView` for the 6x7 monthly layout.
+    - Displays the month/year header, bound to `CalendarController.currentMonthName` and `CalendarController.currentYear`.
+    - Binds the `GridView`'s `model` property to `CalendarController.daysInMonthModel`.
+    - Accesses the `CalendarController` singleton registered in `main.py`.
+
+- **`DayCell.qml` (QML - New):**
+    - Reusable component used as the delegate for the `GridView` in `CalendarScreen.qml`.
+    - Displays the background and day number (`modelData.dayNumber`) for a cell.
+    - Uses `modelData.isCurrentMonth` and `modelData.isToday` for styling.
+    - Contains a `ListView` bound to `modelData.events` (the list of events for that specific day provided by the controller's model).
+
+- **`EventItem.qml` (QML - New):**
+    - Reusable component used as the delegate for the `ListView` inside `DayCell.qml`.
+    - Defines properties (`title`, `startTime`, `allDay`, `eventColor`) bound to the incoming `modelData` (representing a single event dictionary).
+    - Uses `eventColor` for styling.
+    - Includes logic in its `text` binding to conditionally display `startTime` based on the `allDay` property.
+    - Includes robust checks in property bindings (e.g., for `startTime`) to handle potential `undefined` values during QML updates.
+
+- **`CalendarControls.qml` (QML - Update):**
+    - Contains navigation buttons (Today, Prev Month, Next Month) that call methods on `CalendarController`.
+    - Displays the `availableCalendarsModel` using a `ListView` with delegates (e.g., `CheckBox` with text and a color indicator).
+    - Toggling a checkbox calls `CalendarController.setCalendarVisibility()`.
+
+### Data Models (Conceptual Python)
+
+- **Event:**
+  ```python
+  {
+    "id": "event_id_from_google",
+    "calendar_id": "calendar_id_from_google",
+    "title": "Event Title",
+    "start_time": "ISO8601 DateTime String or None", # None if all_day is True
+    "end_time": "ISO8601 DateTime String or None",
+    "all_day": True/False,
+    "color": "#HexColor" # From event or calendar default
+  }
+  ```
+
+- **Calendar:**
+  ```python
+  {
+     "id": "calendar_id_from_google",
+     "name": "Calendar Name (e.g., Work)",
+     "color": "#HexColor", # Default color from Google
+     "is_visible": True/False # User controlled state, managed by Controller
+  }
+  ```
+
+### Architecture Diagram
+
+```mermaid
+graph TD
+    subgraph Frontend
+        direction LR
+        subgraph QML
+            direction TB
+            MainWindow --> CalendarScreen;
+            MainWindow -- Loads --> CalendarControls;
+            CalendarScreen --> GridView[GridView for Days];
+            GridView --> DayCell;
+            DayCell --> EventItem;
+
+            CalendarControls -- Contains --> NavButtons[Today, Prev, Next];
+            CalendarControls -- Contains --> CalendarVisibilityList[ListView w/ CheckBoxes];
+        end
+        subgraph Python
+            direction TB
+            CalendarController[CalendarController.py];
+
+            CalendarScreen -- Interacts with --> CalendarController;
+            DayCell -- Gets data from --> CalendarController;
+            EventItem -- Gets data from --> CalendarController;
+
+            NavButtons -- Trigger methods --> CalendarController;
+            CalendarVisibilityList -- Displays & Modifies --> CalendarController[availableCalendarsModel / setCalendarVisibility()];
+        end
+    end
+
+    subgraph Backend (Future)
+        direction LR
+        GoogleCalendarAPI[Google Calendar API];
+        CalendarController -- Fetches Calendars & Events --> GoogleCalendarAPI;
+    end
+
+    style Frontend fill:#f9f,stroke:#333,stroke-width:2px
+    style Backend fill:#ccf,stroke:#333,stroke-width:2px
+
+### Debugging Notes (April 2025)
+- Encountered persistent QML type errors (e.g., `Unable to assign [undefined] to QString/bool`) specifically during rapid model updates triggered by the "Today" button or visibility toggles, even when Python data appeared correct.
+- Attempts to use `QAbstractListModel` and alternative delegate structures (Repeater within GridView delegate) did not resolve the issue and introduced other problems (binding loops, different type errors).
+- The final stable state uses the original `QObject`-based controller exposing a list property (`daysInMonthModel`), with delayed signal emission (`QTimer.singleShot`) in Python and robust property bindings (checking for `undefined` or `null`) in QML delegates (`EventItem.qml`) as workarounds for potential QML update timing issues.
+
+### Next Steps: Google Calendar Integration
+
+1.  **Authentication:** Implement Google OAuth 2.0 flow (likely using `google-auth-oauthlib` and `google-api-python-client`) to allow the user to authorize access to their Google Calendar data. This will involve:
+   - Storing credentials securely (e.g., using system keyring or encrypted file).
+   - Handling token refresh.
+   - Potentially adding UI elements (e.g., in SettingsScreen) to initiate authentication and display status.
+2.  **API Client:** Use `google-api-python-client` to interact with the Google Calendar API v3.
+3.  **Fetch Calendars:** Modify `CalendarController` to fetch the user's list of calendars (`calendarList.list` endpoint) instead of using the mock `_available_calendars`. Store relevant details (ID, summary/name, colorId, backgroundColor). Update `availableCalendarsModel` accordingly.
+4.  **Fetch Events:** Modify `CalendarController._get_mock_events` (or a new method) to fetch events (`events.list` endpoint) for the currently displayed month (+/- padding days for the grid view).
+   - Query parameters should include `timeMin`, `timeMax`, `singleEvents=True` (to expand recurring events), and potentially `calendarId` if fetching per-calendar.
+   - Consider fetching events for a slightly wider range (e.g., 3 months) and caching/filtering locally in Python to reduce API calls during month navigation.
+5.  **Data Mapping:** Map the data received from the Google Calendar API (event start/end times, summary, colorId, etc.) to the structure expected by the QML components (the dictionary format used in `_calculate_days_model`). Handle date/datetime objects and timezone conversions appropriately. Google API often uses RFC3339 timestamps.
+6.  **Background Updates/Sync:** Implement a mechanism (e.g., using `QTimer` or background threads) to periodically re-fetch calendar/event data from Google to keep the display updated.
+7.  **Error Handling:** Add robust error handling for API calls (network issues, authentication errors, rate limits). Provide feedback to the user in case of sync failures.
+```
+
 ## Development Notes & Known Issues
 
 This section captures insights gained during recent debugging and cleanup efforts (April 2025).
