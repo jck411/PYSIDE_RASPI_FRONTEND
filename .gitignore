@@ -44,3 +44,7 @@ Thumbs.db
 *.log
 *.out
 *.err
+
+.env
+__pycache__/
+*.pyc
