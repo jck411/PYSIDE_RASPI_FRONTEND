@@ -43,4 +43,16 @@ RowLayout {
         }
     }
 
+    // --- Refresh Button ---
+    TouchFriendlyButton {
+        id: refreshButton
+        source: "../icons/refresh.svg" // Relative path from qml folder
+        text: "Refresh Calendar Events" // Tooltip text
+        onClicked: {
+            // Assuming this method exists on the CalendarController
+            // Please verify or provide the correct method name if different
+            CalendarController.refreshEvents()
+        }
+        Layout.preferredWidth: 50 // Consistent width with other icon buttons
+    }
 }
