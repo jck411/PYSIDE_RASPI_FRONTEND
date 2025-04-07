@@ -394,3 +394,26 @@ This section captures insights gained during recent debugging and cleanup effort
 - **Audio Configuration (Known Issue):** Logs showed numerous ALSA/JACK errors (e.g., `unable to open slave`, `Unknown PCM cards`, `Cannot open device /dev/dsp`). This indicates potential audio system misconfiguration on the target Linux environment (Raspberry Pi) that could cause instability and requires platform-specific investigation.
 - **Shutdown Error (Known Issue):** A QML TypeError (`PhotoController.stop_slideshow not available during cleanup`) occurs during application shutdown, originating from `PhotoScreen.qml`. This suggests an object lifetime or shutdown sequence issue between QML and the Python `PhotoController` that needs further debugging.
 - **Deepgram Connection (Observation):** Deepgram connection closure warnings and task cancellation errors were observed, potentially linked to shutdown or inactivity.
+
+## Recent UI Updates (April 2025)
+
+This section documents specific UI changes implemented recently:
+
+### Weather Controls (`frontend/qml/WeatherControls.qml`)
+- **Button Text:** The "7 Day Forecast" navigation button text was shortened to "7 Day".
+- **Selected Style:** The visual style for the selected navigation button ("72 Hour" or "7 Day") was updated. The semi-transparent background was removed, and a solid border with the color `#565f89` is now used to indicate selection.
+- **Button Width:** Both the "72 Hour" and "7 Day" buttons were set to a fixed `implicitWidth` of 90 pixels for visual consistency.
+
+### Calendar Controls (`frontend/qml/CalendarControls.qml`)
+- **Refresh Button:** A new refresh button was added using the `../icons/refresh.svg` icon (consistent with the Weather screen).
+- **Functionality:** This button is intended to trigger a data refresh/sync for calendar events and is currently configured to call `CalendarController.refreshEvents()`.
+
+## Future Development Tips
+
+Based on recent work, consider the following for future development:
+
+- **Implement `CalendarController.refreshEvents()`:** Ensure the Python method `CalendarController.refreshEvents()` is implemented to handle the logic for fetching updated calendar data when the new refresh button is clicked. This is crucial for the button to be functional.
+- **UI Consistency:** Regularly review UI elements across different screens (like button styles, sizing, and icon usage) to maintain a consistent look and feel. Decide on a standard approach for button sizing (fixed vs. automatic) where appropriate.
+- **Icon Path Management:** While relative paths (`../icons/`) work, ensure the `PathProvider` is used consistently where absolute paths are needed, especially if QML files might be moved or restructured. Double-check paths like `"../icons/refresh.svg"` remain valid relative to their QML file location.
+- **Documentation:** Keep this `ARCHITECTURE.md` file updated as new features are added or significant UI changes are made. Documenting the *why* behind design decisions can be helpful later.
+- **Controller Methods:** Verify that methods called from QML (like `CalendarController.refreshEvents()`) actually exist in the corresponding Python controller classes and have the correct signature.
