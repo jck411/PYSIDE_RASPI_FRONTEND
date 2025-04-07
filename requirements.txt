@@ -6,8 +6,9 @@ websockets
 deepgram-sdk
 azure-cognitiveservices-speech
 requests
-google-auth-oauthlib
-google-api-python-client
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+google-api-python-client>=2.0.0
 fastapi
 openai
 aiohttp

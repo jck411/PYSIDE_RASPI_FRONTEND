@@ -247,40 +247,42 @@ The implementation follows the project's standard pattern of separating Python l
     - Inherits from `QObject`.
     - Manages calendar state (current month/year via `_current_date`).
     - Handles navigation logic (`goToNextMonth`, `goToPreviousMonth`, `goToToday`).
-    - Stores the list of available calendars (`_available_calendars`) including their ID, name, color, and user-defined visibility state (`is_visible`).
+    - Integrates with Google Calendar API to fetch real calendar data.
+    - Provides a method `refreshEvents()` to synchronize with Google Calendar.
+    - Stores the list of available calendars from Google Calendar including their ID, name, color, and user-defined visibility state (`is_visible`).
     - Provides a method `setCalendarVisibility(calendarId, isVisible)` callable from QML.
-    - Fetches event data (`_get_mock_events`) and filters it (`_filter_events`) based on calendar visibility.
+    - Filters event data (`_filter_events`) based on calendar visibility.
     - Calculates the data for the grid (`_calculate_days_model`) including padding days and associated filtered events for each day.
     - Exposes properties to QML via `@Property`:
         - `currentMonthName` (string, notify=`currentMonthYearChanged`)
         - `currentYear` (int, notify=`currentMonthYearChanged`)
         - `daysInMonthModel` (list, notify=`daysInMonthModelChanged`) - This list contains dictionaries for each cell in the 6x7 grid. Each dictionary includes `dayNumber`, `isCurrentMonth`, `isToday`, and a list of `events` for that day.
         - `availableCalendarsModel` (list, notify=`availableCalendarsChanged`) - List of available calendar dictionaries.
-    - Uses `QTimer.singleShot(0, ...)` to emit `daysInMonthModelChanged` signal slightly delayed after updates to mitigate potential QML binding issues during rapid transitions.
+        - `syncStatus` (string, notify=`syncStatusChanged`) - Current synchronization status with Google Calendar.
 
-- **`CalendarScreen.qml` (QML - Update):**
+- **`GoogleCalendarClient.py` (Python - New):**
+    - Handles authentication with Google Calendar API.
+    - Uses OAuth 2.0 for authentication with the same credentials file as Google Photos.
+    - Provides methods to fetch calendar lists and events.
+    - Manages token persistence for authentication sessions.
+    - Includes a blocklist (BLOCKED_CALENDAR_NAMES) to exclude specific calendars from being fetched.
+    - Provides a display name mapping (DISPLAY_NAME_MAPPING) to show user-friendly names for calendars.
+
+- **`CalendarScreen.qml` (QML - Updated):**
     - Main container using a `GridView` for the 6x7 monthly layout.
     - Displays the month/year header, bound to `CalendarController.currentMonthName` and `CalendarController.currentYear`.
     - Binds the `GridView`'s `model` property to `CalendarController.daysInMonthModel`.
     - Accesses the `CalendarController` singleton registered in `main.py`.
 
-- **`DayCell.qml` (QML - New):**
-    - Reusable component used as the delegate for the `GridView` in `CalendarScreen.qml`.
-    - Displays the background and day number (`modelData.dayNumber`) for a cell.
-    - Uses `modelData.isCurrentMonth` and `modelData.isToday` for styling.
-    - Contains a `ListView` bound to `modelData.events` (the list of events for that specific day provided by the controller's model).
+- **`CalendarControls.qml` (QML - Updated):**
+    - Provides navigation controls (previous month, today, next month).
+    - Includes a refresh button to synchronize with Google Calendar.
+    - Displays current synchronization status.
 
-- **`EventItem.qml` (QML - New):**
-    - Reusable component used as the delegate for the `ListView` inside `DayCell.qml`.
-    - Defines properties (`title`, `startTime`, `allDay`, `eventColor`) bound to the incoming `modelData` (representing a single event dictionary).
-    - Uses `eventColor` for styling.
-    - Includes logic in its `text` binding to conditionally display `startTime` based on the `allDay` property.
-    - Includes robust checks in property bindings (e.g., for `startTime`) to handle potential `undefined` values during QML updates.
-
-- **`CalendarControls.qml` (QML - Update):**
-    - Contains navigation buttons (Today, Prev Month, Next Month) that call methods on `CalendarController`.
-    - Displays the `availableCalendarsModel` using a `ListView` with delegates (e.g., `CheckBox` with text and a color indicator).
-    - Toggling a checkbox calls `CalendarController.setCalendarVisibility()`.
+- **`EventItem.qml` (QML - Updated):**
+    - Displays calendar events with appropriate color coding.
+    - Dynamically adjusts text color based on background brightness.
+    - Shows time information for non-all-day events.
 
 ### Data Models (Conceptual Python)
 

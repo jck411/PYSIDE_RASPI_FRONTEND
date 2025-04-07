@@ -11,8 +11,21 @@ Rectangle {
     // Access model data via role names (defined in CalendarController)
     // Add fallbacks for ThemeManager colors
     color: modelData.isCurrentMonth ? ThemeManager.background_color : ThemeManager.input_background_color // Use defined theme colors
-    border.color: ThemeManager.input_border_color // Use defined theme color for border
-    border.width: 1
+    
+    // Special border for today's date
+    border.color: dayCell.isToday ? ThemeManager.button_primary_color : ThemeManager.input_border_color
+    border.width: dayCell.isToday ? 2 : 1
+    
+    // Highlight rectangle for today
+    Rectangle {
+        visible: dayCell.isToday
+        anchors.fill: parent
+        anchors.margins: 2
+        color: "transparent"
+        border.color: ThemeManager.button_primary_color
+        border.width: 1
+        radius: 2
+    }
 
     // Restore properties bound to modelData
     property int dayNumber: modelData.dayNumber

@@ -43,16 +43,29 @@ RowLayout {
         }
     }
 
-    // --- Refresh Button ---
-    TouchFriendlyButton {
-        id: refreshButton
-        source: "../icons/refresh.svg" // Relative path from qml folder
-        text: "Refresh Calendar Events" // Tooltip text
-        onClicked: {
-            // Assuming this method exists on the CalendarController
-            // Please verify or provide the correct method name if different
-            CalendarController.refreshEvents()
+    // --- Refresh Button and Status ---
+    RowLayout {
+        spacing: 5
+        Layout.alignment: Qt.AlignVCenter
+
+        TouchFriendlyButton {
+            id: refreshButton
+            source: "../icons/refresh.svg" // Relative path from qml folder
+            text: "Refresh Calendar Events" // Tooltip text
+            onClicked: {
+                // Assuming this method exists on the CalendarController
+                // Please verify or provide the correct method name if different
+                CalendarController.refreshEvents()
+            }
+            Layout.preferredWidth: 50 // Consistent width with other icon buttons
         }
-        Layout.preferredWidth: 50 // Consistent width with other icon buttons
+
+        Text {
+            id: syncStatus
+            text: CalendarController.syncStatus
+            color: ThemeManager.text_secondary_color
+            font.pixelSize: 12
+            Layout.alignment: Qt.AlignVCenter
+        }
     }
 }

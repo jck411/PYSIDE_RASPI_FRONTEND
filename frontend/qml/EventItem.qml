@@ -8,8 +8,13 @@ Rectangle {
     height: eventText.implicitHeight + 4 // Adjust height based on text content
     radius: 3
     // Use the eventColor property, accessed via the component id 'eventItem'
-    color: Qt.lighter(eventItem.eventColor || ThemeManager.input_background_color, 1.5) // Use property, theme fallback
-    border.color: eventItem.eventColor || ThemeManager.input_border_color // Use property, theme fallback
+    property color eventColor: modelData.color || "#1a73e8" // Default to Google blue
+    
+    // Use a much lighter version of the color for background
+    color: Qt.lighter(eventColor, 1.8) // Make it much lighter for better text contrast
+    
+    // Use original color for border
+    border.color: eventColor
     border.width: 1
     clip: true // Ensure text doesn't overflow bounds
 
@@ -32,7 +37,6 @@ Rectangle {
         }
     }
     property bool allDay: modelData.all_day
-    property color eventColor: modelData.color // Renamed property
 
     RowLayout {
         anchors.fill: parent
@@ -46,7 +50,7 @@ Rectangle {
         Rectangle {
             width: 4
             Layout.fillHeight: true
-            color: eventItem.eventColor || ThemeManager.input_border_color // Use property, theme fallback
+            color: eventItem.eventColor
             radius: 2
         }
 
@@ -70,9 +74,18 @@ Rectangle {
                 return timeString + (modelData ? eventItem.title : "..."); // Use property
             }
             font.pixelSize: 10 // "Small print"
-            // Use fixed dark text color if event has a specific background color for contrast,
-            // otherwise use the theme's primary text color.
-            color: eventItem.eventColor ? "#1a1b26" : ThemeManager.text_primary_color
+            // Improved text color calculation based on background color
+            // Always use a color that contrasts with the background
+            color: {
+                // Calculate luminance to determine if we need dark or light text
+                var r = eventItem.color.r
+                var g = eventItem.color.g
+                var b = eventItem.color.b
+                var luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                
+                // Use dark text on light backgrounds, light text on dark backgrounds
+                return luminance > 0.5 ? "#000000" : "#ffffff"
+            }
             elide: Text.ElideRight
             Layout.fillWidth: true
             verticalAlignment: Text.AlignVCenter
