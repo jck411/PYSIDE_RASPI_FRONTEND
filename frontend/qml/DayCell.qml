@@ -10,8 +10,8 @@ Rectangle {
     height: 100 // Example size
     // Access model data via role names (defined in CalendarController)
     // Add fallbacks for ThemeManager colors
-    color: modelData.isCurrentMonth ? (ThemeManager.background_color || "white") : (ThemeManager.secondary_background_color || "lightgrey") // Use modelData
-    border.color: ThemeManager.outline_color || "grey"
+    color: modelData.isCurrentMonth ? ThemeManager.background_color : ThemeManager.input_background_color // Use defined theme colors
+    border.color: ThemeManager.input_border_color // Use defined theme color for border
     border.width: 1
 
     // Restore properties bound to modelData
@@ -33,8 +33,8 @@ Rectangle {
             font.pixelSize: 12
             font.bold: dayCell.isToday // Highlight today's date
             // Add fallbacks for ThemeManager colors
-            color: dayCell.isToday ? (ThemeManager.accent_color || "blue") : (dayCell.isCurrentMonth ? (ThemeManager.text_primary_color || "black") : (ThemeManager.text_disabled_color || "darkgrey"))
-            Layout.alignment: Qt.AlignRight // Position day number top-right
+            color: dayCell.isToday ? ThemeManager.button_primary_color : (dayCell.isCurrentMonth ? ThemeManager.text_primary_color : ThemeManager.text_secondary_color) // Use defined theme colors
+            Layout.alignment: Qt.AlignHCenter // Center day number horizontally
         }
 
         // Restore Event List View

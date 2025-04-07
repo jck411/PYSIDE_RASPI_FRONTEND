@@ -22,35 +22,79 @@ Item {
         anchors.fill: parent
         spacing: 5 // Reduced spacing
 
-        // Header: Month and Year
+        // Header: Month and Year + Calendar Selection
         Rectangle {
             id: headerRect
-            Layout.fillWidth: true
-            Layout.preferredHeight: 40
-            color: ThemeManager.secondary_background_color || "lightgrey" // Fallback
+            Layout.fillWidth: true // Takes full width
+            Layout.preferredHeight: 50 // Increased height slightly for checkboxes
+            color: ThemeManager.input_background_color // Use defined theme color for header background
 
+            // Use RowLayout for horizontal arrangement
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: 10
                 anchors.rightMargin: 10
+                spacing: 10 // Spacing between items
 
+                // --- Calendar Visibility Checkboxes ---
+                RowLayout { // Use another RowLayout for the checkboxes themselves
+                    id: calendarSelectionLayout
+                    spacing: 8
+                    Layout.alignment: Qt.AlignVCenter // Vertically center the checkboxes
+
+                    Repeater {
+                        model: CalendarController.availableCalendarsModel
+                        delegate: RowLayout { // Delegate for each calendar checkbox
+                            spacing: 4
+
+                            CheckBox {
+                                id: visibilityCheckbox
+                                checked: modelData.is_visible
+                                onCheckStateChanged: {
+                                    if (checkState !== Qt.PartiallyChecked) {
+                                        CalendarController.setCalendarVisibility(modelData.id, checked)
+                                    }
+                                }
+                                // Tooltip for accessibility
+                                ToolTip.visible: hovered
+                                ToolTip.text: "Toggle visibility for " + modelData.name
+                            }
+
+                            Rectangle { // Color indicator
+                                width: 12; height: 12; radius: 6
+                                color: modelData.color
+                                border.color: Qt.darker(modelData.color); border.width: 1
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            Text {
+                                text: modelData.name
+                                color: ThemeManager.text_primary_color // Use defined theme color
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+                        }
+                    }
+                }
+
+                // Spacer to push Month/Year text to the right
+                Item { Layout.fillWidth: true }
+
+                // --- Month/Year Text (Moved to the right) ---
                 Text {
                     id: monthYearText
-                    // Use controller properties directly
                     text: CalendarController.currentMonthName + " " + CalendarController.currentYear
                     font.pixelSize: 20
                     font.bold: true
-                    color: ThemeManager.text_primary_color || "black" // Fallback
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
+                    color: ThemeManager.text_primary_color // Use defined theme color
+                    // Layout.fillWidth: false // No longer fills width
+                    horizontalAlignment: Text.AlignRight // Align to the right
                     verticalAlignment: Text.AlignVCenter
-
-                    // Ensure text updates when controller signals change
-                    Connections {
-                        target: CalendarController
-                        function onCurrentMonthYearChanged() {
-                            monthYearText.text = CalendarController.currentMonthName + " " + CalendarController.currentYear;
-                        }
+                }
+                // Connections block remains the same, attached to monthYearText
+                Connections {
+                    target: CalendarController
+                    function onCurrentMonthYearChanged() {
+                        monthYearText.text = CalendarController.currentMonthName + " " + CalendarController.currentYear;
                     }
                 }
             }
@@ -67,8 +111,8 @@ Item {
                 delegate: Rectangle {
                     Layout.fillWidth: true // Distribute width evenly
                     Layout.preferredHeight: 25
-                    color: ThemeManager.background_color || "white" // Fallback
-                    border.color: ThemeManager.outline_color || "grey" // Fallback
+                    color: ThemeManager.background_color // Use defined theme color
+                    border.color: ThemeManager.input_border_color // Use defined theme color for border
                     border.width: 1
 
                     Text {
@@ -76,7 +120,7 @@ Item {
                         anchors.centerIn: parent
                         font.pixelSize: 12
                         font.bold: true
-                        color: ThemeManager.text_secondary_color || "darkgrey" // Fallback
+                        color: ThemeManager.text_secondary_color // Use defined theme color
                     }
                 }
             }

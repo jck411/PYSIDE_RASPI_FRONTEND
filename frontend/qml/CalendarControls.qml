@@ -11,87 +11,36 @@ RowLayout {
     property var screen // This property might be used by MainWindow, keep it
 
     // --- Navigation Buttons ---
-    TouchFriendlyButton {
-        id: prevMonthButton
-        // text: "<" // Using icon source instead if available, or keep text
-        source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arrow_left.svg") // Use PathProvider
-        text: "Previous Month" // Correct property for tooltip
-        onClicked: CalendarController.goToPreviousMonth()
-        Layout.preferredWidth: 50 // Adjust size as needed
-    }
+    // Group navigation buttons in their own layout for closer spacing
+    RowLayout {
+        spacing: 5 // Reduced spacing between nav buttons
 
-    TouchFriendlyButton {
-        id: todayButton
-        text: "Today" // This sets the button text AND the tooltip text via alias
-        // tooltip: "Go to Current Month" // Redundant if text is set
-        onClicked: CalendarController.goToToday()
-    }
+        TouchFriendlyButton {
+            id: prevMonthButton
+            // text: "<" // Using icon source instead if available, or keep text
+            source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arroarrow_back_D9D9D9.svg") // Use specific back arrow
+            text: "Previous Month" // Tooltip text via alias
+            onClicked: CalendarController.goToPreviousMonth()
+            Layout.preferredWidth: 50 // Adjust size as needed
+        }
 
-    TouchFriendlyButton {
-        id: nextMonthButton
-        // text: ">" // Using icon source instead if available, or keep text
-        source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arrow_right.svg") // Use PathProvider
-        text: "Next Month" // Correct property for tooltip
-        onClicked: CalendarController.goToNextMonth()
-        Layout.preferredWidth: 50 // Adjust size as needed
-    }
+        TouchFriendlyButton {
+            id: todayButton
+            // text: "Today" // Remove original tooltip text
+            source: "file://" + PathProvider.getAbsolutePath("frontend/icons/today.svg") // Set the icon source
+            text: "Go to Current Month" // Set the tooltip text via the 'text' alias
+            onClicked: CalendarController.goToToday()
+            Layout.preferredWidth: 50 // Ensure consistent width with other icon buttons
+        }
 
-    // Spacer to push calendar list to the right (adjust layout as needed)
-    Item { Layout.fillWidth: true }
-
-    // --- Calendar Visibility List ---
-    Rectangle { // Add a background for the list area
-        Layout.preferredWidth: 200 // Adjust width as needed
-        Layout.fillHeight: true
-        color: ThemeManager.secondary_background_color || "lightgrey" // Fallback
-        radius: 5
-        clip: true // Ensure content stays within bounds
-
-        ListView {
-            id: calendarListView
-            anchors.fill: parent
-            anchors.margins: 5
-            model: CalendarController.availableCalendarsModel // Bind to the controller's model
-            spacing: 5
-
-            delegate: RowLayout {
-                width: parent.width // Fill the width of the ListView
-                spacing: 8
-
-                CheckBox {
-                    id: visibilityCheckbox
-                    checked: modelData.is_visible // Bind checked state to model
-                    // Use onCheckStateChanged for better reliability with binding
-                    onCheckStateChanged: {
-                        if (checkState !== Qt.PartiallyChecked) { // Avoid intermediate state if any
-                           CalendarController.setCalendarVisibility(modelData.id, checked)
-                        }
-                    }
-                    // Tooltip for accessibility
-                    ToolTip.visible: hovered
-                    ToolTip.text: "Toggle visibility for " + modelData.name
-                }
-
-                Rectangle { // Color indicator
-                    width: 12
-                    height: 12
-                    radius: 6
-                    color: modelData.color // Use color from model
-                    border.color: Qt.darker(modelData.color)
-                    border.width: 1
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                Text {
-                    text: modelData.name // Display calendar name
-                    color: ThemeManager.text_primary_color || "black" // Fallback
-                    elide: Text.ElideRight // Elide if name is too long
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignVCenter
-                }
-            }
-
-            ScrollIndicator.vertical: ScrollIndicator { } // Add scroll indicator if list is long
+        TouchFriendlyButton {
+            id: nextMonthButton
+            // text: ">" // Using icon source instead if available, or keep text
+            source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arrow_forward_D9D9D9.svg") // Use specific forward arrow
+            text: "Next Month" // Tooltip text via alias
+            onClicked: CalendarController.goToNextMonth()
+            Layout.preferredWidth: 50 // Adjust size as needed
         }
     }
+
 }

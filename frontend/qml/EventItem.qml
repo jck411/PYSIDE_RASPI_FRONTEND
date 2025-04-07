@@ -8,8 +8,8 @@ Rectangle {
     height: eventText.implicitHeight + 4 // Adjust height based on text content
     radius: 3
     // Use the eventColor property, accessed via the component id 'eventItem'
-    color: Qt.lighter(eventItem.eventColor || "grey", 1.5) // Use property, keep fallback
-    border.color: eventItem.eventColor || "grey" // Use property, keep fallback
+    color: Qt.lighter(eventItem.eventColor || ThemeManager.input_background_color, 1.5) // Use property, theme fallback
+    border.color: eventItem.eventColor || ThemeManager.input_border_color // Use property, theme fallback
     border.width: 1
     clip: true // Ensure text doesn't overflow bounds
 
@@ -46,7 +46,7 @@ Rectangle {
         Rectangle {
             width: 4
             Layout.fillHeight: true
-            color: eventItem.eventColor || "grey" // Use property, keep fallback
+            color: eventItem.eventColor || ThemeManager.input_border_color // Use property, theme fallback
             radius: 2
         }
 
@@ -70,7 +70,9 @@ Rectangle {
                 return timeString + (modelData ? eventItem.title : "..."); // Use property
             }
             font.pixelSize: 10 // "Small print"
-            color: ThemeManager.text_primary_color || "black" // Fallback
+            // Use fixed dark text color if event has a specific background color for contrast,
+            // otherwise use the theme's primary text color.
+            color: eventItem.eventColor ? "#1a1b26" : ThemeManager.text_primary_color
             elide: Text.ElideRight
             Layout.fillWidth: true
             verticalAlignment: Text.AlignVCenter
