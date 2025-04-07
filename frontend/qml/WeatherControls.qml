@@ -19,15 +19,11 @@ BaseControls {
         implicitHeight: 40
         
         background: Rectangle {
-            color: screen && screen.currentView === "current" 
-                ? Qt.rgba(ThemeManager.button_primary_color.r, 
-                         ThemeManager.button_primary_color.g, 
-                         ThemeManager.button_primary_color.b, 0.3) 
-                : Qt.rgba(0, 0, 0, 0.1)
+            color: "transparent" // Remove background color change on selection
             radius: 8
             border.width: 1
             border.color: screen && screen.currentView === "current"
-                ? ThemeManager.button_primary_color
+                ? "#565f89" // Set specific border color when selected
                 : "transparent"
         }
         
@@ -48,22 +44,18 @@ BaseControls {
     
     Button {
         id: forecastButton
-        text: "7 Day Forecast"
+        text: "7 Day"
         font.pixelSize: 16
         font.bold: true
-        implicitWidth: 120
+        implicitWidth: 90
         implicitHeight: 40
         
         background: Rectangle {
-            color: screen && screen.currentView === "forecast" 
-                ? Qt.rgba(ThemeManager.button_primary_color.r, 
-                         ThemeManager.button_primary_color.g, 
-                         ThemeManager.button_primary_color.b, 0.3) 
-                : Qt.rgba(0, 0, 0, 0.1)
+            color: "transparent" // Remove background color change on selection
             radius: 8
             border.width: 1
             border.color: screen && screen.currentView === "forecast"
-                ? ThemeManager.button_primary_color
+                ? "#565f89" // Set specific border color when selected
                 : "transparent"
         }
         
