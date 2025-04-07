@@ -243,7 +243,7 @@ The CalendarScreen provides a read-only monthly view of events, designed to even
 ### Architecture
 The implementation follows the project's standard pattern of separating Python logic (Controller) from QML presentation (View).
 
-- **`CalendarController.py` (Python - Implemented):**
+- **`CalendarController.py` (Python - Updated):**
     - Inherits from `QObject`.
     - Manages calendar state (current month/year via `_current_date`).
     - Handles navigation logic (`goToNextMonth`, `goToPreviousMonth`, `goToToday`).
@@ -252,15 +252,17 @@ The implementation follows the project's standard pattern of separating Python l
     - Stores the list of available calendars from Google Calendar including their ID, name, color, and user-defined visibility state (`is_visible`).
     - Provides a method `setCalendarVisibility(calendarId, isVisible)` callable from QML.
     - Filters event data (`_filter_events`) based on calendar visibility.
-    - Calculates the data for the grid (`_calculate_days_model`) including padding days and associated filtered events for each day.
+    - Pre-calculates all event layout positions and row assignments for efficient rendering.
+    - Organizes calendar data hierarchically by weeks to simplify rendering.
+    - Handles multi-day events that span across days or weeks with proper layout information.
     - Exposes properties to QML via `@Property`:
         - `currentMonthName` (string, notify=`currentMonthYearChanged`)
         - `currentYear` (int, notify=`currentMonthYearChanged`)
-        - `daysInMonthModel` (list, notify=`daysInMonthModelChanged`) - This list contains dictionaries for each cell in the 6x7 grid. Each dictionary includes `dayNumber`, `isCurrentMonth`, `isToday`, and a list of `events` for that day.
+        - `daysInMonthModel` (list, notify=`daysInMonthModelChanged`) - Enhanced model with pre-calculated layout information.
         - `availableCalendarsModel` (list, notify=`availableCalendarsChanged`) - List of available calendar dictionaries.
         - `syncStatus` (string, notify=`syncStatusChanged`) - Current synchronization status with Google Calendar.
 
-- **`GoogleCalendarClient.py` (Python - New):**
+- **`GoogleCalendarClient.py` (Python - Unchanged):**
     - Handles authentication with Google Calendar API.
     - Uses OAuth 2.0 for authentication with the same credentials file as Google Photos.
     - Provides methods to fetch calendar lists and events.
@@ -269,20 +271,25 @@ The implementation follows the project's standard pattern of separating Python l
     - Provides a display name mapping (DISPLAY_NAME_MAPPING) to show user-friendly names for calendars.
 
 - **`CalendarScreen.qml` (QML - Updated):**
-    - Main container using a `GridView` for the 6x7 monthly layout.
-    - Displays the month/year header, bound to `CalendarController.currentMonthName` and `CalendarController.currentYear`.
-    - Binds the `GridView`'s `model` property to `CalendarController.daysInMonthModel`.
-    - Accesses the `CalendarController` singleton registered in `main.py`.
+    - Main container for the calendar screen.
+    - Displays the month/year header and calendar selection controls.
+    - Uses the unified `UnifiedCalendarView` component for displaying the calendar grid and events.
+    - Binds directly to the `CalendarController` to get calendar data.
+
+- **`UnifiedCalendarView.qml` (QML - New):**
+    - Unified component that handles both the day grid and events in a single view.
+    - Renders day cells arranged in weeks.
+    - Shows multi-day events as continuous spans across days they cover.
+    - Displays single-day events within their respective day cells.
+    - Uses pre-calculated layout information from the controller.
+    - Shows indicators for events that continue beyond visible dates.
+    - Provides "more events" indicators when there are too many events to display.
+    - Automatically adjusts single-day event placement to avoid overlap with multi-day events.
 
 - **`CalendarControls.qml` (QML - Updated):**
     - Provides navigation controls (previous month, today, next month).
     - Includes a refresh button to synchronize with Google Calendar.
     - Displays current synchronization status.
-
-- **`EventItem.qml` (QML - Updated):**
-    - Displays calendar events with appropriate color coding.
-    - Dynamically adjusts text color based on background brightness.
-    - Shows time information for non-all-day events.
 
 ### Data Models (Conceptual Python)
 
@@ -419,3 +426,29 @@ Based on recent work, consider the following for future development:
 - **Icon Path Management:** While relative paths (`../icons/`) work, ensure the `PathProvider` is used consistently where absolute paths are needed, especially if QML files might be moved or restructured. Double-check paths like `"../icons/refresh.svg"` remain valid relative to their QML file location.
 - **Documentation:** Keep this `ARCHITECTURE.md` file updated as new features are added or significant UI changes are made. Documenting the *why* behind design decisions can be helpful later.
 - **Controller Methods:** Verify that methods called from QML (like `CalendarController.refreshEvents()`) actually exist in the corresponding Python controller classes and have the correct signature.
+
+## Calendar Component Structure
+
+### Recent Improvements
+
+The calendar component has been refactored to use a more efficient and maintainable architecture:
+
+1. **Unified Calendar View**: A single component for rendering both day cells and multi-day events, replacing the previous separate grid and overlay approach.
+
+2. **Pre-calculated Layout**: The CalendarController now pre-calculates all event positions, making the QML rendering more straightforward and efficient.
+
+3. **Fixed Bug in Month Navigation**: The layout row tracking algorithm was improved to properly track positions by (row, column) pairs instead of entire rows, preventing the calendar from breaking when changing months.
+
+4. **Defensive Programming**: Added more defensive checks to handle null or invalid data gracefully, preventing crashes when data is incomplete.
+
+5. **Model Reset on Month Change**: Properly clearing the model when changing months to ensure stale references don't cause bugs.
+
+6. **Robust Model Processing**: Implemented a time-based deferred model processing approach in QML to safely handle model changes without compromising UI stability.
+
+7. **Asynchronous UI Updates**: Added a loading indicator during model updates and ensured that the calendar grid is never empty, even during model changes.
+
+8. **Exception Handling**: Added comprehensive error handling in Python to catch and log any issues during model calculations and navigation.
+
+9. **Fallback Data**: Created safeguards to maintain a basic calendar grid even if data fetching fails, ensuring the user always sees something.
+
+10. **Diagnostic Logging**: Added detailed debug logging at key points in both Python and QML to aid in troubleshooting.

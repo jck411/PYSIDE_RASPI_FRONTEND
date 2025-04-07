@@ -3,17 +3,41 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import MyTheme 1.0
 import MyServices 1.0 // Import the services module
-// Removed explicit import for DayCell.qml - should be found implicitly in the same directory
 
 Item {
     id: calendarScreen
 
     // Property to tell MainWindow which controls to load
     property string screenControls: "CalendarControls.qml"
-
-    // For calculating cell sizes
-    property int gridColumns: 7
-    property int gridRows: 6 // Standard 6 weeks display
+    property bool debugLogging: false // Disable for production
+    
+    // Handle model changes
+    Connections {
+        target: CalendarController
+        function onDaysInMonthModelChanged() {
+            if (debugLogging) {
+                var modelLength = CalendarController.daysInMonthModel ? 
+                      CalendarController.daysInMonthModel.length : "null"
+                console.log("Calendar model changed, length: " + modelLength)
+            }
+        }
+        
+        function onCurrentMonthYearChanged() {
+            if (debugLogging) {
+                console.log("Month/Year changed to: " + 
+                      CalendarController.currentMonthName + " " + 
+                      CalendarController.currentYear)
+            }
+        }
+        
+        function onAvailableCalendarsChanged() {
+            if (debugLogging) {
+                var calCount = CalendarController.availableCalendarsModel ? 
+                      CalendarController.availableCalendarsModel.length : "null"
+                console.log("Available calendars changed, count: " + calCount)
+            }
+        }
+    }
 
     anchors.fill: parent
 
@@ -43,6 +67,7 @@ Item {
                     Layout.alignment: Qt.AlignVCenter // Vertically center the checkboxes
 
                     Repeater {
+                        id: calendarRepeater
                         model: CalendarController.availableCalendarsModel
                         delegate: RowLayout { // Delegate for each calendar checkbox
                             spacing: 4
@@ -52,6 +77,10 @@ Item {
                                 checked: modelData.is_visible
                                 onCheckStateChanged: {
                                     if (checkState !== Qt.PartiallyChecked) {
+                                        if (calendarScreen.debugLogging) {
+                                            console.log("Setting visibility for " + 
+                                                 modelData.name + " to " + checked)
+                                        }
                                         CalendarController.setCalendarVisibility(modelData.id, checked)
                                     }
                                 }
@@ -86,11 +115,10 @@ Item {
                     font.pixelSize: 20
                     font.bold: true
                     color: ThemeManager.text_primary_color // Use defined theme color
-                    // Layout.fillWidth: false // No longer fills width
                     horizontalAlignment: Text.AlignRight // Align to the right
                     verticalAlignment: Text.AlignVCenter
                 }
-                // Connections block remains the same, attached to monthYearText
+                // Connections to update monthYearText when the value changes
                 Connections {
                     target: CalendarController
                     function onCurrentMonthYearChanged() {
@@ -126,36 +154,13 @@ Item {
             }
         }
 
-
-        // Calendar Grid View
-        GridView {
-            id: calendarGrid
+        // Unified Calendar View
+        UnifiedCalendarView {
+            id: unifiedCalendar
             Layout.fillWidth: true
             Layout.fillHeight: true // Take remaining space
-            clip: true // Prevent delegates spilling out
-
-            // Calculate cell size based on available space and grid dimensions
-            // Subtracting small amount for potential borders/spacing issues
-            cellWidth: (width - 1) / calendarScreen.gridColumns
-            cellHeight: (height - 1) / calendarScreen.gridRows
-
-            // Bind directly to the controller instance, as it IS the model now
-            model: CalendarController.daysInMonthModel // Bind back to the property
-
-            delegate: DayCell {
-                // Properties are implicitly passed via modelData
-                width: calendarGrid.cellWidth
-                height: calendarGrid.cellHeight
-            }
-
-            // Restore explicit Connections for model changes
-             Connections {
-                 target: CalendarController
-                 function onDaysInMonthModelChanged() {
-                     // Optional: Add logging if needed
-                     // console.log("Calendar Grid: Model Changed")
-                 }
-             }
+            model: CalendarController.daysInMonthModel
+            debugOutput: calendarScreen.debugLogging
         }
     }
 }

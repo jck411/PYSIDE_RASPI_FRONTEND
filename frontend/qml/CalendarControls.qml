@@ -7,65 +7,52 @@ import MyServices 1.0 // Import services to access CalendarController
 
 RowLayout {
     id: calendarControls
-    spacing: 15 // Increased spacing for clarity
+    spacing: 10
     property var screen // This property might be used by MainWindow, keep it
 
-    // --- Navigation Buttons ---
-    // Group navigation buttons in their own layout for closer spacing
-    RowLayout {
-        spacing: 5 // Reduced spacing between nav buttons
-
-        TouchFriendlyButton {
-            id: prevMonthButton
-            // text: "<" // Using icon source instead if available, or keep text
-            source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arroarrow_back_D9D9D9.svg") // Use specific back arrow
-            text: "Previous Month" // Tooltip text via alias
-            onClicked: CalendarController.goToPreviousMonth()
-            Layout.preferredWidth: 50 // Adjust size as needed
-        }
-
-        TouchFriendlyButton {
-            id: todayButton
-            // text: "Today" // Remove original tooltip text
-            source: "file://" + PathProvider.getAbsolutePath("frontend/icons/today.svg") // Set the icon source
-            text: "Go to Current Month" // Set the tooltip text via the 'text' alias
-            onClicked: CalendarController.goToToday()
-            Layout.preferredWidth: 50 // Ensure consistent width with other icon buttons
-        }
-
-        TouchFriendlyButton {
-            id: nextMonthButton
-            // text: ">" // Using icon source instead if available, or keep text
-            source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arrow_forward_D9D9D9.svg") // Use specific forward arrow
-            text: "Next Month" // Tooltip text via alias
-            onClicked: CalendarController.goToNextMonth()
-            Layout.preferredWidth: 50 // Adjust size as needed
-        }
+    // Navigation buttons using TouchFriendlyButton
+    TouchFriendlyButton {
+        id: prevMonthButton
+        source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arroarrow_back_D9D9D9.svg")
+        text: "Previous Month"
+        Layout.preferredWidth: 50
+        onClicked: CalendarController.goToPreviousMonth()
     }
-
-    // --- Refresh Button and Status ---
-    RowLayout {
-        spacing: 5
+    
+    TouchFriendlyButton {
+        id: todayButton
+        source: "file://" + PathProvider.getAbsolutePath("frontend/icons/today.svg")
+        text: "Go to Current Month"
+        Layout.preferredWidth: 50
+        onClicked: CalendarController.goToToday()
+    }
+    
+    TouchFriendlyButton {
+        id: nextMonthButton
+        source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arrow_forward_D9D9D9.svg")
+        text: "Next Month"
+        Layout.preferredWidth: 50
+        onClicked: CalendarController.goToNextMonth()
+    }
+    
+    TouchFriendlyButton {
+        id: refreshButton
+        source: "file://" + PathProvider.getAbsolutePath("frontend/icons/refresh.svg")
+        text: "Refresh Calendar Events"
+        Layout.preferredWidth: 50
+        onClicked: CalendarController.refreshEvents()
+    }
+    
+    // Spacer to push sync status to the right
+    Item {
+        Layout.fillWidth: true
+    }
+    
+    // Sync status text
+    Text {
+        text: CalendarController.syncStatus
+        color: ThemeManager.text_secondary_color
+        font.pixelSize: 14
         Layout.alignment: Qt.AlignVCenter
-
-        TouchFriendlyButton {
-            id: refreshButton
-            source: "../icons/refresh.svg" // Relative path from qml folder
-            text: "Refresh Calendar Events" // Tooltip text
-            onClicked: {
-                // Assuming this method exists on the CalendarController
-                // Please verify or provide the correct method name if different
-                CalendarController.refreshEvents()
-            }
-            Layout.preferredWidth: 50 // Consistent width with other icon buttons
-        }
-
-        Text {
-            id: syncStatus
-            text: CalendarController.syncStatus
-            color: ThemeManager.text_secondary_color
-            font.pixelSize: 12
-            Layout.alignment: Qt.AlignVCenter
-        }
     }
 }
