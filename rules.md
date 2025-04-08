@@ -1,5 +1,6 @@
 Always prefer simple solutions  
-– doonly what you are asked, make suggestions for enhancements 
+– try to fix things at the cause, not the symptom.
+– do only what you are asked, make suggestions for enhancements 
 – Use event  driven mechanisms whenever possible
 – Always use asynch methods unless it doesn't give significant advantage
 – Avoid duplication of code whenever possible, which means checking for other areas of the codebase that might already have similar code and functionality  
