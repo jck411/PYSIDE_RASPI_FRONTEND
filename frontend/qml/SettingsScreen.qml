@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Window 2.15
 import MyTheme 1.0
 import MyServices 1.0
 
@@ -19,9 +20,9 @@ Item {
     Component.onCompleted: {
         // Get initial values from the SettingsService
         try {
-            autoSendEnabled = SettingsService.getSetting('stt.STT_CONFIG.auto_submit_utterances', false)
+            autoSendEnabled = Boolean(SettingsService.getSetting('stt.STT_CONFIG.auto_submit_utterances', false))
             console.log("Auto Send setting initial value:", autoSendEnabled)
-            showInputBoxEnabled = SettingsService.getSetting('chat.CHAT_CONFIG.show_input_box', true)
+            showInputBoxEnabled = Boolean(SettingsService.getSetting('chat.CHAT_CONFIG.show_input_box', true))
             console.log("Show Input Box setting initial value:", showInputBoxEnabled)
         } catch (e) {
             console.error("Error getting initial values from SettingsService:", e)
@@ -207,7 +208,7 @@ Item {
                             }
                         }
 
-                        // Fullscreen Setting (New)
+                        // Fullscreen Setting 
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 16
@@ -230,17 +231,14 @@ Item {
 
                             Switch {
                                 id: fullscreenSwitch
-                                // Read initial state from settings
-                                checked: SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false)
-
+                                // Bind directly to the window visibility state
+                                checked: Window.window ? Window.window.visibility === Window.FullScreen : false
+                                
                                 onToggled: {
-                                    var success = SettingsService.setSetting('ui.WINDOW_CONFIG.fullscreen', checked)
-                                    if (success) {
-                                        console.log("Fullscreen setting changed via SettingsService to:", checked)
-                                    } else {
-                                        console.error("Failed to update Fullscreen setting via SettingsService")
-                                        // Revert switch state if setting failed
-                                        fullscreenSwitch.checked = Qt.binding(function() { return SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false); })
+                                    // Directly control window visibility
+                                    if (Window.window) {
+                                        Window.window.visibility = checked ? Window.FullScreen : Window.Windowed
+                                        console.log("Fullscreen toggled from settings to:", checked)
                                     }
                                 }
                             }

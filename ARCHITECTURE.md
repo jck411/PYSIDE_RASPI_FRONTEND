@@ -368,3 +368,74 @@ The calendar component has been refactored to use a more efficient and maintaina
 9. **Fallback Data**: Created safeguards to maintain a basic calendar grid even if data fetching fails, ensuring the user always sees something.
 
 10. **Diagnostic Logging**: Added detailed debug logging at key points in both Python and QML to aid in troubleshooting.
+
+## UI State Management Challenges and Solutions
+
+This section documents common challenges in QML/PySide application state management and solutions implemented in the project, focusing on practical examples.
+
+### Fullscreen Toggle Implementation (April 2025)
+
+#### Original Challenge
+The fullscreen toggle feature presented several interrelated challenges that exemplify common pitfalls in QML/PySide development:
+
+1. **Type Conversion Issues**: The SettingsService returns PySide PyObjectWrapper values that can't be directly assigned to QML boolean properties. This created runtime errors when trying to set `isFullScreen = value` directly from Python values.
+
+2. **Window State Management**: The initial implementation used window flags (Qt.FramelessWindowHint) to control the title bar visibility, but this approach permanently removed the title bar, making it impossible to restore when exiting fullscreen mode.
+
+3. **Settings vs. Direct Control**: Relying on the SettingsService for window state added complexity and indirection, creating a disconnect between the actual window state and its representation in the UI.
+
+4. **QML/Python Communication**: The settings-based approach required multiple signal connections and properties to synchronize state between the Python backend and QML frontend.
+
+#### Implemented Solution
+The fullscreen toggle feature was redesigned with these principles:
+
+1. **Direct Window Control**: We switched from manipulating window flags to using Qt's built-in visibility states (Window.FullScreen and Window.Windowed).
+
+2. **Explicit Type Conversion**: We added explicit `Boolean()` conversions at all interface points between Python and QML to prevent type errors.
+
+3. **Reactive Properties**: Added a property `isFullScreen: visibility === Window.FullScreen` that dynamically reflects the actual window state rather than depending on settings.
+
+4. **Visual Feedback**: The settings toggle switch directly binds to and controls the window state, providing immediate feedback.
+
+```qml
+// In MainWindow.qml
+property bool isFullScreen: visibility === Window.FullScreen
+
+onVisibilityChanged: {
+    if (stackView && stackView.currentItem && stackView.currentItem.title) {
+        if (visibility === Window.FullScreen) {
+            mainWindow.title = ""
+        } else {
+            mainWindow.title = stackView.currentItem.title
+        }
+    }
+}
+
+// In SettingsScreen.qml
+Switch {
+    id: fullscreenSwitch
+    // Bind directly to the window visibility state
+    checked: Window.window ? Window.window.visibility === Window.FullScreen : false
+    
+    onToggled: {
+        // Directly control window visibility
+        if (Window.window) {
+            Window.window.visibility = checked ? Window.FullScreen : Window.Windowed
+        }
+    }
+}
+```
+
+#### Lessons Learned
+
+1. **Prefer Direct Control**: When managing UI states like fullscreen mode, direct manipulation of window properties is more reliable than indirect settings-based approaches.
+
+2. **Explicit Type Handling**: Always use explicit type conversions when passing data between Python and QML to prevent runtime errors.
+
+3. **Reactive Properties**: Use properties that derive their values from the actual system state rather than storing duplicate state that can get out of sync.
+
+4. **Window Visibility vs. Flags**: Use standard window visibility states (Window.FullScreen, Window.Windowed) instead of manipulating window flags for common window behaviors.
+
+5. **Global Access**: Use the Window.window singleton to access the main window from any QML component, enabling direct window control from settings screens.
+
+These principles can be applied to other UI state management challenges throughout the application, such as theme switching, audio state control, and view mode selection.

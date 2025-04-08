@@ -21,17 +21,23 @@ Window {
     // Property to track current screen
     property var currentScreen: null
     property bool topBarTransparent: false // Keep property
+    property bool isFullScreen: visibility === Window.FullScreen // Track fullscreen state
+
+    // Update title when visibility changes
+    onVisibilityChanged: {
+        if (stackView && stackView.currentItem && stackView.currentItem.title) {
+            if (visibility === Window.FullScreen) {
+                mainWindow.title = ""
+            } else {
+                mainWindow.title = stackView.currentItem.title
+            }
+        }
+    }
 
     Component.onCompleted: {
-        // Set initial state based on settings
-        var startFullscreen = SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false)
-        if (startFullscreen) {
-            mainWindow.showFullScreen()
-            mainWindow.title = "" // Ensure title is clear if starting fullscreen
-        } else {
-            mainWindow.showNormal()
-            // Initial title will be set by onCurrentItemChanged when StackView loads
-        }
+        // Initial settings - use Windowed by default for stability
+        visibility = Window.Windowed
+        // Initial title will be set by onCurrentItemChanged when StackView loads
         PhotoController.set_dark_mode(ThemeManager.is_dark_mode)
     }
     
@@ -98,7 +104,7 @@ Window {
                 
                 // Update title
                 if (currentItem && currentItem.title) {
-                    if (SettingsService.getSetting('ui.WINDOW_CONFIG.fullscreen', false) === false) {
+                    if (!isFullScreen) {
                         mainWindow.title = currentItem.title
                     } else {
                         mainWindow.title = "" 
@@ -156,13 +162,17 @@ Window {
         function onSettingChanged(key, value) {
             if (key === 'ui.WINDOW_CONFIG.fullscreen') {
                 console.log("MainWindow reacting to fullscreen change:", value)
-                if (value) {
-                    mainWindow.showFullScreen()
+                isFullScreen = Boolean(value)
+                if (Boolean(value) === true) {
+                    // Switch to fullscreen mode
+                    visibility = Window.FullScreen
                 } else {
-                    mainWindow.showNormal()
+                    // Switch to normal windowed mode
+                    visibility = Window.Windowed
                 }
+                
                 if (stackView.currentItem && stackView.currentItem.title) {
-                    if (value === false) {
+                    if (Boolean(value) === false) {
                         mainWindow.title = stackView.currentItem.title
                     } else {
                         mainWindow.title = ""
