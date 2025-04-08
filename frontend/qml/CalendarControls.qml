@@ -9,30 +9,61 @@ RowLayout {
     id: calendarControls
     spacing: 10
     property var screen // This property might be used by MainWindow, keep it
+    
+    // Function to get the current view mode from the screen
+    function getCurrentViewMode() {
+        return screen ? screen.viewMode : "month";
+    }
 
     // Navigation buttons using TouchFriendlyButton
     TouchFriendlyButton {
-        id: prevMonthButton
+        id: prevButton
         source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arroarrow_back_D9D9D9.svg")
-        text: "Previous Month"
+        text: {
+            var mode = getCurrentViewMode();
+            if (mode === "month") return "Previous Month";
+            else if (mode === "week") return "Previous Week";
+            else if (mode === "3day") return "Previous 3 Days";
+            else return "Previous Day";
+        }
         Layout.preferredWidth: 50
-        onClicked: CalendarController.goToPreviousMonth()
+        onClicked: {
+            var mode = getCurrentViewMode();
+            if (mode === "month") {
+                CalendarController.goToPreviousMonth();
+            } else {
+                CalendarController.moveDateRangeBackward();
+            }
+        }
     }
     
     TouchFriendlyButton {
         id: todayButton
         source: "file://" + PathProvider.getAbsolutePath("frontend/icons/today.svg")
-        text: "Go to Current Month"
+        text: "Go to Today"
         Layout.preferredWidth: 50
         onClicked: CalendarController.goToToday()
     }
     
     TouchFriendlyButton {
-        id: nextMonthButton
+        id: nextButton
         source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arrow_forward_D9D9D9.svg")
-        text: "Next Month"
+        text: {
+            var mode = getCurrentViewMode();
+            if (mode === "month") return "Next Month";
+            else if (mode === "week") return "Next Week";
+            else if (mode === "3day") return "Next 3 Days";
+            else return "Next Day";
+        }
         Layout.preferredWidth: 50
-        onClicked: CalendarController.goToNextMonth()
+        onClicked: {
+            var mode = getCurrentViewMode();
+            if (mode === "month") {
+                CalendarController.goToNextMonth();
+            } else {
+                CalendarController.moveDateRangeForward();
+            }
+        }
     }
     
     TouchFriendlyButton {

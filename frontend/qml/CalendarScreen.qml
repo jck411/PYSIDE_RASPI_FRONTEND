@@ -11,6 +11,9 @@ Item {
     property string screenControls: "CalendarControls.qml"
     property bool debugLogging: false // Disable for production
     
+    // Add view mode property - will be connected to controller
+    property string viewMode: "month" // Default view: "month", "week", "3day", "day"
+    
     // Handle model changes
     Connections {
         target: CalendarController
@@ -37,7 +40,42 @@ Item {
                 console.log("Available calendars changed, count: " + calCount)
             }
         }
+        
+        // Listen for view mode changes from controller
+        function onViewModeChanged(newMode) {
+            if (newMode === "day" && calendarScreen.viewMode !== "day") {
+                // Store previous view mode when switching to day view
+                calendarScreen.previousViewMode = calendarScreen.viewMode;
+            }
+            calendarScreen.viewMode = newMode;
+            if (debugLogging) {
+                console.log("View mode changed to: " + newMode);
+            }
+        }
     }
+
+    // Cycle through view modes
+    function cycleViewMode() {
+        switch(viewMode) {
+            case "month": 
+                viewMode = "week"; 
+                break;
+            case "week": 
+            default: 
+                viewMode = "month"; 
+                break;
+        }
+        
+        // Update controller's view mode
+        CalendarController.setViewMode(viewMode);
+        
+        if (debugLogging) {
+            console.log("View mode changed to: " + viewMode);
+        }
+    }
+    
+    // Store previous view mode when navigating to day view
+    property string previousViewMode: "month"
 
     anchors.fill: parent
 
@@ -59,6 +97,42 @@ Item {
                 anchors.leftMargin: 10
                 anchors.rightMargin: 10
                 spacing: 10 // Spacing between items
+
+                // Back button (only visible in day view)
+                Rectangle {
+                    id: backButton
+                    width: 40
+                    height: 40
+                    visible: calendarScreen.viewMode === "day"
+                    color: "transparent"
+                    Layout.alignment: Qt.AlignVCenter
+                    
+                    Image {
+                        id: backIcon
+                        anchors.centerIn: parent
+                        source: "file://" + PathProvider.getAbsolutePath("frontend/icons/arroarrow_back_D9D9D9.svg")
+                        width: 24
+                        height: 24
+                        sourceSize.width: 24
+                        sourceSize.height: 24
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            // Return to previous view (month or week)
+                            CalendarController.setViewMode(calendarScreen.previousViewMode);
+                        }
+                        
+                        // Tooltip
+                        ToolTip {
+                            visible: parent.containsMouse
+                            text: "Back to " + calendarScreen.previousViewMode + " view"
+                            delay: 500
+                        }
+                    }
+                }
 
                 // --- Calendar Visibility Checkboxes ---
                 RowLayout { // Use another RowLayout for the checkboxes themselves
@@ -108,31 +182,108 @@ Item {
                 // Spacer to push Month/Year text to the right
                 Item { Layout.fillWidth: true }
 
+                // --- VIEW TOGGLE ICON (to the left of month/year text) ---
+                Rectangle {
+                    id: viewToggleButton
+                    width: 40
+                    height: 40
+                    color: "transparent"
+                    Layout.alignment: Qt.AlignVCenter
+                    
+                    // View mode toggle icon
+                    Image {
+                        id: viewToggleIcon
+                        anchors.centerIn: parent
+                        source: "file://" + PathProvider.getAbsolutePath("frontend/icons/date_range.svg")
+                        width: 24
+                        height: 24
+                        sourceSize.width: 24
+                        sourceSize.height: 24
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    
+                    // Small indicator showing current view mode
+                    Rectangle {
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.rightMargin: 2
+                        anchors.bottomMargin: 2
+                        width: viewModeBadge.width + 6
+                        height: viewModeBadge.height + 4
+                        radius: height / 2
+                        color: ThemeManager.button_primary_color
+                        
+                        Text {
+                            id: viewModeBadge
+                            anchors.centerIn: parent
+                            text: {
+                                switch(calendarScreen.viewMode) {
+                                    case "month": return "M";
+                                    case "week": return "W";
+                                    case "3day": return "3D";
+                                    case "day": return "D";
+                                    default: return "";
+                                }
+                            }
+                            font.pixelSize: 10
+                            font.bold: true
+                            color: "white"
+                        }
+                    }
+                    
+                    // Mouse area for the toggle button
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            calendarScreen.cycleViewMode();
+                        }
+                        
+                        // Tooltip
+                        ToolTip {
+                            visible: parent.containsMouse
+                            text: "Toggle Calendar View Mode"
+                            delay: 500
+                        }
+                    }
+                }
+
                 // --- Month/Year Text (Moved to the right) ---
                 Text {
                     id: monthYearText
-                    text: CalendarController.currentMonthName + " " + CalendarController.currentYear
+                    text: calendarScreen.viewMode === "month" ? 
+                          CalendarController.currentMonthName + " " + CalendarController.currentYear :
+                          CalendarController.currentRangeDisplay
                     font.pixelSize: 20
                     font.bold: true
                     color: ThemeManager.text_primary_color // Use defined theme color
                     horizontalAlignment: Text.AlignRight // Align to the right
                     verticalAlignment: Text.AlignVCenter
                 }
-                // Connections to update monthYearText when the value changes
+                // Connections to update monthYearText when values change
                 Connections {
                     target: CalendarController
                     function onCurrentMonthYearChanged() {
-                        monthYearText.text = CalendarController.currentMonthName + " " + CalendarController.currentYear;
+                        if (calendarScreen.viewMode === "month") {
+                            monthYearText.text = CalendarController.currentMonthName + " " + 
+                                                CalendarController.currentYear;
+                        }
+                    }
+                    
+                    function onCurrentRangeDisplayChanged() {
+                        if (calendarScreen.viewMode !== "month") {
+                            monthYearText.text = CalendarController.currentRangeDisplay;
+                        }
                     }
                 }
             }
         }
 
-        // Weekday Labels
+        // Weekday Labels (only shown in month view)
         RowLayout {
             id: weekdayHeader
             Layout.fillWidth: true
             spacing: 0 // No spacing between labels
+            visible: calendarScreen.viewMode === "month"
 
             Repeater {
                 model: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] // Or use Locale for names
@@ -154,13 +305,24 @@ Item {
             }
         }
 
-        // Unified Calendar View
+        // Month Calendar View (only shown in month view)
         UnifiedCalendarView {
             id: unifiedCalendar
             Layout.fillWidth: true
             Layout.fillHeight: true // Take remaining space
             model: CalendarController.daysInMonthModel
             debugOutput: calendarScreen.debugLogging
+            visible: calendarScreen.viewMode === "month"
+        }
+        
+        // Custom Calendar View (shown in week, 3day, day views)
+        CustomCalendarView {
+            id: customCalendar
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            model: CalendarController.currentRangeDays
+            debugOutput: calendarScreen.debugLogging
+            visible: calendarScreen.viewMode !== "month"
         }
     }
 }

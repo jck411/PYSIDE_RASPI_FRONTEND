@@ -178,6 +178,26 @@ Item {
                                          ThemeManager.input_border_color
                             border.width: modelData && modelData.isToday ? 2 : 1
                             
+                            // Mouse area to handle clicks/taps on day cells
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    if (modelData && modelData.date_str) {
+                                        // Navigate to day view for this date
+                                        CalendarController.goToSpecificDate(modelData.date_str, "day");
+                                    }
+                                }
+                                // Visual feedback on hover
+                                hoverEnabled: true
+                                
+                                // Tooltip shows that clicking opens day view
+                                ToolTip {
+                                    visible: parent.containsMouse
+                                    text: "View events for this day"
+                                    delay: 500
+                                }
+                            }
+                            
                             // Highlight rectangle for today
                             Rectangle {
                                 visible: modelData && modelData.isToday

@@ -15,6 +15,9 @@ class CalendarController(QObject):
     availableCalendarsChanged = Signal()
     daysInMonthModelChanged = Signal()
     syncStatusChanged = Signal(str)
+    viewModeChanged = Signal(str)
+    currentRangeDaysChanged = Signal()
+    currentRangeDisplayChanged = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -26,6 +29,17 @@ class CalendarController(QObject):
         self._filtered_events = []
         self._days_in_month_model = []
         self._sync_status = "Not synced"
+        
+        # View mode: "month", "week", "3day", "day"
+        self._view_mode = "month"
+        
+        # Date range for custom views
+        self._range_start_date = None
+        self._range_end_date = None
+        self._range_days = []
+        
+        # Initialize date range
+        self._update_date_range()
 
         # Initial data load
         self._update_events_and_model()
@@ -48,12 +62,118 @@ class CalendarController(QObject):
     def daysInMonthModel(self):
         """ Provides the model for the calendar grid (list of day dictionaries). """
         return self._days_in_month_model
+        
+    @Property(str, notify=viewModeChanged)
+    def viewMode(self):
+        """Return the current view mode."""
+        return self._view_mode
+        
+    @Property("QVariantList", notify=currentRangeDaysChanged)
+    def currentRangeDays(self):
+        """Return the days in the current date range (for week/3day/day views)."""
+        return self._range_days
+        
+    @Property(str, notify=currentRangeDisplayChanged)
+    def currentRangeDisplay(self):
+        """Return a formatted string of the current date range."""
+        if self._view_mode == "month":
+            return f"{self.currentMonthName} {self.currentYear}"
+        
+        if not self._range_start_date or not self._range_end_date:
+            return ""
+        
+        python_start = self._range_start_date.toPython()
+        python_end = self._range_end_date.toPython()
+        
+        # Same month and year
+        if python_start.month == python_end.month and python_start.year == python_end.year:
+            if python_start == python_end:
+                # Single day
+                return python_start.strftime("%B %d, %Y")
+            else:
+                # Date range in same month
+                return f"{python_start.strftime('%B %d')} - {python_end.day}, {python_end.year}"
+        else:
+            # Date range spanning months
+            return f"{python_start.strftime('%b %d')} - {python_end.strftime('%b %d, %Y')}"
 
     @Property(str, notify=syncStatusChanged)
     def syncStatus(self):
         return self._sync_status
 
     # --- Slots callable from QML ---
+    
+    @Slot(str)
+    def setViewMode(self, mode):
+        """Set the calendar view mode."""
+        if mode in ["month", "week", "day"] and mode != self._view_mode:
+            self._view_mode = mode
+            # Update date range for the new view mode
+            self._update_date_range()
+            self.viewModeChanged.emit(self._view_mode)
+            self.currentRangeDaysChanged.emit()
+            self.currentRangeDisplayChanged.emit()
+            
+    @Slot()
+    def cycleViewMode(self):
+        """Cycle through available view modes: month -> week -> day -> month"""
+        current_mode = self._view_mode
+        
+        # Define the cycle order - simplified to just month and week
+        modes = ["month", "week"]
+        
+        # Find current index and get next mode
+        try:
+            current_index = modes.index(current_mode)
+            next_index = (current_index + 1) % len(modes)
+            next_mode = modes[next_index]
+        except ValueError:
+            # If current mode not found, default to month
+            next_mode = "month"
+        
+        # Set the new mode
+        self.setViewMode(next_mode)
+        
+    @Slot(str, str)
+    def goToSpecificDate(self, date_str, view_mode="day"):
+        """Navigate to a specific date and set the view mode.
+        
+        Args:
+            date_str: Date string in format 'yyyy-MM-dd'
+            view_mode: View mode to set ('month', 'week', or 'day')
+        """
+        try:
+            # Parse the date
+            date = QDate.fromString(date_str, "yyyy-MM-dd")
+            if not date.isValid():
+                print(f"Invalid date: {date_str}")
+                return
+                
+            # Set the current date
+            self._current_date = date
+            
+            # Set the view mode
+            if view_mode in ["month", "week", "day"]:
+                self._view_mode = view_mode
+            else:
+                # Default to day view if invalid mode
+                self._view_mode = "day"
+                
+            # Update date range for the new view mode
+            self._update_date_range()
+            
+            # Update models
+            self._update_events_and_model()
+            
+            # Emit signals for UI updates
+            self.currentMonthYearChanged.emit()
+            self.currentRangeDisplayChanged.emit()
+            self.daysInMonthModelChanged.emit()
+            self.currentRangeDaysChanged.emit()
+            self.viewModeChanged.emit(self._view_mode)
+            
+        except Exception as e:
+            print(f"Error navigating to date {date_str}: {e}")
 
     @Slot()
     def goToNextMonth(self):
@@ -61,13 +181,38 @@ class CalendarController(QObject):
         try:
             # Signal month change first (before any model changes)
             self._current_date = self._current_date.addMonths(1)
+            self._update_date_range()
             self.currentMonthYearChanged.emit()
+            self.currentRangeDisplayChanged.emit()
             
             # Update model
             self._update_events_and_model()
             self.daysInMonthModelChanged.emit()
+            self.currentRangeDaysChanged.emit()
         except Exception as e:
             print(f"Error in goToNextMonth: {e}")
+            
+    @Slot()
+    def moveDateRangeForward(self):
+        """Move the custom date range forward."""
+        if self._view_mode == "month":
+            self.goToNextMonth()
+            return
+            
+        days_to_move = 1  # Default for day view
+        if self._view_mode == "week":
+            days_to_move = 7
+        elif self._view_mode == "3day":
+            days_to_move = 3
+        
+        # Move current date forward
+        self._current_date = self._current_date.addDays(days_to_move)
+        self._update_date_range()
+        
+        # Update signals
+        self.currentMonthYearChanged.emit()
+        self.currentRangeDaysChanged.emit()
+        self.currentRangeDisplayChanged.emit()
 
     @Slot()
     def goToPreviousMonth(self):
@@ -75,28 +220,55 @@ class CalendarController(QObject):
         try:
             # Signal month change first (before any model changes)
             self._current_date = self._current_date.addMonths(-1)
+            self._update_date_range()
             self.currentMonthYearChanged.emit()
+            self.currentRangeDisplayChanged.emit()
             
             # Update model
             self._update_events_and_model()
             self.daysInMonthModelChanged.emit()
+            self.currentRangeDaysChanged.emit()
         except Exception as e:
             print(f"Error in goToPreviousMonth: {e}")
+            
+    @Slot()
+    def moveDateRangeBackward(self):
+        """Move the custom date range backward."""
+        if self._view_mode == "month":
+            self.goToPreviousMonth()
+            return
+            
+        days_to_move = 1  # Default for day view
+        if self._view_mode == "week":
+            days_to_move = 7
+        elif self._view_mode == "3day":
+            days_to_move = 3
+        
+        # Move current date backward
+        self._current_date = self._current_date.addDays(-days_to_move)
+        self._update_date_range()
+        
+        # Update signals
+        self.currentMonthYearChanged.emit()
+        self.currentRangeDaysChanged.emit()
+        self.currentRangeDisplayChanged.emit()
 
     @Slot()
     def goToToday(self):
-        """Go to current month."""
+        """Go to current month/date."""
         try:
             current_date = QDate.currentDate()
-            if (self._current_date.month() != current_date.month() or
-                    self._current_date.year() != current_date.year()):
-                # Signal month change first (before any model changes)
+            if (self._current_date != current_date):
+                # Signal change first (before any model changes)
                 self._current_date = current_date
+                self._update_date_range()
                 self.currentMonthYearChanged.emit()
+                self.currentRangeDisplayChanged.emit()
                 
                 # Update model
                 self._update_events_and_model()
                 self.daysInMonthModelChanged.emit()
+                self.currentRangeDaysChanged.emit()
         except Exception as e:
             print(f"Error in goToToday: {e}")
 
@@ -121,6 +293,10 @@ class CalendarController(QObject):
             self.availableCalendarsChanged.emit()
             QTimer.singleShot(0, self.daysInMonthModelChanged.emit)
             
+            # Update range days for custom views
+            self._update_range_days()
+            self.currentRangeDaysChanged.emit()
+            
             self._sync_status = "Synced"
             self.syncStatusChanged.emit(self._sync_status)
         except Exception as e:
@@ -142,8 +318,115 @@ class CalendarController(QObject):
             self._update_events_and_model(fetch_new_events=False)
             self.availableCalendarsChanged.emit()
             QTimer.singleShot(0, self.daysInMonthModelChanged.emit)
+            
+            # Update range days for custom views
+            self._update_range_days()
+            self.currentRangeDaysChanged.emit()
 
     # --- Helper Methods ---
+    
+    def _update_date_range(self):
+        """Update the date range based on the current view mode and date."""
+        if self._view_mode == "month":
+            # Range is managed by existing month model
+            return
+            
+        # Convert QDate to Python datetime for easier manipulation
+        current_date = self._current_date.toPython()
+        
+        if self._view_mode == "week":
+            # Get start of week (Monday)
+            weekday = current_date.weekday()  # 0=Monday, 6=Sunday
+            start_date = current_date - timedelta(days=weekday)
+            end_date = start_date + timedelta(days=6)
+        elif self._view_mode == "day":
+            # Single day view
+            start_date = current_date
+            end_date = current_date
+        else:
+            # Default fallback to single day
+            start_date = current_date
+            end_date = current_date
+            
+        # Convert back to QDate
+        self._range_start_date = QDate.fromString(start_date.strftime("%Y-%m-%d"), "yyyy-MM-dd")
+        self._range_end_date = QDate.fromString(end_date.strftime("%Y-%m-%d"), "yyyy-MM-dd")
+        
+        # Update range days
+        self._update_range_days()
+        
+    def _update_range_days(self):
+        """Update the range days model for custom views."""
+        if self._view_mode == "month":
+            self._range_days = []
+            return
+            
+        if not self._range_start_date or not self._range_end_date:
+            self._range_days = []
+            return
+            
+        # Create range days
+        result = []
+        current_date = self._range_start_date
+        today = QDate.currentDate()
+        
+        while current_date <= self._range_end_date:
+            # Get events for this day
+            date_str = current_date.toString("yyyy-MM-dd")
+            
+            # Find regular events for this day
+            regular_events = []
+            multi_day_events = []
+            
+            for event in self._filtered_events:
+                event_start_date = QDate.fromString(event.get("start_date", ""), "yyyy-MM-dd")
+                event_end_date = QDate.fromString(event.get("end_date", ""), "yyyy-MM-dd")
+                
+                # Skip if dates are invalid
+                if not event_start_date.isValid() or not event_end_date.isValid():
+                    continue
+                    
+                # Check if event is on this day
+                if event_start_date <= current_date and current_date <= event_end_date:
+                    # Clone the event to avoid modifying the original
+                    event_copy = event.copy()
+                    
+                    # Mark if this is a multi-day event
+                    is_multi_day = event_start_date != event_end_date
+                    
+                    if is_multi_day:
+                        event_copy["is_multi_day"] = True
+                        event_copy["isStart"] = event_start_date == current_date
+                        event_copy["isEnd"] = event_end_date == current_date
+                        multi_day_events.append(event_copy)
+                    else:
+                        event_copy["is_multi_day"] = False
+                        
+                        # Add time formatting for day view
+                        if "start_time" in event and event["start_time"]:
+                            try:
+                                start_time = datetime.fromisoformat(event["start_time"])
+                                event_copy["timeDisplay"] = start_time.strftime("%I:%M %p")
+                            except (ValueError, TypeError):
+                                event_copy["timeDisplay"] = ""
+                                
+                        regular_events.append(event_copy)
+            
+            # Create day data
+            day_data = {
+                "date": current_date.toPython(),
+                "date_str": date_str,
+                "day": str(current_date.day()),
+                "dayName": self._locale.standaloneDayName(current_date.dayOfWeek(), QLocale.ShortFormat),
+                "isToday": current_date == today,
+                "events": regular_events,
+                "multiDayEvents": multi_day_events
+            }
+            
+            result.append(day_data)
+            current_date = current_date.addDays(1)
+            
+        self._range_days = result
 
     def _update_events_and_model(self, fetch_new_events=True):
         """Fetches/refreshes events and recalculates the days model."""
@@ -173,12 +456,15 @@ class CalendarController(QObject):
                     self._days_in_month_model = self._create_empty_grid()
                 else:
                     self._days_in_month_model = old_model
+                    
+            # Update range days for custom views
+            self._update_range_days()
         except Exception as e:
             print(f"Error updating calendar model: {e}")
             # If there was an error, make sure we have at least an empty grid
             if not self._days_in_month_model:
                 self._days_in_month_model = self._create_empty_grid()
-    
+
     def _create_empty_grid(self):
         """Creates a basic empty grid with just dates, no events."""
         days_model = []
