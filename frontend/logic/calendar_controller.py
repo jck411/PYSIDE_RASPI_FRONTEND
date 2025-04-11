@@ -551,19 +551,42 @@ class CalendarController(QObject):
             print(f"Error fetching events: {e}")
             return []
 
-    def _calculate_days_model(self):
-        """ 
-        Calculates the list of day dictionaries for the grid view.
-        Pre-calculates event positions for the UI.
-        """
-        # Initialize data structure for weeks
+    def _extract_event_dates(self, event):
+        """Extract and validate start/end dates from an event."""
+        try:
+            # Parse the start date
+            if event.get("start_time"):
+                start_date_str = event["start_time"].split("T")[0] if "T" in event["start_time"] else event["start_time"]
+                event["start_date"] = start_date_str
+            else:
+                # Skip events without start time
+                return False
+                
+            # Parse the end date
+            if event.get("end_time"):
+                end_date_str = event["end_time"].split("T")[0] if "T" in event["end_time"] else event["end_time"]
+                event["end_date"] = end_date_str
+            else:
+                # For events with no end time, use start date
+                event["end_date"] = event["start_date"]
+                
+            # Validate the dates
+            start_date = QDate.fromString(event["start_date"], "yyyy-MM-dd")
+            end_date = QDate.fromString(event["end_date"], "yyyy-MM-dd")
+            
+            return start_date.isValid() and end_date.isValid()
+        except:
+            return False
+
+    def _create_basic_grid(self):
+        """Creates the basic 6x7 grid with dates for the month view."""
         weeks_data = []
-        
-        # First, create the basic 6x7 grid with dates
         days_model = []
-        today = QDate.currentDate()
+        
+        # Setup year, month, and date constants
         year = self._current_date.year()
         month = self._current_date.month()
+        today = QDate.currentDate()
         first_day_of_month = QDate(year, month, 1)
         start_day_offset = first_day_of_month.dayOfWeek() - 1
         grid_start_date = first_day_of_month.addDays(-start_day_offset)
@@ -579,7 +602,7 @@ class CalendarController(QObject):
         
         # Fill in day data
         current_grid_date = grid_start_date
-        for day_idx in range(42): # 6 weeks * 7 days
+        for day_idx in range(42):  # 6 weeks * 7 days
             week_idx = day_idx // 7
             day_position = day_idx % 7
             
@@ -599,143 +622,156 @@ class CalendarController(QObject):
             weeks_data[week_idx]["days"].append(day_data)
             current_grid_date = current_grid_date.addDays(1)
         
-        # Process events
+        return days_model, weeks_data, grid_start_date
+        
+    def _assign_events_to_days(self, days_model, grid_start_date, weeks_data):
+        """Maps events to specific days in the grid."""
         event_to_days = {}  # Maps event IDs to day indices
         
         for event in self._filtered_events:
-            # Get start and end dates
+            # Get start and end dates for the event
             try:
-                # Parse the dates
-                if event.get("start_time"):
-                    start_date_str = event["start_time"].split("T")[0] if "T" in event["start_time"] else event["start_time"]
-                    event["start_date"] = start_date_str
-                else:
-                    # Skip events without start time
+                # Extract and validate date information
+                if not self._extract_event_dates(event):
                     continue
-                    
-                if event.get("end_time"):
-                    end_date_str = event["end_time"].split("T")[0] if "T" in event["end_time"] else event["end_time"]
-                    event["end_date"] = end_date_str
-                else:
-                    # For events with no end time, use start date
-                    event["end_date"] = event["start_date"]
                     
                 start_date = QDate.fromString(event["start_date"], "yyyy-MM-dd")
                 end_date = QDate.fromString(event["end_date"], "yyyy-MM-dd")
                 
-                # If all-day event, Google Calendar sets the end date to the day after
+                # Adjust end date for all-day events
                 if event.get("all_day", False) and end_date.isValid():
                     end_date = end_date.addDays(-1)
                     event["end_date"] = end_date.toString("yyyy-MM-dd")
                     
-                # Validate dates
-                if not start_date.isValid() or not end_date.isValid():
-                    continue
-                
-                # Calculate start/end position in the grid
+                # Calculate grid positions
                 days_difference_start = grid_start_date.daysTo(start_date)
                 days_difference_end = grid_start_date.daysTo(end_date)
                 
-                # Skip if the event is completely outside our grid
+                # Skip events outside our grid
                 if days_difference_end < 0 or days_difference_start >= 42:
                     continue
-            except Exception as e:
-                continue
-
-            # Enforce bounds within our grid (for events that extend beyond it)
-            grid_start_idx = max(0, days_difference_start)
-            grid_end_idx = min(41, days_difference_end)
-            
-            # Mark as multi-day if spanning multiple days
-            is_multi_day = grid_end_idx > grid_start_idx
-            
-            # Add a marker for multi-day status to the event
-            event_copy = event.copy()
-            event_copy["is_multi_day"] = is_multi_day
-            
-            # For multi-day events, we need special handling
-            if is_multi_day:
-                event_copy["span_days"] = grid_end_idx - grid_start_idx + 1
-                
-                # Find which weeks this event spans
-                start_week = grid_start_idx // 7
-                end_week = grid_end_idx // 7
-                
-                # For each week this event spans, create a separate entry
-                for week_idx in range(start_week, end_week + 1):
-                    # Calculate the start column (day position) within this week
-                    if week_idx == start_week:
-                        start_col = grid_start_idx % 7
-                    else:
-                        start_col = 0
-                        
-                    # Calculate the end column within this week
-                    if week_idx == end_week:
-                        end_col = grid_end_idx % 7
-                    else:
-                        end_col = 6
                     
-                    # Add this segment to the week's multi-day events
-                    week_event = event_copy.copy()
-                    week_event["start_col"] = start_col
-                    week_event["end_col"] = end_col
-                    week_event["continues_left"] = (week_idx > start_week)
-                    week_event["continues_right"] = (week_idx < end_week)
-                    
-                    # Queue it for layout row assignment
-                    weeks_data[week_idx]["multi_day_events"].append(week_event)
-            
-            # Add this event to all relevant days
-            for day_idx in range(grid_start_idx, grid_end_idx + 1):
-                days_model[day_idx]["events"].append(event_copy)
+                # Enforce bounds within our grid
+                grid_start_idx = max(0, days_difference_start)
+                grid_end_idx = min(41, days_difference_end)
                 
-                # Track which days each event appears in
+                # Mark multi-day status
+                is_multi_day = grid_end_idx > grid_start_idx
+                event_copy = event.copy()
+                event_copy["is_multi_day"] = is_multi_day
+                
+                # Track which days this event appears in
                 if event["id"] not in event_to_days:
                     event_to_days[event["id"]] = []
-                event_to_days[event["id"]].append(day_idx)
-        
-        # Now, assign layout rows for multi-day events in each week
-        for week_data in weeks_data:
-            # Sort events by length (descending) and then start time
-            week_data["multi_day_events"].sort(
-                key=lambda e: (-((e["end_col"] - e["start_col"]) + 1), e["start_time"])
-            )
-            
-            # Track which positions (row,col) are used
-            used_positions = set()  # Set of (row,col) tuples
-            
-            for event in week_data["multi_day_events"]:
-                # Find the first available row that spans all columns needed
-                found_row = -1
-                for row_idx in range(10):  # Limit to 10 rows max
-                    # Check if this row is available for the entire span
-                    row_available = True
-                    for col in range(event["start_col"], event["end_col"] + 1):
-                        if (row_idx, col) in used_positions:
-                            row_available = False
-                            break
-                            
-                    if row_available:
-                        found_row = row_idx
-                        break
                     
-                # Assign this event to the found row
-                if found_row >= 0:
-                    event["layout_row"] = found_row
-                    # Mark positions as used
-                    for col in range(event["start_col"], event["end_col"] + 1):
-                        used_positions.add((found_row, col))
-                else:
-                    # If no row found, put it in row 0 (overflows)
-                    event["layout_row"] = 0
+                # Add this event to all relevant days
+                for day_idx in range(grid_start_idx, grid_end_idx + 1):
+                    days_model[day_idx]["events"].append(event_copy)
+                    event_to_days[event["id"]].append(day_idx)
+                    
+                # Handle multi-day events separately
+                if is_multi_day:
+                    event_copy["span_days"] = grid_end_idx - grid_start_idx + 1
+                    
+                    # Process multi-day spans across weeks
+                    start_week = grid_start_idx // 7
+                    end_week = grid_end_idx // 7
+                    
+                    # For each week this event spans, create a separate entry
+                    for week_idx in range(start_week, end_week + 1):
+                        # Calculate the start column within this week
+                        if week_idx == start_week:
+                            start_col = grid_start_idx % 7
+                        else:
+                            start_col = 0
+                            
+                        # Calculate the end column within this week
+                        if week_idx == end_week:
+                            end_col = grid_end_idx % 7
+                        else:
+                            end_col = 6
+                        
+                        # Add this segment to the week's multi-day events
+                        week_event = event_copy.copy()
+                        week_event["start_col"] = start_col
+                        week_event["end_col"] = end_col
+                        week_event["continues_left"] = (week_idx > start_week)
+                        week_event["continues_right"] = (week_idx < end_week)
+                        
+                        # Add to list for layout row assignment
+                        weeks_data[week_idx]["multi_day_events"].append(week_event)
+            except Exception as e:
+                # Skip event on error
+                continue
+                
+        return event_to_days, weeks_data
+        
+    def _assign_event_layout_rows(self, events):
+        """Assigns layout rows to multi-day events to avoid visual overlaps."""
+        # Sort events by length (descending) and then start time
+        events.sort(key=lambda e: (-((e["end_col"] - e["start_col"]) + 1), e["start_time"]))
+        
+        # Track which positions (row,col) are used
+        used_positions = set()  # Set of (row,col) tuples
+        
+        for event in events:
+            # Find the first available row that spans all columns needed
+            found_row = -1
+            for row_idx in range(10):  # Limit to 10 rows max
+                # Check if this row is available for the entire span
+                row_available = True
+                for col in range(event["start_col"], event["end_col"] + 1):
+                    if (row_idx, col) in used_positions:
+                        row_available = False
+                        break
+                        
+                if row_available:
+                    found_row = row_idx
+                    break
+            
+            # Assign this event to the found row
+            if found_row >= 0:
+                event["layout_row"] = found_row
+                # Mark positions as used
+                for col in range(event["start_col"], event["end_col"] + 1):
+                    used_positions.add((found_row, col))
+            else:
+                # If no row found, put it in row 0 (overflows)
+                event["layout_row"] = 0
+                
+    def _process_multi_day_events(self, weeks_data):
+        """Handles layout and positioning of multi-day events."""
+        # Assign layout rows for each week's events
+        for week_data in weeks_data:
+            if week_data["multi_day_events"]:
+                self._assign_event_layout_rows(week_data["multi_day_events"])
         
         # Add multi-day events to the day objects for easy reference
         for week_idx, week_data in enumerate(weeks_data):
             for day in week_data["days"]:
                 # Reference the week's multi-day events from each day
                 day["multi_day_events"] = week_data["multi_day_events"]
-        
-        return days_model
+                
+    def _calculate_days_model(self):
+        """ 
+        Calculates the list of day dictionaries for the grid view.
+        Pre-calculates event positions for the UI.
+        """
+        try:
+            # Create the basic grid structure
+            days_model, weeks_data, grid_start_date = self._create_basic_grid()
+            
+            # Process events and assign them to days
+            event_to_days, weeks_data = self._assign_events_to_days(days_model, grid_start_date, weeks_data)
+            
+            # Process multi-day events and calculate their layout
+            self._process_multi_day_events(weeks_data)
+            
+            return days_model
+        except Exception as e:
+            print(f"Error calculating days model: {e}")
+            # Fallback to empty grid on error
+            return self._create_empty_grid()
 
 
 if __name__ == "__main__":
