@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import MyTheme 1.0
 import MyServices 1.0 // Import the services module
+import "components" // Import our components directory
 
 Item {
     id: calendarScreen
@@ -249,80 +250,38 @@ Item {
 
                 // --- Month/Year Text (Moved to the right) ---
                 Text {
-                    id: monthYearText
-                    text: calendarScreen.viewMode === "month" ? 
-                          CalendarController.currentMonthName + " " + CalendarController.currentYear :
-                          CalendarController.currentRangeDisplay
-                    font.pixelSize: 20
+                    text: CalendarController.currentRangeDisplay
+                    font.pixelSize: 18
                     font.bold: true
                     color: ThemeManager.text_primary_color // Use defined theme color
-                    horizontalAlignment: Text.AlignRight // Align to the right
-                    verticalAlignment: Text.AlignVCenter
-                }
-                // Connections to update monthYearText when values change
-                Connections {
-                    target: CalendarController
-                    function onCurrentMonthYearChanged() {
-                        if (calendarScreen.viewMode === "month") {
-                            monthYearText.text = CalendarController.currentMonthName + " " + 
-                                                CalendarController.currentYear;
-                        }
-                    }
-                    
-                    function onCurrentRangeDisplayChanged() {
-                        if (calendarScreen.viewMode !== "month") {
-                            monthYearText.text = CalendarController.currentRangeDisplay;
-                        }
-                    }
+                    Layout.alignment: Qt.AlignVCenter
                 }
             }
         }
 
-        // Weekday Labels (only shown in month view)
-        RowLayout {
-            id: weekdayHeader
-            Layout.fillWidth: true
-            spacing: 0 // No spacing between labels
-            visible: calendarScreen.viewMode === "month"
-
-            Repeater {
-                model: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] // Or use Locale for names
-                delegate: Rectangle {
-                    Layout.fillWidth: true // Distribute width evenly
-                    Layout.preferredHeight: 25
-                    color: ThemeManager.background_color // Use defined theme color
-                    border.color: ThemeManager.input_border_color // Use defined theme color for border
-                    border.width: 1
-
-                    Text {
-                        text: modelData
-                        anchors.centerIn: parent
-                        font.pixelSize: 12
-                        font.bold: true
-                        color: ThemeManager.text_secondary_color // Use defined theme color
-                    }
-                }
-            }
-        }
-
-        // Month Calendar View (only shown in month view)
-        UnifiedCalendarView {
-            id: unifiedCalendar
-            Layout.fillWidth: true
-            Layout.fillHeight: true // Take remaining space
-            model: CalendarController.daysInMonthModel
-            debugOutput: calendarScreen.debugLogging
-            visible: calendarScreen.viewMode === "month"
-        }
-        
-        // Custom Calendar View (shown in week, 3day, day views)
-        CustomCalendarView {
-            id: customCalendar
+        // Calendar Views Container
+        Item {
+            id: calendarViewsContainer
             Layout.fillWidth: true
             Layout.fillHeight: true
-            model: CalendarController.currentRangeDays
-            debugOutput: calendarScreen.debugLogging
-            visible: calendarScreen.viewMode !== "month"
+
+            // Month Calendar View (only shown in month view)
+            UnifiedCalendarView {
+                id: unifiedCalendar
+                anchors.fill: parent
+                model: CalendarController.daysInMonthModel
+                debugOutput: calendarScreen.debugLogging
+                visible: calendarScreen.viewMode === "month"
+            }
+            
+            // Week Calendar View (shown in week, 3day, day views)
+            WeekCalendarView {
+                id: weekCalendarView
+                anchors.fill: parent
+                model: CalendarController.currentRangeDays
+                debugOutput: calendarScreen.debugLogging
+                visible: calendarScreen.viewMode !== "month"
+            }
         }
     }
 }

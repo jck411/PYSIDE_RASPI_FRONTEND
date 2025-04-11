@@ -12,6 +12,9 @@ Item {
     property int cellWidth: width / 7
     property int cellHeight: height / 6
     
+    // Height for weekday headers at the top of the calendar
+    property int weekdayHeaderHeight: 40
+    
     // Height allocated for day numbers at the top of each cell
     property int dayNumberHeight: 20
     
@@ -32,6 +35,9 @@ Item {
     
     // Disable debug output for production
     property bool debugOutput: false
+    
+    // Default weekday names
+    property var defaultWeekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     
     // Keep old weeks during model change to prevent flickering
     property var oldWeeks: []
@@ -130,6 +136,34 @@ Item {
             id: weeksColumn
             width: unifiedCalendarView.width
             spacing: 0
+            
+            // Weekday headers row
+            Row {
+                id: weekdayHeadersRow
+                width: parent.width
+                height: weekdayHeaderHeight
+                
+                // Create headers for each day of the week
+                Repeater {
+                    model: 7 // Seven days in a week
+                    
+                    // Use the WeekdayHeader component for consistency with the week view
+                    Loader {
+                        width: weekdayHeadersRow.width / 7
+                        height: weekdayHeaderHeight
+                        
+                        // Dynamically load the WeekdayHeader component
+                        source: "components/WeekdayHeader.qml"
+                        
+                        // Set properties when component is loaded
+                        onLoaded: {
+                            item.dayName = defaultWeekdays[index]
+                            item.dayNumber = "" // No day number in month view headers
+                            item.showDayNumber = false // Don't show day numbers in month view
+                        }
+                    }
+                }
+            }
             
             // Render each week
             Repeater {

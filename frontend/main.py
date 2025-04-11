@@ -164,6 +164,8 @@ def main():
 
     # Add import paths for base components
     engine.addImportPath("frontend/qml")
+    engine.addImportPath("frontend/qml/components")
+    engine.addImportPath("frontend/qml/utils")
 
     # Check PySide6 version and add QtQuick.Effects module if available
     try:

@@ -238,59 +238,60 @@ The CalendarScreen provides an intuitive calendar interface with simplified navi
   - The system remembers which view (month or week) was active before entering day view
   - When returning from day view, the user is taken back to their previous context
 - **Simple Toggle:**
-  - A calendar icon in the header allows users to toggle between month and week views
-- **Event Visibility Priority:**
-  - Day view ensures all events are visible via vertical scrolling
-  - Events display more details in day view (time, continuation indicators for multi-day events)
-- **Consistent Navigation:**
-  - Previous/Next buttons adapt based on the current view mode
-  - Today button to quickly navigate to the current date in any view mode
+  - A calendar icon with a badge indicating the current view mode (M/W/D) allows quick switching between views
 
-### Architecture
-The implementation follows the project's standard pattern of separating Python logic (Controller) from QML presentation (View).
+### Current Implementation
+The calendar implementation consists of:
+- `CalendarScreen.qml`: Main container that switches between view modes
+- `UnifiedCalendarView.qml`: Implements the month view with a grid layout 
+- `CustomCalendarView.qml`: Implements week/day views with a column layout
+- `CalendarController.py`: Backend class that provides data models and navigation logic
 
-- **`CalendarController.py` (Python):**
-  - Manages view mode state through the `viewMode` property
-  - Provides `goToSpecificDate()` method for navigating directly to a specific date in day view
-  - Handles date range calculation for different views
-  - Provides specialized navigation methods for each view mode
-  - Formats and filters events appropriately for each view mode
-  - Maintains both month grid data and custom range data models
+### Refactoring Guidelines
 
-- **`CalendarScreen.qml` (QML):**
-  - Controls view mode switching through the calendar icon
-  - Remembers the previous view context when entering day view
-  - Provides back button for returning from day view to previous context
-  - Displays appropriate calendar component based on view mode
-  - Updates header text dynamically based on view mode
+The calendar implementation should be refactored to address several issues:
 
-- **`UnifiedCalendarView.qml` (QML):**
-  - Standard month grid calendar view with tap-to-view-day functionality
-  - Handles both day cells and multi-day events in a unified component
-  - Used when viewMode is "month"
+1. **Vertical Cell Expansion:**
+   - Currently, day cells have fixed heights which truncate event display
+   - Cells should expand vertically when events can't fit in the fixed space
+   - Implement with ScrollView or proper height calculations based on event count
 
-- **`CustomCalendarView.qml` (QML):**
-  - Specialized component for week and day views
-  - Week view shows 7 days with tap-to-view-day functionality
-  - Day view shows detailed information for a single day
-  - Provides a columnar layout with day headers and scrollable event lists
-  - Displays more detailed event information
-  - Shows multi-day event continuation indicators
+2. **Scrolling for Expanded Content:** 
+   - When expanded cells exceed available screen space, the view should be scrollable
+   - This requires proper configuration of ScrollView containers with correct policies
 
-### User Experience
-The simplified navigation model follows standard calendar application patterns:
+3. **Component Architecture:**
+   - Extract reusable components:
+     - `BaseCalendarView.qml`: Shared base functionality
+     - `DayCell.qml`: Reusable day cell component
+     - `CalendarEvent.qml`: Single-day event component
+     - `MultiDayEvent.qml`: Multi-day event component
+     - `WeekdayHeader.qml`: Weekday header component
 
-1. **Overview:** Month view provides the big picture of the calendar
-2. **Mid-level:** Week view offers focused view of a 7-day period
-3. **Detail:** Day view shows comprehensive information about a specific day
-4. **Context-awareness:** Back navigation returns to the previous context
+4. **Implementation Challenges:**
+   - ListView vs. ScrollView for events: Use ScrollView with Column for better scrolling
+   - Dynamic height calculation: Account for multi-day events at the top of cells
+   - Nested ScrollViews: Can cause input handling issues with event propagation
+   - Segmentation faults: Be careful when modifying existing code, test incrementally
 
-This approach creates an intuitive hierarchy where users can:
-- Start with a monthly overview
-- Tap to see detailed information about a specific day
-- Return to their previous context when done
+5. **Data Model Structure:**
+   - Day objects include:
+     - `date`: ISO date string
+     - `day`: Day number as string
+     - `isCurrentMonth`: Whether this day is in the current month
+     - `isToday`: Whether this day is today
+     - `events`: Array of event objects
+     - `multiDayEvents`: Special handling for events spanning multiple days
 
-The system preserves the user's navigational context to maintain a coherent experience even when moving between different levels of detail.
+### Future Implementation Approach
+
+When implementing the refactoring:
+
+1. Start by defining shared utility functions in a JavaScript file
+2. Implement improvements to the existing views first before extracting components
+3. Extract components one at a time, testing thoroughly after each extraction
+4. Implement vertical scrolling at the appropriate level (calendar view vs. day cell)
+5. Test thoroughly with many events in a single day
 
 ## Development Notes & Known Issues
 
@@ -365,9 +366,31 @@ The calendar component has been refactored to use a more efficient and maintaina
 
 8. **Exception Handling**: Added comprehensive error handling in Python to catch and log any issues during model calculations and navigation.
 
-9. **Fallback Data**: Created safeguards to maintain a basic calendar grid even if data fetching fails, ensuring the user always sees something.
+9. **Consistent Header Components**: The calendar views now share consistent header implementation:
+   - Both MonthCalendarView, WeekCalendarView, and UnifiedCalendarView use the same WeekdayHeader component
+   - MonthCalendarView and UnifiedCalendarView display day names (Mon, Tue, etc.) without dates
+   - WeekCalendarView displays both day names and dates for the current week
+   - This shared component improves consistency in styling and user experience across all views
+   - The header height is properly accounted for in layout calculations in all views
+   - A special `showDayNumber` property allows adapting the component to different view needs:
+     - Set to `false` in month view (showing only weekday names)
+     - Set to `true` in week view (showing both weekday names and day numbers)
+   - Today's date is consistently highlighted with the theme's primary color in all views
 
-10. **Diagnostic Logging**: Added detailed debug logging at key points in both Python and QML to aid in troubleshooting.
+10. **Simplified UI Navigation**: The calendar interface has been streamlined to remove redundant controls:
+    - Removed duplicate Previous/Today/Next buttons from the CalendarScreen.qml that were redundant with the navigation buttons in CalendarControls.qml
+    - This reduces visual clutter and potential user confusion
+    - Provides a cleaner, more focused calendar interface
+    - Maintains all navigation functionality through the controls in the bottom bar
+
+11. **Completed Component Migration**: The calendar implementation has been fully migrated to use the improved components:
+    - Successfully migrated from the legacy `CustomCalendarView.qml` to `WeekCalendarView.qml`
+    - Updated imports and component instantiation in `CalendarScreen.qml`
+    - Renamed instance from `customCalendar` to `weekCalendarView` for clarity
+    - Maintained the same property bindings and visibility conditions
+    - The more maintainable component architecture is now fully in use
+
+These changes allow the calendar to display many more events per day while maintaining a usable interface, addressing one of the key usability issues with the previous implementation.
 
 ## UI State Management Challenges and Solutions
 
