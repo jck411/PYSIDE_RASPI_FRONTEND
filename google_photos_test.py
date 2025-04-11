@@ -16,7 +16,7 @@ from googleapiclient.discovery import build
 
 # OAuth scope and credentials file.
 SCOPES = ["https://www.googleapis.com/auth/photoslibrary.readonly"]
-CREDENTIALS_PATH = "/home/jack/PYSIDE_RASPI_FRONTEND/google_photos_credentials.json"
+CREDENTIALS_PATH = "/home/jack/PYSIDE_RASPI_FRONTEND/google_credentials.json"
 TOKEN_PICKLE = "token.pickle"
 
 
@@ -229,7 +229,7 @@ class VideoWidget(QtWidgets.QWidget):
 
 
 def create_media_widget(media):
-    """Return a PhotoWidget if media is a photo, or a VideoWidget if it’s a video."""
+    """Return a PhotoWidget if media is a photo, or a VideoWidget if it's a video."""
     mime = media.get("mimeType", "")
     if mime.startswith("video/"):
         return VideoWidget(media)

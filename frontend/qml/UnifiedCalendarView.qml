@@ -116,348 +116,354 @@ Item {
         visible: !model || model.length === 0 || weeks.length === 0
     }
     
-    // Main column of week rows
-    Column {
-        id: weeksColumn
+    // Main ScrollView to allow vertical scrolling when content expands
+    ScrollView {
+        id: calendarScrollView
         anchors.fill: parent
-        spacing: 0
+        clip: true
+        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
         visible: model && model.length > 0 && weeks.length > 0
         
-        // Render each week
-        Repeater {
-            model: unifiedCalendarView.weeks
+        // Column of week rows
+        Column {
+            id: weeksColumn
+            width: unifiedCalendarView.width
+            spacing: 0
             
-            // Week container
-            Item {
-                id: weekContainer
-                width: unifiedCalendarView.width
-                height: unifiedCalendarView.cellHeight
+            // Render each week
+            Repeater {
+                model: unifiedCalendarView.weeks
                 
-                // Week index for reference
-                property int weekIndex: index
-                
-                // Days in this week
-                property var weekDays: modelData || []
-                
-                // Multi-day events for this week - safely handle missing data
-                property var multiDayEvents: {
-                    if (weekDays && weekDays.length > 0 && weekDays[0]) {
-                        // Check if we have the multi_day_events property directly on the day
-                        if (weekDays[0].multi_day_events) {
-                            return weekDays[0].multi_day_events;
-                        }
-                        // Or if it's in a week_data property
-                        else if (weekDays[0].week_data && weekDays[0].week_data.multi_day_events) {
-                            return weekDays[0].week_data.multi_day_events;
-                        }
-                    }
-                    return []; // Safe default
-                }
-                
-                // Day cells in the week
-                Row {
-                    anchors.fill: parent
-                    spacing: 0
-                    
-                    // Render each day cell
-                    Repeater {
-                        model: weekContainer.weekDays
-                        
-                        // Individual day cell
-                        Rectangle {
-                            id: dayCell
-                            width: unifiedCalendarView.cellWidth
-                            height: unifiedCalendarView.cellHeight
-                            color: modelData && modelData.isCurrentMonth ? 
-                                   ThemeManager.background_color : 
-                                   ThemeManager.input_background_color
-                            
-                            // Special border for today's date
-                            border.color: modelData && modelData.isToday ? 
-                                         ThemeManager.button_primary_color : 
-                                         ThemeManager.input_border_color
-                            border.width: modelData && modelData.isToday ? 2 : 1
-                            
-                            // Mouse area to handle clicks/taps on day cells
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    if (modelData && modelData.date_str) {
-                                        // Navigate to day view for this date
-                                        CalendarController.goToSpecificDate(modelData.date_str, "day");
-                                    }
-                                }
-                                // Visual feedback on hover
-                                hoverEnabled: true
-                                
-                                // Tooltip shows that clicking opens day view
-                                ToolTip {
-                                    visible: parent.containsMouse
-                                    text: "View events for this day"
-                                    delay: 500
-                                }
-                            }
-                            
-                            // Highlight rectangle for today
-                            Rectangle {
-                                visible: modelData && modelData.isToday
-                                anchors.fill: parent
-                                anchors.margins: 2
-                                color: "transparent"
-                                border.color: ThemeManager.button_primary_color
-                                border.width: 1
-                                radius: 2
-                            }
-                            
-                            // Day number
-                            Text {
-                                id: dayNumberText
-                                anchors {
-                                    top: parent.top
-                                    left: parent.left
-                                    right: parent.right
-                                    margins: 4
-                                }
-                                height: unifiedCalendarView.dayNumberHeight
-                                text: modelData ? modelData.dayNumber : ""
-                                font.pixelSize: 12
-                                font.bold: modelData && modelData.isToday
-                                color: modelData && modelData.isToday ? 
-                                       ThemeManager.button_primary_color : 
-                                       (modelData && modelData.isCurrentMonth ? 
-                                        ThemeManager.text_primary_color : 
-                                        ThemeManager.text_secondary_color)
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-                            
-                            // Calculate how many multi-day event rows we need to reserve space for
-                            property int reservedMultiDayRows: {
-                                if (!modelData || !modelData.day_position || weekContainer.multiDayEvents.length === 0) {
-                                    return 0;
-                                }
-                                
-                                let maxRow = -1;
-                                for (let i = 0; i < weekContainer.multiDayEvents.length; i++) {
-                                    const event = weekContainer.multiDayEvents[i];
-                                    if (event && event.start_col !== undefined && event.end_col !== undefined && 
-                                        event.start_col <= modelData.day_position && 
-                                        event.end_col >= modelData.day_position) {
-                                        maxRow = Math.max(maxRow, event.layout_row || 0);
-                                    }
-                                }
-                                return Math.min(maxRow + 1, unifiedCalendarView.maxMultiDayRows);
-                            }
-                            
-                            // Filter to get only single-day events for this cell
-                            property var singleDayEvents: {
-                                if (!modelData || !modelData.events) {
-                                    return [];
-                                }
-                                return modelData.events.filter(e => e && !e.is_multi_day);
-                            }
-                            
-                            // Single-day events container
-                            ListView {
-                                id: eventListView
-                                anchors {
-                                    top: dayNumberText.bottom
-                                    left: parent.left
-                                    right: parent.right
-                                    bottom: parent.bottom
-                                    margins: 2
-                                }
-                                
-                                // Calculate top margin to accommodate multi-day events
-                                anchors.topMargin: dayCell.reservedMultiDayRows * 
-                                                 (unifiedCalendarView.multiDayEventHeight + 
-                                                  unifiedCalendarView.eventSpacing) + 2
-                                
-                                // List properties
-                                clip: true
-                                spacing: 2
-                                interactive: false // Disable scrolling
-                                
-                                // Only display single-day events
-                                model: {
-                                    // Limit the number of events shown
-                                    const maxVisible = unifiedCalendarView.maxEventsPerDay;
-                                    return dayCell.singleDayEvents.slice(0, maxVisible);
-                                }
-                                
-                                // Event delegate
-                                delegate: Rectangle {
-                                    id: eventItem
-                                    width: eventListView.width
-                                    height: eventText.implicitHeight + 4
-                                    radius: 3
-                                    
-                                    // Get color from the event
-                                    property color eventColor: modelData && modelData.color ? modelData.color : "#1a73e8"
-                                    
-                                    // Use a lighter version for background
-                                    color: Qt.lighter(eventColor, 1.8)
-                                    border.color: eventColor
-                                    border.width: 1
-                                    
-                                    // Event content
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 2
-                                        spacing: 4
-                                        
-                                        // Color indicator
-                                        Rectangle {
-                                            width: 4
-                                            Layout.fillHeight: true
-                                            color: eventItem.eventColor
-                                            radius: 2
-                                        }
-                                        
-                                        // Event title and time
-                                        Text {
-                                            id: eventText
-                                            Layout.fillWidth: true
-                                            font.pixelSize: 10
-                                            
-                                            // Format the text with time if available
-                                            text: {
-                                                if (!modelData) return "";
-                                                
-                                                let timeString = "";
-                                                if (!modelData.all_day && modelData.start_time) {
-                                                    const dtParts = modelData.start_time.split('T');
-                                                    if (dtParts.length > 1) {
-                                                        const timeParts = dtParts[1].split(':');
-                                                        if (timeParts.length >= 2) {
-                                                            timeString = timeParts[0] + ":" + timeParts[1] + " ";
-                                                        }
-                                                    }
-                                                }
-                                                return timeString + (modelData.title || "");
-                                            }
-                                            
-                                            // Dynamic text color based on background brightness
-                                            color: {
-                                                const r = eventItem.color.r;
-                                                const g = eventItem.color.g;
-                                                const b = eventItem.color.b;
-                                                const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-                                                return luminance > 0.5 ? "#000000" : "#ffffff";
-                                            }
-                                            
-                                            elide: Text.ElideRight
-                                            verticalAlignment: Text.AlignVCenter
-                                        }
-                                    }
-                                }
-                                
-                                // "More events" indicator
-                                footer: Rectangle {
-                                    visible: dayCell.singleDayEvents.length > unifiedCalendarView.maxEventsPerDay
-                                    width: eventListView.width
-                                    height: visible ? 15 : 0
-                                    color: "transparent"
-                                    
-                                    Text {
-                                        anchors.fill: parent
-                                        text: "+" + (dayCell.singleDayEvents.length - unifiedCalendarView.maxEventsPerDay) + " more"
-                                        color: unifiedCalendarView.moreEventsColor
-                                        font.pixelSize: 10
-                                        horizontalAlignment: Text.AlignRight
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // Multi-day events layer
+                // Week container
                 Item {
-                    id: multiDayEventsLayer
-                    anchors.fill: parent
+                    id: weekContainer
+                    width: unifiedCalendarView.width
+                    // Allow dynamic height based on content
+                    property real minHeight: unifiedCalendarView.cellHeight
+                    property real maxDayCellHeight: 0 // Tracks maximum height of day cells
+                    height: Math.max(minHeight, maxDayCellHeight + dayNumberHeight + 5)
                     
-                    // Render each multi-day event
-                    Repeater {
-                        model: weekContainer.multiDayEvents
+                    // Week index for reference
+                    property int weekIndex: index
+                    
+                    // Days in this week
+                    property var weekDays: modelData || []
+                    
+                    // Multi-day events for this week - safely handle missing data
+                    property var multiDayEvents: {
+                        if (weekDays && weekDays.length > 0 && weekDays[0]) {
+                            // Check if we have the multi_day_events property directly on the day
+                            if (weekDays[0].multi_day_events) {
+                                return weekDays[0].multi_day_events;
+                            }
+                            // Or if it's in a week_data property
+                            else if (weekDays[0].week_data && weekDays[0].week_data.multi_day_events) {
+                                return weekDays[0].week_data.multi_day_events;
+                            }
+                        }
+                        return []; // Safe default
+                    }
+                    
+                    // Day cells in the week
+                    Row {
+                        id: weekRowLayout
+                        width: parent.width
+                        height: parent.height
+                        spacing: 0
                         
-                        Rectangle {
-                            id: multiDayEvent
-                            visible: modelData !== undefined
+                        // Render each day cell
+                        Repeater {
+                            model: weekContainer.weekDays
                             
-                            // Position based on the event's calculated layout
-                            x: (modelData && modelData.start_col !== undefined) ? 
-                               modelData.start_col * unifiedCalendarView.cellWidth : 0
-                            y: ((modelData && modelData.layout_row !== undefined) ? 
-                               modelData.layout_row : 0) * 
-                               (unifiedCalendarView.multiDayEventHeight + unifiedCalendarView.eventSpacing) + 
-                               unifiedCalendarView.dayNumberHeight + 2
-                            
-                            // Calculate width based on columns
-                            width: (modelData && modelData.start_col !== undefined && modelData.end_col !== undefined) ? 
-                                   (modelData.end_col - modelData.start_col + 1) * 
-                                   unifiedCalendarView.cellWidth - 4 : 0
-                            height: unifiedCalendarView.multiDayEventHeight
-                            
-                            // Event color styling
-                            color: (modelData && modelData.color) ? Qt.lighter(modelData.color, 1.8) : "#e8f0fe"
-                            border.color: (modelData && modelData.color) ? modelData.color : "#1a73e8"
-                            border.width: 1
-                            radius: 3
-                            
-                            // Continuation indicators
+                            // Individual day cell
                             Rectangle {
-                                visible: modelData && modelData.continues_left
+                                id: dayCell
+                                width: unifiedCalendarView.cellWidth
                                 height: parent.height
-                                width: 6
-                                color: parent.color
-                                anchors.left: parent.left
-                                anchors.leftMargin: -3
-                                z: -1
-                            }
-                            
-                            Rectangle {
-                                visible: modelData && modelData.continues_right
-                                height: parent.height
-                                width: 6
-                                color: parent.color
-                                anchors.right: parent.right
-                                anchors.rightMargin: -3
-                                z: -1
-                            }
-                            
-                            // Event content
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 4
-                                anchors.rightMargin: 4
-                                spacing: 4
+                                color: modelData && modelData.isCurrentMonth ? 
+                                       ThemeManager.background_color : 
+                                       ThemeManager.input_background_color
                                 
-                                // Color indicator
+                                // Special border for today's date
+                                border.color: modelData && modelData.isToday ? 
+                                             ThemeManager.button_primary_color : 
+                                             ThemeManager.input_border_color
+                                border.width: modelData && modelData.isToday ? 2 : 1
+                                
+                                // Update the week container with max height
+                                Component.onCompleted: {
+                                    weekContainer.maxDayCellHeight = Math.max(
+                                        weekContainer.maxDayCellHeight,
+                                        eventListView.contentHeight
+                                    )
+                                }
+                                
+                                // Mouse area to handle clicks/taps on day cells
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        if (modelData && modelData.date_str) {
+                                            // Navigate to day view for this date
+                                            CalendarController.goToSpecificDate(modelData.date_str, "day");
+                                        }
+                                    }
+                                    // Visual feedback on hover
+                                    hoverEnabled: true
+                                    
+                                    // Tooltip shows that clicking opens day view
+                                    ToolTip {
+                                        visible: parent.containsMouse
+                                        text: "View events for this day"
+                                        delay: 500
+                                    }
+                                }
+                                
+                                // Highlight rectangle for today
                                 Rectangle {
-                                    width: 4
-                                    Layout.fillHeight: true
-                                    color: (modelData && modelData.color) ? modelData.color : "#1a73e8"
+                                    visible: modelData && modelData.isToday
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    color: "transparent"
+                                    border.color: ThemeManager.button_primary_color
+                                    border.width: 1
                                     radius: 2
                                 }
                                 
-                                // Event title
+                                // Day number
                                 Text {
-                                    Layout.fillWidth: true
-                                    text: (modelData && modelData.title) ? modelData.title : ""
-                                    font.pixelSize: 10
-                                    elide: Text.ElideRight
-                                    // Dynamic text color based on background brightness
-                                    color: {
-                                        if (!modelData || !modelData.color) return "#000000";
+                                    id: dayNumberText
+                                    anchors {
+                                        top: parent.top
+                                        left: parent.left
+                                        right: parent.right
+                                        margins: 4
+                                    }
+                                    height: unifiedCalendarView.dayNumberHeight
+                                    text: modelData ? modelData.dayNumber : ""
+                                    font.pixelSize: 12
+                                    font.bold: modelData && modelData.isToday
+                                    color: modelData && modelData.isToday ? 
+                                           ThemeManager.button_primary_color : 
+                                           (modelData && modelData.isCurrentMonth ? 
+                                            ThemeManager.text_primary_color : 
+                                            ThemeManager.text_secondary_color)
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                                
+                                // Calculate how many multi-day event rows we need to reserve space for
+                                property int reservedMultiDayRows: {
+                                    if (!modelData || !modelData.day_position || weekContainer.multiDayEvents.length === 0) {
+                                        return 0;
+                                    }
+                                    
+                                    let maxRow = -1;
+                                    for (let i = 0; i < weekContainer.multiDayEvents.length; i++) {
+                                        const event = weekContainer.multiDayEvents[i];
+                                        if (event && event.start_col !== undefined && event.end_col !== undefined && 
+                                            event.start_col <= modelData.day_position && 
+                                            event.end_col >= modelData.day_position) {
+                                            maxRow = Math.max(maxRow, event.layout_row || 0);
+                                        }
+                                    }
+                                    return Math.min(maxRow + 1, unifiedCalendarView.maxMultiDayRows);
+                                }
+                                
+                                // Filter to get only single-day events for this cell
+                                property var singleDayEvents: {
+                                    if (!modelData || !modelData.events) {
+                                        return [];
+                                    }
+                                    return modelData.events.filter(e => e && !e.is_multi_day);
+                                }
+                                
+                                // Single-day events container - no scroll bars as parent ScrollView handles it
+                                ListView {
+                                    id: eventListView
+                                    anchors {
+                                        top: dayNumberText.bottom
+                                        left: parent.left
+                                        right: parent.right
+                                        bottom: parent.bottom
+                                        margins: 2
+                                    }
+                                    
+                                    // Calculate top margin to accommodate multi-day events
+                                    anchors.topMargin: dayCell.reservedMultiDayRows * 
+                                                     (unifiedCalendarView.multiDayEventHeight + 
+                                                      unifiedCalendarView.eventSpacing) + 2
+                                    
+                                    // List properties
+                                    clip: true
+                                    spacing: 2
+                                    interactive: false // Disable scrolling in the ListView itself
+                                    
+                                    // Show all single-day events instead of limiting
+                                    model: dayCell.singleDayEvents
+                                    
+                                    // Event delegate
+                                    delegate: Rectangle {
+                                        id: eventItem
+                                        width: eventListView.width
+                                        // Allow dynamic height based on content
+                                        height: Math.max(eventText.implicitHeight + 4, 20)
+                                        radius: 3
                                         
-                                        const eventColor = modelData.color;
-                                        const bgColor = Qt.lighter(eventColor, 1.8);
-                                        const r = bgColor.r;
-                                        const g = bgColor.g;
-                                        const b = bgColor.b;
-                                        const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-                                        return luminance > 0.5 ? "#000000" : "#ffffff";
+                                        // Get color from the event
+                                        property color eventColor: modelData && modelData.color ? modelData.color : "#1a73e8"
+                                        
+                                        // Use a lighter version for background
+                                        color: Qt.lighter(eventColor, 1.8)
+                                        border.color: eventColor
+                                        border.width: 1
+                                        
+                                        // Event content
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 2
+                                            spacing: 4
+                                            
+                                            // Color indicator
+                                            Rectangle {
+                                                width: 4
+                                                Layout.fillHeight: true
+                                                color: eventItem.eventColor
+                                                radius: 2
+                                            }
+                                            
+                                            // Event title and time
+                                            Text {
+                                                id: eventText
+                                                Layout.fillWidth: true
+                                                font.pixelSize: 10
+                                                wrapMode: Text.WordWrap
+                                                maximumLineCount: 10
+                                                
+                                                // Format the text with time if available
+                                                text: {
+                                                    if (!modelData) return "";
+                                                    
+                                                    let timeString = "";
+                                                    if (!modelData.all_day && modelData.start_time) {
+                                                        const dtParts = modelData.start_time.split('T');
+                                                        if (dtParts.length > 1) {
+                                                            const timeParts = dtParts[1].split(':');
+                                                            if (timeParts.length >= 2) {
+                                                                timeString = timeParts[0] + ":" + timeParts[1] + " ";
+                                                            }
+                                                        }
+                                                    }
+                                                    return timeString + (modelData.title || "");
+                                                }
+                                                
+                                                // Dynamic text color based on background brightness
+                                                color: {
+                                                    const r = eventItem.color.r;
+                                                    const g = eventItem.color.g;
+                                                    const b = eventItem.color.b;
+                                                    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+                                                    return luminance > 0.5 ? "#000000" : "#ffffff";
+                                                }
+                                                
+                                                elide: Text.ElideRight
+                                                verticalAlignment: Text.AlignVCenter
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Multi-day events layer
+                    Item {
+                        id: multiDayEventsLayer
+                        anchors.fill: parent
+                        
+                        // Render each multi-day event
+                        Repeater {
+                            model: weekContainer.multiDayEvents
+                            
+                            Rectangle {
+                                id: multiDayEvent
+                                visible: modelData !== undefined
+                                
+                                // Position based on the event's calculated layout
+                                x: (modelData && modelData.start_col !== undefined) ? 
+                                   modelData.start_col * unifiedCalendarView.cellWidth : 0
+                                y: ((modelData && modelData.layout_row !== undefined) ? 
+                                   modelData.layout_row : 0) * 
+                                   (unifiedCalendarView.multiDayEventHeight + unifiedCalendarView.eventSpacing) + 
+                                   unifiedCalendarView.dayNumberHeight + 2
+                                
+                                // Calculate width based on columns
+                                width: (modelData && modelData.start_col !== undefined && modelData.end_col !== undefined) ? 
+                                       (modelData.end_col - modelData.start_col + 1) * 
+                                       unifiedCalendarView.cellWidth - 4 : 0
+                                height: unifiedCalendarView.multiDayEventHeight
+                                
+                                // Event color styling
+                                color: (modelData && modelData.color) ? Qt.lighter(modelData.color, 1.8) : "#e8f0fe"
+                                border.color: (modelData && modelData.color) ? modelData.color : "#1a73e8"
+                                border.width: 1
+                                radius: 3
+                                
+                                // Continuation indicators
+                                Rectangle {
+                                    visible: modelData && modelData.continues_left
+                                    height: parent.height
+                                    width: 6
+                                    color: parent.color
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: -3
+                                    z: -1
+                                }
+                                
+                                Rectangle {
+                                    visible: modelData && modelData.continues_right
+                                    height: parent.height
+                                    width: 6
+                                    color: parent.color
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: -3
+                                    z: -1
+                                }
+                                
+                                // Event content
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 4
+                                    anchors.rightMargin: 4
+                                    spacing: 4
+                                    
+                                    // Color indicator
+                                    Rectangle {
+                                        width: 4
+                                        Layout.fillHeight: true
+                                        color: (modelData && modelData.color) ? modelData.color : "#1a73e8"
+                                        radius: 2
+                                    }
+                                    
+                                    // Event title with ability to wrap
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: (modelData && modelData.title) ? modelData.title : ""
+                                        font.pixelSize: 10
+                                        wrapMode: Text.WordWrap
+                                        maximumLineCount: 3
+                                        elide: Text.ElideRight
+                                        // Dynamic text color based on background brightness
+                                        color: {
+                                            if (!modelData || !modelData.color) return "#000000";
+                                            
+                                            const eventColor = modelData.color;
+                                            const bgColor = Qt.lighter(eventColor, 1.8);
+                                            const r = bgColor.r;
+                                            const g = bgColor.g;
+                                            const b = bgColor.b;
+                                            const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+                                            return luminance > 0.5 ? "#000000" : "#ffffff";
+                                        }
                                     }
                                 }
                             }
@@ -474,4 +480,4 @@ Item {
             processModelChange()
         }
     }
-} 
+}

@@ -13,12 +13,10 @@ from googleapiclient.discovery import build
 
 # OAuth scope and paths.
 SCOPES = ["https://www.googleapis.com/auth/photoslibrary.readonly"]
-CREDENTIALS_PATH = (
-    "/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/google_photos_credentials.json"
-)
+CREDENTIALS_PATH = "/home/jack/PYSIDE_RASPI_FRONTEND/google_credentials.json"
 TOKEN_PICKLE = "token.pickle"
 ALBUM_NAME = "test"  # Change this to your desired album title.
-DOWNLOAD_DIR = "/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/frontend/downloaded_media"
+DOWNLOAD_DIR = "/home/jack/PYSIDE_RASPI_FRONTEND/frontend/downloaded_media"
 METADATA_FILE = os.path.join(DOWNLOAD_DIR, "photo_metadata.json")
 
 

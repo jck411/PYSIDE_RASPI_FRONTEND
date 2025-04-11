@@ -33,7 +33,7 @@ class GoogleCalendarClient:
         self.service = None
         self.token_path = Path.home() / '.config' / 'pyside_raspi' / 'token.pickle'
         # Use the existing credentials file
-        self.credentials_path = Path("/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/google_photos_credentials.json")
+        self.credentials_path = Path("/home/jack/PYSIDE_RASPI_FRONTEND/google_credentials.json")
         
         # Ensure config directory exists
         self.token_path.parent.mkdir(parents=True, exist_ok=True)

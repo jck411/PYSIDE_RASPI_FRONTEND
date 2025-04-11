@@ -1,5 +1,6 @@
 # Credential files
 google_photos_credentials.json
+google_credentials.json
 token.pickle
 
 # Python

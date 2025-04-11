@@ -25,7 +25,7 @@ class PhotoController(QObject):
     def __init__(self):
         super().__init__()
         self.media_folder = (
-            "/home/human/AAREPOS/PYSIDE_RASPI_FRONTEND/frontend/downloaded_media"
+            "/home/jack/PYSIDE_RASPI_FRONTEND/frontend/downloaded_media"
         )
         self.metadata_file = os.path.join(self.media_folder, "photo_metadata.json")
         self.metadata = {}
