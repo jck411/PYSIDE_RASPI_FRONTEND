@@ -4,6 +4,12 @@ from datetime import datetime, timedelta
 import calendar
 from .google_calendar import GoogleCalendarClient
 from .date_utils import DateUtils
+from .calendar_view_strategies import (
+    MonthViewStrategy, 
+    WeekViewStrategy, 
+    DayViewStrategy, 
+    ThreeDayViewStrategy
+)
 
 class CalendarController(QObject):
     """
@@ -30,6 +36,14 @@ class CalendarController(QObject):
         self._filtered_events = []
         self._days_in_month_model = []
         self._sync_status = "Not synced"
+        
+        # Initialize view strategies
+        self._view_strategies = {
+            "month": MonthViewStrategy(),
+            "week": WeekViewStrategy(),
+            "day": DayViewStrategy(),
+            "3day": ThreeDayViewStrategy()
+        }
         
         # View mode: "month", "week", "3day", "day"
         self._view_mode = "month"
@@ -77,14 +91,17 @@ class CalendarController(QObject):
     @Property(str, notify=currentRangeDisplayChanged)
     def currentRangeDisplay(self):
         """Return a formatted string of the current date range."""
-        if self._view_mode == "month":
-            return f"{self.currentMonthName} {self.currentYear}"
-        
-        if not self._range_start_date or not self._range_end_date:
-            return ""
-            
-        # Use DateUtils to format date range
-        return DateUtils.format_date_range(self._range_start_date, self._range_end_date)
+        if self._view_mode in self._view_strategies:
+            strategy = self._view_strategies[self._view_mode]
+            return strategy.format_date_range_display(self, self._range_start_date, self._range_end_date)
+        else:
+            # Fallback for unknown view modes
+            if self._view_mode == "month":
+                return f"{self.currentMonthName} {self.currentYear}"
+            elif not self._range_start_date or not self._range_end_date:
+                return ""
+            else:
+                return DateUtils.format_date_range(self._range_start_date, self._range_end_date)
 
     @Property(str, notify=syncStatusChanged)
     def syncStatus(self):
@@ -95,30 +112,44 @@ class CalendarController(QObject):
     @Slot(str)
     def setViewMode(self, mode):
         """Set the calendar view mode."""
-        if mode in ["month", "week", "day"] and mode != self._view_mode:
+        if mode in self._view_strategies and mode != self._view_mode:
             self._view_mode = mode
             # Update date range for the new view mode
             self._update_date_range()
             self.viewModeChanged.emit(self._view_mode)
             self.currentRangeDaysChanged.emit()
             self.currentRangeDisplayChanged.emit()
+        elif mode not in self._view_strategies:
+            print(f"Warning: Attempted to set unknown view mode '{mode}'")
             
     @Slot()
     def cycleViewMode(self):
-        """Cycle through available view modes: month -> week -> day -> month"""
+        """Cycle through available view modes in the order: month -> week -> day -> month"""
         current_mode = self._view_mode
         
-        # Define the cycle order - simplified to just month and week
-        modes = ["month", "week"]
+        # Define the cycle order based on available strategies
+        modes = list(self._view_strategies.keys())
+        if not modes:
+            # Fallback if no strategies are defined
+            return
+            
+        # Prioritize the standard order of modes if they exist
+        preferred_order = ["month", "week", "day", "3day"]
+        sorted_modes = [mode for mode in preferred_order if mode in modes]
+        
+        # Add any additional modes not in preferred order
+        for mode in modes:
+            if mode not in sorted_modes:
+                sorted_modes.append(mode)
         
         # Find current index and get next mode
         try:
-            current_index = modes.index(current_mode)
-            next_index = (current_index + 1) % len(modes)
-            next_mode = modes[next_index]
+            current_index = sorted_modes.index(current_mode)
+            next_index = (current_index + 1) % len(sorted_modes)
+            next_mode = sorted_modes[next_index]
         except ValueError:
-            # If current mode not found, default to month
-            next_mode = "month"
+            # If current mode not found, default to first mode
+            next_mode = sorted_modes[0]
         
         # Set the new mode
         self.setViewMode(next_mode)
@@ -129,7 +160,7 @@ class CalendarController(QObject):
         
         Args:
             date_str: Date string in format 'yyyy-MM-dd'
-            view_mode: View mode to set ('month', 'week', or 'day')
+            view_mode: View mode to set ('month', 'week', 'day', etc.)
         """
         try:
             # Parse the date
@@ -141,12 +172,18 @@ class CalendarController(QObject):
             # Set the current date
             self._current_date = date
             
-            # Set the view mode
-            if view_mode in ["month", "week", "day"]:
+            # Set the view mode, defaulting to day view if the specified mode is not available
+            if view_mode in self._view_strategies:
                 self._view_mode = view_mode
             else:
-                # Default to day view if invalid mode
-                self._view_mode = "day"
+                # Try to use 'day' view as fallback, or the first available strategy
+                fallback_mode = "day" if "day" in self._view_strategies else next(iter(self._view_strategies), None)
+                if fallback_mode:
+                    self._view_mode = fallback_mode
+                    print(f"Warning: View mode '{view_mode}' not found, using '{fallback_mode}' instead")
+                else:
+                    print(f"Error: No view strategies available")
+                    return
                 
             # Update date range for the new view mode
             self._update_date_range()
@@ -183,25 +220,26 @@ class CalendarController(QObject):
             
     @Slot()
     def moveDateRangeForward(self):
-        """Move the custom date range forward."""
-        if self._view_mode == "month":
-            self.goToNextMonth()
-            return
+        """Move the date range forward using the appropriate strategy."""
+        if self._view_mode in self._view_strategies:
+            # Get the strategy for the current view mode
+            strategy = self._view_strategies[self._view_mode]
             
-        days_to_move = 1  # Default for day view
-        if self._view_mode == "week":
-            days_to_move = 7
-        elif self._view_mode == "3day":
-            days_to_move = 3
-        
-        # Move current date forward
-        self._current_date = self._current_date.addDays(days_to_move)
-        self._update_date_range()
-        
-        # Update signals
-        self.currentMonthYearChanged.emit()
-        self.currentRangeDaysChanged.emit()
-        self.currentRangeDisplayChanged.emit()
+            # Use the strategy to navigate forward
+            self._current_date = strategy.navigate_forward(self, self._current_date)
+            self._update_date_range()
+            
+            # Update signals
+            self.currentMonthYearChanged.emit()
+            self.currentRangeDaysChanged.emit()
+            self.currentRangeDisplayChanged.emit()
+            
+            # For month view, we need to update the events and model
+            if self._view_mode == "month":
+                self._update_events_and_model()
+                self.daysInMonthModelChanged.emit()
+        else:
+            print(f"Warning: Unknown view mode '{self._view_mode}' for navigation")
 
     @Slot()
     def goToPreviousMonth(self):
@@ -222,25 +260,26 @@ class CalendarController(QObject):
             
     @Slot()
     def moveDateRangeBackward(self):
-        """Move the custom date range backward."""
-        if self._view_mode == "month":
-            self.goToPreviousMonth()
-            return
+        """Move the date range backward using the appropriate strategy."""
+        if self._view_mode in self._view_strategies:
+            # Get the strategy for the current view mode
+            strategy = self._view_strategies[self._view_mode]
             
-        days_to_move = 1  # Default for day view
-        if self._view_mode == "week":
-            days_to_move = 7
-        elif self._view_mode == "3day":
-            days_to_move = 3
-        
-        # Move current date backward
-        self._current_date = self._current_date.addDays(-days_to_move)
-        self._update_date_range()
-        
-        # Update signals
-        self.currentMonthYearChanged.emit()
-        self.currentRangeDaysChanged.emit()
-        self.currentRangeDisplayChanged.emit()
+            # Use the strategy to navigate backward
+            self._current_date = strategy.navigate_backward(self, self._current_date)
+            self._update_date_range()
+            
+            # Update signals
+            self.currentMonthYearChanged.emit()
+            self.currentRangeDaysChanged.emit()
+            self.currentRangeDisplayChanged.emit()
+            
+            # For month view, we need to update the events and model
+            if self._view_mode == "month":
+                self._update_events_and_model()
+                self.daysInMonthModelChanged.emit()
+        else:
+            print(f"Warning: Unknown view mode '{self._view_mode}' for navigation")
 
     @Slot()
     def goToToday(self):
@@ -316,15 +355,14 @@ class CalendarController(QObject):
     
     def _update_date_range(self):
         """Update the date range based on the current view mode and date."""
-        if self._view_mode == "month":
-            # Range is managed by existing month model
-            return
-            
-        if self._view_mode == "week":
-            # Get week dates using DateUtils
-            self._range_start_date, self._range_end_date, _ = DateUtils.get_week_dates(self._current_date)
-        else:  # day view or fallback
-            # Single day view
+        # Get the strategy for the current view mode
+        if self._view_mode in self._view_strategies:
+            # Let the strategy handle date range calculation
+            strategy = self._view_strategies[self._view_mode]
+            strategy.update_date_range(self, self._current_date)
+        else:
+            # Fallback for unknown view modes
+            print(f"Warning: Unknown view mode '{self._view_mode}', defaulting to day view")
             self._range_start_date = QDate(self._current_date)
             self._range_end_date = QDate(self._current_date)
         
