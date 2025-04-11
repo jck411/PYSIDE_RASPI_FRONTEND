@@ -202,23 +202,6 @@ class CalendarController(QObject):
             print(f"Error navigating to date {date_str}: {e}")
 
     @Slot()
-    def goToNextMonth(self):
-        """Move to next month."""
-        try:
-            # Signal month change first (before any model changes)
-            self._current_date = self._current_date.addMonths(1)
-            self._update_date_range()
-            self.currentMonthYearChanged.emit()
-            self.currentRangeDisplayChanged.emit()
-            
-            # Update model
-            self._update_events_and_model()
-            self.daysInMonthModelChanged.emit()
-            self.currentRangeDaysChanged.emit()
-        except Exception as e:
-            print(f"Error in goToNextMonth: {e}")
-            
-    @Slot()
     def moveDateRangeForward(self):
         """Move the date range forward using the appropriate strategy."""
         if self._view_mode in self._view_strategies:
@@ -241,23 +224,6 @@ class CalendarController(QObject):
         else:
             print(f"Warning: Unknown view mode '{self._view_mode}' for navigation")
 
-    @Slot()
-    def goToPreviousMonth(self):
-        """Move to previous month."""
-        try:
-            # Signal month change first (before any model changes)
-            self._current_date = self._current_date.addMonths(-1)
-            self._update_date_range()
-            self.currentMonthYearChanged.emit()
-            self.currentRangeDisplayChanged.emit()
-            
-            # Update model
-            self._update_events_and_model()
-            self.daysInMonthModelChanged.emit()
-            self.currentRangeDaysChanged.emit()
-        except Exception as e:
-            print(f"Error in goToPreviousMonth: {e}")
-            
     @Slot()
     def moveDateRangeBackward(self):
         """Move the date range backward using the appropriate strategy."""
@@ -289,6 +255,15 @@ class CalendarController(QObject):
             if (self._current_date != current_date):
                 # Signal change first (before any model changes)
                 self._current_date = current_date
+                
+                # Let the strategy handle view-specific "go to today" actions if needed
+                if self._view_mode in self._view_strategies:
+                    strategy = self._view_strategies[self._view_mode]
+                    # Optional: Give the strategy a chance to handle any view-specific "go to today" logic
+                    if hasattr(strategy, 'go_to_today'):
+                        strategy.go_to_today(self, current_date)
+                
+                # Update date range
                 self._update_date_range()
                 self.currentMonthYearChanged.emit()
                 self.currentRangeDisplayChanged.emit()
@@ -370,15 +345,31 @@ class CalendarController(QObject):
         self._update_range_days()
         
     def _update_range_days(self):
-        """Update the range days model for custom views."""
-        if self._view_mode == "month":
+        """Update the range days model for custom views using the appropriate strategy."""
+        # If we're in month view or have invalid date range, just clear the range days
+        if self._view_mode == "month" or not self._range_start_date or not self._range_end_date:
             self._range_days = []
             return
             
-        if not self._range_start_date or not self._range_end_date:
-            self._range_days = []
-            return
+        # If we have a strategy for this view mode, let it handle the range days creation
+        if self._view_mode in self._view_strategies:
+            strategy = self._view_strategies[self._view_mode]
+            # Check if strategy has a custom method for handling range days
+            if hasattr(strategy, 'create_range_days'):
+                self._range_days = strategy.create_range_days(
+                    self, 
+                    self._range_start_date, 
+                    self._range_end_date, 
+                    self._filtered_events,
+                    self._locale
+                )
+                return
+                
+        # Fallback: Create range days using the standard approach
+        self._create_standard_range_days()
             
+    def _create_standard_range_days(self):
+        """Standard implementation for creating range days model used as fallback."""
         # Create range days
         result = []
         current_date = self._range_start_date
@@ -532,17 +523,25 @@ class CalendarController(QObject):
             return []
 
     def _get_google_events(self):
-        """Fetch events from Google Calendar API for the current month view."""
+        """Fetch events from Google Calendar API for the current view."""
         try:
-            # Calculate date range for the current month view
-            first_day = QDate(self._current_date.year(), self._current_date.month(), 1)
-            last_day = QDate(self._current_date.year(), self._current_date.month(), 
-                           self._current_date.daysInMonth())
+            # Determine the appropriate date range for this view mode
+            if self._view_mode in self._view_strategies and hasattr(self._view_strategies[self._view_mode], 'get_event_fetch_range'):
+                # Use the strategy to determine the date range for event fetching
+                strategy = self._view_strategies[self._view_mode]
+                start_date, end_date = strategy.get_event_fetch_range(self, self._current_date)
+            else:
+                # Fallback to standard month grid with padding if no strategy or not implemented
+                # Calculate date range for the current month view
+                first_day = QDate(self._current_date.year(), self._current_date.month(), 1)
+                last_day = QDate(self._current_date.year(), self._current_date.month(), 
+                              self._current_date.daysInMonth())
+                
+                # Add padding for the grid view (6 weeks)
+                start_date = first_day.addDays(-(first_day.dayOfWeek() - 1))
+                end_date = last_day.addDays(42 - (last_day.dayOfWeek() + last_day.daysInMonth() - first_day.day()))
             
-            # Add padding for the grid view (6 weeks)
-            start_date = first_day.addDays(-(first_day.dayOfWeek() - 1))
-            end_date = last_day.addDays(42 - (last_day.dayOfWeek() + last_day.daysInMonth() - first_day.day()))
-            
+            # Fetch events for all visible calendars within the date range
             all_events = []
             for calendar in self._available_calendars:
                 if calendar["is_visible"]:
@@ -769,22 +768,42 @@ class CalendarController(QObject):
         """ 
         Calculates the list of day dictionaries for the grid view.
         Pre-calculates event positions for the UI.
+        Uses view-specific strategies when available.
         """
         try:
-            # Create the basic grid structure
-            days_model, weeks_data, grid_start_date = self._create_basic_grid()
+            # First check if the current view mode has a custom implementation
+            if self._view_mode in self._view_strategies:
+                strategy = self._view_strategies[self._view_mode]
+                if hasattr(strategy, 'calculate_days_model'):
+                    # Let the strategy handle the model calculation
+                    result = strategy.calculate_days_model(
+                        self, 
+                        self._current_date, 
+                        self._filtered_events
+                    )
+                    if result is not None:
+                        return result
+                    
+            # If no strategy implementation or it returned None, use the standard approach
+            return self._calculate_standard_days_model()
             
-            # Process events and assign them to days
-            event_to_days, weeks_data = self._assign_events_to_days(days_model, grid_start_date, weeks_data)
-            
-            # Process multi-day events and calculate their layout
-            self._process_multi_day_events(weeks_data)
-            
-            return days_model
         except Exception as e:
             print(f"Error calculating days model: {e}")
             # Fallback to empty grid on error
             return self._create_empty_grid()
+            
+    def _calculate_standard_days_model(self):
+        """Standard implementation for calculating the days model grid."""
+        # Create the basic grid structure
+        days_model, weeks_data, grid_start_date = self._create_basic_grid()
+        
+        # Process events and assign them to days
+        event_to_days, weeks_data = self._assign_events_to_days(days_model, grid_start_date, weeks_data)
+        
+        # Process multi-day events and calculate their layout
+        self._process_multi_day_events(weeks_data)
+        
+        return days_model
 
 
 if __name__ == "__main__":
@@ -793,10 +812,11 @@ if __name__ == "__main__":
     print(f"Calendars: {controller.availableCalendarsModel}")
     print(f"Day Model (first 7 days): {controller.daysInMonthModel[:7]}")
 
-    controller.goToNextMonth()
-    print(f"\nMonth: {controller.currentMonthName} {controller.currentYear}")
+    # Move forward to next month using strategy-based navigation
+    controller.moveDateRangeForward()
+    print(f"\nMonth after moving forward: {controller.currentMonthName} {controller.currentYear}")
     print(f"Day Model (first 7 days): {controller.daysInMonthModel[:7]}")
 
+    # Test visibility setting
     controller.setCalendarVisibility("cal3", True)
     print(f"\nCalendars: {controller.availableCalendarsModel}")
-    print(f"Day Model (day 15 events): {[d for d in controller.daysInMonthModel if d['dayNumber'] == 15 and d['isCurrentMonth']][0]['events']}")

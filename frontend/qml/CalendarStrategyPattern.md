@@ -1,138 +1,94 @@
-# Calendar View Strategy Pattern Implementation
-
-This document describes the strategy pattern refactoring for the calendar view modes in the application.
+# Calendar Architecture: Strategy Pattern Implementation
 
 ## Overview
 
-The calendar component previously used conditional statements throughout the code to handle different view modes (month, week, day, etc.). This approach led to code duplication and made it difficult to add new view modes or modify existing ones.
+The calendar system has been refactored to use the Strategy Pattern for view modes and navigation. This document explains the architecture and provides guidance for future developers.
 
-We've refactored this using the Strategy Pattern, which:
-- Encapsulates view-specific behaviors in separate classes
-- Eliminates scattered conditional logic 
-- Makes the code more maintainable and extensible
-- Follows the DRY (Don't Repeat Yourself) principle
+## Core Components
 
-## Implementation Details
+### CalendarController
 
-### 1. Strategy Interface
+The main controller class that:
+- Maintains the current date, events, and view state
+- Exposes properties and methods to QML
+- Delegates view-specific behavior to the appropriate strategy
 
-A base abstract class defines the interface for all view mode strategies:
+### View Strategies
 
-```python
-class CalendarViewStrategy(ABC):
-    @abstractmethod
-    def update_date_range(self, controller, current_date):
-        """Calculate and update the date range for this view."""
-        pass
-        
-    @abstractmethod
-    def format_date_range_display(self, controller, start_date, end_date):
-        """Format the date range for display."""
-        pass
-    
-    @abstractmethod
-    def navigate_forward(self, controller, current_date):
-        """Navigate forward in this view."""
-        pass
-    
-    @abstractmethod
-    def navigate_backward(self, controller, current_date):
-        """Navigate backward in this view."""
-        pass
-```
+Strategy classes that implement view-specific behaviors:
+- `MonthViewStrategy`: Grid view of a full month
+- `WeekViewStrategy`: Horizontal view of a 7-day week
+- `DayViewStrategy`: Detailed view of a single day
+- `ThreeDayViewStrategy`: Three-day rolling view
 
-### 2. Concrete Strategies
+Each strategy implements these key methods:
+- `update_date_range`: Calculate start/end dates for the view
+- `navigate_forward`: Move forward (next month/week/day) 
+- `navigate_backward`: Move backward (prev month/week/day)
+- `format_date_range_display`: Format the date range for UI display
+- `create_range_days` (optional): Custom day model creation
+- `calculate_days_model` (optional): Custom grid model calculation
+- `get_event_fetch_range` (optional): Custom event fetching date range
 
-Separate strategy classes implement the interface for each view mode:
+## Navigation Flow
 
-- `MonthViewStrategy`: Handles month view specifics
-- `WeekViewStrategy`: Handles week view specifics
-- `DayViewStrategy`: Handles day view specifics
-- `ThreeDayViewStrategy`: Handles three-day view specifics
+1. User triggers navigation (next/previous buttons)
+2. `moveDateRangeForward` or `moveDateRangeBackward` is called
+3. Controller retrieves the strategy for the current view mode
+4. Strategy's navigation method updates the current date
+5. Date range is recalculated based on the updated date
+6. UI is updated with the new date range
 
-Each strategy encapsulates the logic specific to its view mode:
+## Events Processing
 
-```python
-class WeekViewStrategy(CalendarViewStrategy):
-    def update_date_range(self, controller, current_date):
-        # Week-specific date range calculation
-        start_date, end_date, _ = DateUtils.get_week_dates(current_date)
-        controller._range_start_date = start_date
-        controller._range_end_date = end_date
-    
-    def format_date_range_display(self, controller, start_date, end_date):
-        # Week-specific date formatting
-        return DateUtils.format_date_range(start_date, end_date)
-    
-    def navigate_forward(self, controller, current_date):
-        # Week-specific navigation (7 days)
-        return current_date.addDays(7)
-    
-    def navigate_backward(self, controller, current_date):
-        # Week-specific navigation (7 days back)
-        return current_date.addDays(-7)
-```
-
-### 3. Strategy Use in Controller
-
-The `CalendarController` initializes and stores strategies in a dictionary:
-
-```python
-# Initialize view strategies
-self._view_strategies = {
-    "month": MonthViewStrategy(),
-    "week": WeekViewStrategy(),
-    "day": DayViewStrategy(),
-    "3day": ThreeDayViewStrategy()
-}
-```
-
-The controller delegates view-specific operations to the appropriate strategy:
-
-```python
-def _update_date_range(self):
-    if self._view_mode in self._view_strategies:
-        strategy = self._view_strategies[self._view_mode]
-        strategy.update_date_range(self, self._current_date)
-    else:
-        # Fallback handling
-```
-
-## Benefits of this Approach
-
-1. **Reduced Complexity**: Conditional logic is removed from the controller, making methods cleaner and easier to understand
-
-2. **Improved Extensibility**: Adding a new view mode only requires:
-   - Creating a new strategy class that implements the interface
-   - Adding an instance to the `_view_strategies` dictionary
-   - No modifications to existing controller methods are needed
-
-3. **Better Maintainability**: Each strategy contains all logic for its view mode in one place, making it easier to update or fix behavior for a specific view
-
-4. **Facilitates Testing**: Each strategy can be tested independently
+1. Events are fetched from Google Calendar API
+2. Events are filtered by calendar visibility
+3. Events are assigned to days in the model
+4. Multi-day events are processed for layout
+5. The model is exposed to QML for rendering
 
 ## Adding a New View Mode
 
-To add a new calendar view mode (e.g., a "four-day view"):
+To add a new view mode:
+1. Create a new strategy class in `calendar_view_strategies.py`
+2. Implement the required methods (navigation, date range calculation)
+3. Add the strategy to the `_view_strategies` dictionary in CalendarController
+4. Update QML components to handle the new view mode
 
-1. Create a new strategy class:
-   ```python
-   class FourDayViewStrategy(CalendarViewStrategy):
-       def update_date_range(self, controller, current_date):
-           # Calculate four-day range
-           controller._range_start_date = QDate(current_date)
-           controller._range_end_date = QDate(current_date.addDays(3))
-           
-       # ... implement other required methods
-   ```
+## Connecting to QML
 
-2. Add it to the strategies dictionary in the controller's `__init__` method:
-   ```python
-   self._view_strategies["4day"] = FourDayViewStrategy()
-   ```
+The calendar controller exposes:
+- `currentRangeDisplay`: Formatted date range string
+- `currentRangeDays`: List of days in the current range
+- `daysInMonthModel`: Grid model for month view
+- Navigation methods (`moveDateRangeForward`, etc.)
+- View mode switching methods (`setViewMode`, `cycleViewMode`)
 
-3. Update any UI code that selects view modes to include the new option
+## Benefits of This Architecture
 
-## Conclusion
+1. **Extensibility**: New view modes can be added without modifying the core controller
+2. **Maintainability**: View-specific logic is isolated in separate strategy classes
+3. **Consistency**: Common operations like navigation follow the same pattern across views
+4. **Flexibility**: Strategies can override specific methods while inheriting defaults
 
-This strategy pattern implementation significantly improves the quality and maintainability of the calendar code. It removes duplicated logic, makes the codebase more modular, and provides a clear path for future extensions.
+## Sample Implementation of Custom View
+
+```python
+class CustomViewStrategy:
+    def update_date_range(self, controller, current_date):
+        # Calculate start/end date for this view
+        controller._range_start_date = start_date
+        controller._range_end_date = end_date
+        
+    def navigate_forward(self, controller, current_date):
+        # Calculate next date in sequence
+        return current_date.addDays(X)
+        
+    def navigate_backward(self, controller, current_date):
+        # Calculate previous date in sequence
+        return current_date.addDays(-X)
+        
+    def format_date_range_display(self, controller, start_date, end_date):
+        # Return formatted string for display
+        return "Custom format: ..."
+```

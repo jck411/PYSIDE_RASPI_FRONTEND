@@ -231,9 +231,5 @@ BaseCalendarView {
         visible: !model || model.length === 0
     }
     
-    // Ensure ScrollView has proper policies
-    Component.onCompleted: {
-        scrollView.ScrollBar.vertical.policy = ScrollBar.AsNeeded
-        scrollView.ScrollBar.horizontal.policy = ScrollBar.AlwaysOff
-    }
-} 
+    // No need to set ScrollView policies here as it's done when we create each day's ScrollView
+}

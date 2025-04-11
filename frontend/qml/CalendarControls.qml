@@ -27,14 +27,7 @@ RowLayout {
             else return "Previous Day";
         }
         Layout.preferredWidth: 50
-        onClicked: {
-            var mode = getCurrentViewMode();
-            if (mode === "month") {
-                CalendarController.goToPreviousMonth();
-            } else {
-                CalendarController.moveDateRangeBackward();
-            }
-        }
+        onClicked: CalendarController.moveDateRangeBackward()
     }
     
     TouchFriendlyButton {
@@ -56,14 +49,7 @@ RowLayout {
             else return "Next Day";
         }
         Layout.preferredWidth: 50
-        onClicked: {
-            var mode = getCurrentViewMode();
-            if (mode === "month") {
-                CalendarController.goToNextMonth();
-            } else {
-                CalendarController.moveDateRangeForward();
-            }
-        }
+        onClicked: CalendarController.moveDateRangeForward()
     }
     
     TouchFriendlyButton {
