@@ -106,10 +106,10 @@ BaseCalendarView {
             
             // Create day cell container
             var dayCellContainer = Qt.createQmlObject(
-                'import QtQuick 2.15; Rectangle { ' +
-                '    color: "' + ThemeManager.background_color + '"; ' +
+                'import QtQuick 2.15; import MyTheme 1.0; Rectangle { ' +
+                '    color: ThemeManager.background_color; ' +
                 '    width: ' + cellWidth + '; ' +
-                '    border.color: "' + ThemeManager.input_border_color + '"; ' +
+                '    border.color: ThemeManager.input_border_color; ' +
                 '    border.width: 1; ' +
                 '}',
                 dayCellsRow
