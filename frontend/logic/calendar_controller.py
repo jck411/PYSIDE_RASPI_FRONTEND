@@ -3,6 +3,7 @@ from PySide6.QtCore import QObject, Signal, Slot, Property, QDate, QLocale, QTim
 from datetime import datetime, timedelta
 import calendar
 from .google_calendar import GoogleCalendarClient
+from .date_utils import DateUtils
 
 class CalendarController(QObject):
     """
@@ -81,21 +82,9 @@ class CalendarController(QObject):
         
         if not self._range_start_date or not self._range_end_date:
             return ""
-        
-        python_start = self._range_start_date.toPython()
-        python_end = self._range_end_date.toPython()
-        
-        # Same month and year
-        if python_start.month == python_end.month and python_start.year == python_end.year:
-            if python_start == python_end:
-                # Single day
-                return python_start.strftime("%B %d, %Y")
-            else:
-                # Date range in same month
-                return f"{python_start.strftime('%B %d')} - {python_end.day}, {python_end.year}"
-        else:
-            # Date range spanning months
-            return f"{python_start.strftime('%b %d')} - {python_end.strftime('%b %d, %Y')}"
+            
+        # Use DateUtils to format date range
+        return DateUtils.format_date_range(self._range_start_date, self._range_end_date)
 
     @Property(str, notify=syncStatusChanged)
     def syncStatus(self):
@@ -331,26 +320,13 @@ class CalendarController(QObject):
             # Range is managed by existing month model
             return
             
-        # Convert QDate to Python datetime for easier manipulation
-        current_date = self._current_date.toPython()
-        
         if self._view_mode == "week":
-            # Get start of week (Monday)
-            weekday = current_date.weekday()  # 0=Monday, 6=Sunday
-            start_date = current_date - timedelta(days=weekday)
-            end_date = start_date + timedelta(days=6)
-        elif self._view_mode == "day":
+            # Get week dates using DateUtils
+            self._range_start_date, self._range_end_date, _ = DateUtils.get_week_dates(self._current_date)
+        else:  # day view or fallback
             # Single day view
-            start_date = current_date
-            end_date = current_date
-        else:
-            # Default fallback to single day
-            start_date = current_date
-            end_date = current_date
-            
-        # Convert back to QDate
-        self._range_start_date = QDate.fromString(start_date.strftime("%Y-%m-%d"), "yyyy-MM-dd")
-        self._range_end_date = QDate.fromString(end_date.strftime("%Y-%m-%d"), "yyyy-MM-dd")
+            self._range_start_date = QDate(self._current_date)
+            self._range_end_date = QDate(self._current_date)
         
         # Update range days
         self._update_range_days()
@@ -372,18 +348,18 @@ class CalendarController(QObject):
         
         while current_date <= self._range_end_date:
             # Get events for this day
-            date_str = current_date.toString("yyyy-MM-dd")
+            date_str = DateUtils.to_string(current_date, DateUtils.FORMAT_ISO)
             
             # Find regular events for this day
             regular_events = []
             multi_day_events = []
             
             for event in self._filtered_events:
-                event_start_date = QDate.fromString(event.get("start_date", ""), "yyyy-MM-dd")
-                event_end_date = QDate.fromString(event.get("end_date", ""), "yyyy-MM-dd")
+                event_start_date = DateUtils.to_qdate(event.get("start_date", ""))
+                event_end_date = DateUtils.to_qdate(event.get("end_date", ""))
                 
                 # Skip if dates are invalid
-                if not event_start_date.isValid() or not event_end_date.isValid():
+                if not event_start_date or not event_end_date or not event_start_date.isValid() or not event_end_date.isValid():
                     continue
                     
                 # Check if event is on this day
@@ -392,12 +368,12 @@ class CalendarController(QObject):
                     event_copy = event.copy()
                     
                     # Mark if this is a multi-day event
-                    is_multi_day = event_start_date != event_end_date
+                    is_multi_day = DateUtils.days_between(event_start_date, event_end_date) > 0
                     
                     if is_multi_day:
                         event_copy["is_multi_day"] = True
-                        event_copy["isStart"] = event_start_date == current_date
-                        event_copy["isEnd"] = event_end_date == current_date
+                        event_copy["isStart"] = DateUtils.is_same_day(event_start_date, current_date)
+                        event_copy["isEnd"] = DateUtils.is_same_day(event_end_date, current_date)
                         multi_day_events.append(event_copy)
                     else:
                         event_copy["is_multi_day"] = False
@@ -406,7 +382,7 @@ class CalendarController(QObject):
                         if "start_time" in event and event["start_time"]:
                             try:
                                 start_time = datetime.fromisoformat(event["start_time"])
-                                event_copy["timeDisplay"] = start_time.strftime("%I:%M %p")
+                                event_copy["timeDisplay"] = DateUtils.to_string(start_time, DateUtils.FORMAT_TIME)
                             except (ValueError, TypeError):
                                 event_copy["timeDisplay"] = ""
                                 
@@ -554,28 +530,27 @@ class CalendarController(QObject):
     def _extract_event_dates(self, event):
         """Extract and validate start/end dates from an event."""
         try:
-            # Parse the start date
+            # Parse the start date using DateUtils
             if event.get("start_time"):
-                start_date_str = event["start_time"].split("T")[0] if "T" in event["start_time"] else event["start_time"]
-                event["start_date"] = start_date_str
+                event["start_date"] = DateUtils.extract_iso_date(event["start_time"])
             else:
                 # Skip events without start time
                 return False
                 
-            # Parse the end date
+            # Parse the end date using DateUtils
             if event.get("end_time"):
-                end_date_str = event["end_time"].split("T")[0] if "T" in event["end_time"] else event["end_time"]
-                event["end_date"] = end_date_str
+                event["end_date"] = DateUtils.extract_iso_date(event["end_time"])
             else:
                 # For events with no end time, use start date
                 event["end_date"] = event["start_date"]
                 
             # Validate the dates
-            start_date = QDate.fromString(event["start_date"], "yyyy-MM-dd")
-            end_date = QDate.fromString(event["end_date"], "yyyy-MM-dd")
+            start_date = DateUtils.to_qdate(event["start_date"])
+            end_date = DateUtils.to_qdate(event["end_date"])
             
-            return start_date.isValid() and end_date.isValid()
-        except:
+            return start_date and end_date and start_date.isValid() and end_date.isValid()
+        except Exception as e:
+            print(f"Error extracting event dates: {str(e)}")
             return False
 
     def _create_basic_grid(self):
@@ -635,13 +610,13 @@ class CalendarController(QObject):
                 if not self._extract_event_dates(event):
                     continue
                     
-                start_date = QDate.fromString(event["start_date"], "yyyy-MM-dd")
-                end_date = QDate.fromString(event["end_date"], "yyyy-MM-dd")
+                start_date = DateUtils.to_qdate(event["start_date"])
+                end_date = DateUtils.to_qdate(event["end_date"])
                 
                 # Adjust end date for all-day events
-                if event.get("all_day", False) and end_date.isValid():
+                if event.get("all_day", False) and end_date and end_date.isValid():
                     end_date = end_date.addDays(-1)
-                    event["end_date"] = end_date.toString("yyyy-MM-dd")
+                    event["end_date"] = DateUtils.to_string(end_date, DateUtils.FORMAT_ISO)
                     
                 # Calculate grid positions
                 days_difference_start = grid_start_date.daysTo(start_date)
