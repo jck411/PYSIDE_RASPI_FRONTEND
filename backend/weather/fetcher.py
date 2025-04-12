@@ -17,6 +17,55 @@ KMCO_LON = "-81.3089"
 logger = logging.getLogger(__name__)
 
 
+async def fetch_sunrise_sunset(lat: str, lon: str) -> dict | None:
+    """
+    Fetch sunrise and sunset times for a given latitude and longitude
+    using the sunrise-sunset.org API.
+
+    Args:
+        lat: Latitude as a string.
+        lon: Longitude as a string.
+
+    Returns:
+        A dictionary like:
+        {
+            "sunrise": "2025-04-12T10:43:12+00:00",
+            "sunset":  "2025-04-12T23:56:33+00:00"
+        }
+        Or None if the request fails.
+    """
+    url = "https://api.sunrise-sunset.org/json"
+    params = {
+        "lat": lat,
+        "lng": lon,
+        "formatted": 0  # Use ISO 8601 format with UTC offset
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            if data["status"] == "OK":
+                return {
+                    "sunrise": data["results"]["sunrise"],
+                    "sunset": data["results"]["sunset"],
+                }
+            else:
+                logger.error(f"Sunrise-sunset API returned non-OK status: {data['status']}")
+                return None
+
+    except httpx.RequestError as exc:
+        logger.error(f"Request error fetching sunrise/sunset: {exc}")
+    except httpx.HTTPStatusError as exc:
+        logger.error(f"HTTP error fetching sunrise/sunset: {exc.response.status_code}")
+    except Exception as e:
+        logger.error(f"Unexpected error fetching sunrise/sunset: {e}")
+
+    return None
+
+
 async def fetch_weather_data(
     lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON
 ) -> dict | None:
@@ -35,13 +84,14 @@ async def fetch_weather_data(
           - "forecast": narrative forecast data from Winter Park
           - "forecast_hourly": hourly forecast data from Winter Park
           - "grid_forecast": detailed grid forecast data from Winter Park
+          - "sunrise_sunset": sunrise and sunset data from the location
     """
     base_url = "https://api.weather.gov"
     headers = {
         "User-Agent": "RaspberryPi-WeatherApp/1.0 (pyside-weather-app)",
         "Accept": "application/json",
     }
-    timeout = 10.0  # 10 second timeout for each request
+    timeout = 10.0
 
     try:
         # Create a single client for all requests with timeout
@@ -86,12 +136,16 @@ async def fetch_weather_data(
             grid_forecast_task = client.get(grid_forecast_url, headers=headers)
             stations_task = client.get(observation_stations_url, headers=headers)
             
+            # Also fetch sunrise/sunset data
+            sunrise_sunset_task = fetch_sunrise_sunset(lat, lon)
+            
             logger.info(f"Fetching all forecast data concurrently")
             responses = await asyncio.gather(
                 forecast_task,
                 forecast_hourly_task,
                 grid_forecast_task,
                 stations_task,
+                sunrise_sunset_task,
                 return_exceptions=True
             )
             
@@ -102,7 +156,7 @@ async def fetch_weather_data(
                     return None
             
             # Process responses
-            forecast_response, forecast_hourly_response, grid_forecast_response, stations_response = responses
+            forecast_response, forecast_hourly_response, grid_forecast_response, stations_response, sunrise_sunset_data = responses
             
             # Validate responses
             for resp in [forecast_response, forecast_hourly_response, grid_forecast_response, stations_response]:
@@ -153,6 +207,7 @@ async def fetch_weather_data(
                 "forecast": forecast_data,
                 "forecast_hourly": forecast_hourly_data,
                 "grid_forecast": grid_forecast_data,
+                "sunrise_sunset": sunrise_sunset_data
             }
             logger.info(f"Successfully fetched observations from {station_id} and forecast data for Winter Park")
 

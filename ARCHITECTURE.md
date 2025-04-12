@@ -143,21 +143,36 @@ The application fully supports videos in the slideshow using QtMultimedia 6.0:
 The WeatherScreen uses:
 - Lottie animations for current weather conditions
 - PNG icons for forecast displays
-- National Weather Service (NWS) API for data (previously used OpenWeatherMap)
+- National Weather Service (NWS) API for weather data
+- Sunrise-sunset.org API for accurate sunrise and sunset times
 
 The screen is built as a modular component with clear separation of concerns:
 - **WeatherScreen.qml**: Main container component that manages data fetching, UI components, and animations
 - **ForecastDisplay.qml**: Original component for OpenWeatherMap forecasts (maintained for compatibility)
 - **SevenDayForecast.qml**: Component that displays forecasts for the next 12 periods (skipping the first 2 periods shown in the 72-hour view) with static PNG icons in a stacked row layout, showing detailed forecast information in each row
-- **WeatherControls.qml**: Provides navigation between Current Weather (72 Hour) and 7-Day Forecast views
+- **HourlyWeatherGraph.qml**: Component that displays a 24-hour temperature and precipitation forecast graph using Canvas for temperature line plotting and bars for precipitation probability
+- **WeatherControls.qml**: Provides navigation between Current Weather (72 Hour), Hourly Graph, and 7-Day Forecast views
 
 ### Weather UI Interaction
 The Weather screen is interactive, allowing users to:
 - Click on any weather section in the current weather view to view detailed information
-- Toggle between the 72-hour view (with Lottie animations) and the 7-day forecast view
+- Toggle between the 72-hour view (with Lottie animations), the hourly graph view (with temperature trends and precipitation), and the 7-day forecast view
 - The 7-day forecast displays comprehensive details directly in each row, eliminating the need for additional popups
 - Each forecast row includes the date, icon, temperature, and a detailed description
 - The dialog for the current weather sections uses blur effects (via QtQuick.Effects) for a modern, frosted-glass appearance
+
+### Hourly Weather Graph
+The hourly weather graph provides a visualization of temperature and precipitation forecast for the next 24 hours:
+- Temperature is displayed as a connected line graph with data points and labels
+- Precipitation probability is shown as vertical bars at the bottom of the graph
+- Time labels along the bottom show the time for each hour in the forecast
+- The graph automatically scales based on minimum and maximum temperatures in the forecast
+- Precipitation probability is extracted from forecast text when explicit values aren't available
+- Sunrise and sunset times are indicated with sun icons at the top of the graph
+- Sunrise is marked with a full sun icon and golden/orange color
+- Sunset is marked with a half-sun icon and salmon/tomato color 
+- The graph is fully responsive and adapts to different screen sizes
+- Theme-aware color scheme matches the application's light/dark theme
 
 ### Weather UI Layout
 The Weather screen layout uses a responsive design approach with:
@@ -233,8 +248,13 @@ The weather data is fetched from the National Weather Service API and then forma
 - **Concurrent API Requests:** Modified the weather fetcher to use `asyncio.gather()` for parallel requests, significantly reducing total fetch time.
 - **Request Timeouts:** Added explicit timeouts to prevent the application from hanging on slow network connections.
 - **Accurate Data Only:** The system strictly displays only real data from the National Weather Service, with clear status messages when data is not yet available.
-- **Faster Retry:** Added a shorter retry interval (30 seconds) after an initial failed fetch to reduce wait time for data.
-- **Location Update (May 2025):** Implemented a hybrid location approach that uses Orlando International Airport (KMCO) data for current observations while using Winter Park location data for forecast information. This provides accurate aviation weather observations from KMCO while maintaining relevant local forecasts for Winter Park.
+
+### Sunrise and Sunset Data Enhancement (April 2025)
+- **Dedicated API Integration:** Added integration with the sunrise-sunset.org API for accurate sunrise and sunset time data.
+- **Improved Reliability:** Implemented a fallback mechanism that uses NWS grid forecast data when the specialized API is unavailable.
+- **Error Handling:** Added comprehensive error handling to ensure the application continues to function even when sunrise/sunset data is unavailable.
+- **Time Format Compatibility:** Enhanced the time formatting functions to handle various ISO 8601 time formats from different APIs.
+- **Visual Display:** Optimized the hourly graph to display sunrise and sunset information in a clean, user-friendly manner with appropriate icons.
 
 ## Calendar Screen Implementation
 
@@ -355,134 +375,4 @@ This section documents specific UI changes implemented recently:
 
 Based on recent work, consider the following for future development:
 
-- **Implement `CalendarController.refreshEvents()`:** Ensure the Python method `CalendarController.refreshEvents()` is implemented to handle the logic for fetching updated calendar data when the new refresh button is clicked. This is crucial for the button to be functional.
-- **UI Consistency:** Regularly review UI elements across different screens (like button styles, sizing, and icon usage) to maintain a consistent look and feel. Decide on a standard approach for button sizing (fixed vs. automatic) where appropriate.
-- **Icon Path Management:** While relative paths (`../icons/`) work, ensure the `PathProvider` is used consistently where absolute paths are needed, especially if QML files might be moved or restructured. Double-check paths like `"../icons/refresh.svg"` remain valid relative to their QML file location.
-- **Documentation:** Keep this `ARCHITECTURE.md` file updated as new features are added or significant UI changes are made. Documenting the *why* behind design decisions can be helpful later.
-- **Controller Methods:** Verify that methods called from QML (like `CalendarController.refreshEvents()`) actually exist in the corresponding Python controller classes and have the correct signature.
-
-## Calendar Component Structure
-
-### Recent Improvements
-
-The calendar component has been refactored to use a more efficient and maintainable architecture:
-
-1. **Unified Calendar View**: A single component for rendering both day cells and multi-day events, replacing the previous separate grid and overlay approach.
-
-2. **Pre-calculated Layout**: The CalendarController now pre-calculates all event positions, making the QML rendering more straightforward and efficient.
-
-3. **Fixed Bug in Month Navigation**: The layout row tracking algorithm was improved to properly track positions by (row, column) pairs instead of entire rows, preventing the calendar from breaking when changing months.
-
-4. **Defensive Programming**: Added more defensive checks to handle null or invalid data gracefully, preventing crashes when data is incomplete.
-
-5. **Model Reset on Month Change**: Properly clearing the model when changing months to ensure stale references don't cause bugs.
-
-6. **Robust Model Processing**: Implemented a time-based deferred model processing approach in QML to safely handle model changes without compromising UI stability.
-
-7. **Asynchronous UI Updates**: Added a loading indicator during model updates and ensured that the calendar grid is never empty, even during model changes.
-
-8. **Exception Handling**: Added comprehensive error handling in Python to catch and log any issues during model calculations and navigation.
-
-9. **Consistent Header Components**: The calendar views now share consistent header implementation:
-   - Both MonthCalendarView, WeekCalendarView, and UnifiedCalendarView use the same WeekdayHeader component
-   - MonthCalendarView and UnifiedCalendarView display day names (Mon, Tue, etc.) without dates
-   - WeekCalendarView displays both day names and dates for the current week
-   - This shared component improves consistency in styling and user experience across all views
-   - The header height is properly accounted for in layout calculations in all views
-   - A special `showDayNumber` property allows adapting the component to different view needs:
-     - Set to `false` in month view (showing only weekday names)
-     - Set to `true` in week view (showing both weekday names and day numbers)
-   - Today's date is consistently highlighted with the theme's primary color in all views
-
-10. **Simplified UI Navigation**: The calendar interface has been streamlined to remove redundant controls:
-    - Removed duplicate Previous/Today/Next buttons from the CalendarScreen.qml that were redundant with the navigation buttons in CalendarControls.qml
-    - This reduces visual clutter and potential user confusion
-    - Provides a cleaner, more focused calendar interface
-    - Maintains all navigation functionality through the controls in the bottom bar
-    - View toggle button now cycles through all three main view modes: Month → Week → 3-Day, making the 3-day view more accessible
-
-11. **Completed Component Migration**: The calendar implementation has been fully migrated to use the improved components:
-    - Successfully migrated from the legacy `CustomCalendarView.qml` to `WeekCalendarView.qml`
-    - Updated imports and component instantiation in `CalendarScreen.qml`
-    - Renamed instance from `customCalendar` to `weekCalendarView` for clarity
-    - Maintained the same property bindings and visibility conditions
-    - The more maintainable component architecture is now fully in use
-
-12. **UI Alignment Improvements**: The calendar day headers in single day view have been modified:
-    - Changed from center-aligned to left-aligned for better readability
-    - Applied a consistent left margin (10px) to ensure proper spacing from the edge
-    - Maintained vertical centering for proper visual balance
-    - This change makes the date headers more visually consistent with other text-heavy components in the application
-
-These changes allow the calendar to display many more events per day while maintaining a usable interface, addressing one of the key usability issues with the previous implementation.
-
-## UI State Management Challenges and Solutions
-
-This section documents common challenges in QML/PySide application state management and solutions implemented in the project, focusing on practical examples.
-
-### Fullscreen Toggle Implementation (April 2025)
-
-#### Original Challenge
-The fullscreen toggle feature presented several interrelated challenges that exemplify common pitfalls in QML/PySide development:
-
-1. **Type Conversion Issues**: The SettingsService returns PySide PyObjectWrapper values that can't be directly assigned to QML boolean properties. This created runtime errors when trying to set `isFullScreen = value` directly from Python values.
-
-2. **Window State Management**: The initial implementation used window flags (Qt.FramelessWindowHint) to control the title bar visibility, but this approach permanently removed the title bar, making it impossible to restore when exiting fullscreen mode.
-
-3. **Settings vs. Direct Control**: Relying on the SettingsService for window state added complexity and indirection, creating a disconnect between the actual window state and its representation in the UI.
-
-4. **QML/Python Communication**: The settings-based approach required multiple signal connections and properties to synchronize state between the Python backend and QML frontend.
-
-#### Implemented Solution
-The fullscreen toggle feature was redesigned with these principles:
-
-1. **Direct Window Control**: We switched from manipulating window flags to using Qt's built-in visibility states (Window.FullScreen and Window.Windowed).
-
-2. **Explicit Type Conversion**: We added explicit `Boolean()` conversions at all interface points between Python and QML to prevent type errors.
-
-3. **Reactive Properties**: Added a property `isFullScreen: visibility === Window.FullScreen` that dynamically reflects the actual window state rather than depending on settings.
-
-4. **Visual Feedback**: The settings toggle switch directly binds to and controls the window state, providing immediate feedback.
-
-```qml
-// In MainWindow.qml
-property bool isFullScreen: visibility === Window.FullScreen
-
-onVisibilityChanged: {
-    if (stackView && stackView.currentItem && stackView.currentItem.title) {
-        if (visibility === Window.FullScreen) {
-            mainWindow.title = ""
-        } else {
-            mainWindow.title = stackView.currentItem.title
-        }
-    }
-}
-
-// In SettingsScreen.qml
-Switch {
-    id: fullscreenSwitch
-    // Bind directly to the window visibility state
-    checked: Window.window ? Window.window.visibility === Window.FullScreen : false
-    
-    onToggled: {
-        // Directly control window visibility
-        if (Window.window) {
-            Window.window.visibility = checked ? Window.FullScreen : Window.Windowed
-        }
-    }
-}
-```
-
-#### Lessons Learned
-
-1. **Prefer Direct Control**: When managing UI states like fullscreen mode, direct manipulation of window properties is more reliable than indirect settings-based approaches.
-
-2. **Explicit Type Handling**: Always use explicit type conversions when passing data between Python and QML to prevent runtime errors.
-
-3. **Reactive Properties**: Use properties that derive their values from the actual system state rather than storing duplicate state that can get out of sync.
-
-4. **Window Visibility vs. Flags**: Use standard window visibility states (Window.FullScreen, Window.Windowed) instead of manipulating window flags for common window behaviors.
-
-5. **Global Access**: Use the Window.window singleton to access the main window from any QML component, enabling direct window control from settings screens.
-
-These principles can be applied to other UI state management challenges throughout the application, such as theme switching, audio state control, and view mode selection.
+- **Implement `CalendarController.refreshEvents()`:** Ensure the Python method `CalendarController.refreshEvents()`

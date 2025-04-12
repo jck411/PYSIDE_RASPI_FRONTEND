@@ -43,6 +43,38 @@ BaseControls {
     }
     
     Button {
+        id: hourlyButton
+        text: "Hourly"
+        font.pixelSize: 16
+        font.bold: true
+        implicitWidth: 90
+        implicitHeight: 40
+        
+        background: Rectangle {
+            color: "transparent"
+            radius: 8
+            border.width: 1
+            border.color: screen && screen.currentView === "hourly"
+                ? "#565f89"
+                : "transparent"
+        }
+        
+        contentItem: Text {
+            text: hourlyButton.text
+            font: hourlyButton.font
+            color: ThemeManager.text_primary_color
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+        
+        onClicked: {
+            if (screen) {
+                screen.currentView = "hourly"
+            }
+        }
+    }
+    
+    Button {
         id: forecastButton
         text: "7 Day"
         font.pixelSize: 16

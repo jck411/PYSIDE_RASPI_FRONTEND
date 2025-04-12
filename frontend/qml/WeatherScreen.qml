@@ -66,6 +66,25 @@ BaseScreen {
                             console.log("Forecast periods loaded:", forecastPeriods.length);
                         }
                         
+                        // Log hourly forecast data to check structure
+                        if (response && response.forecast_hourly && response.forecast_hourly.properties && 
+                            response.forecast_hourly.properties.periods) {
+                            console.log("Hourly forecast periods loaded:", 
+                                        response.forecast_hourly.properties.periods.length);
+                            // Check if precipitation probability exists in hourly data
+                            if (response.forecast_hourly.properties.periods.length > 0) {
+                                var firstPeriod = response.forecast_hourly.properties.periods[0];
+                                console.log("First hourly period:", JSON.stringify(firstPeriod));
+                                if (firstPeriod.probabilityOfPrecipitation) {
+                                    console.log("Precipitation probability exists in data");
+                                } else {
+                                    console.log("No explicit precipitation probability in data");
+                                }
+                            }
+                        } else {
+                            console.log("No hourly forecast data found in response");
+                        }
+                        
                         currentWeatherData = response; 
                         statusMessage = ""; 
                         console.log("Weather data fetched successfully (WeatherScreen).");
@@ -1002,6 +1021,53 @@ BaseScreen {
                 statusMessage: weatherScreen.statusMessage !== "" ? weatherScreen.statusMessage : ""
                 pngIconsBase: weatherScreen.pngIconsBase
                 visible: currentView === "forecast"
+            }
+
+            // Hourly Weather Graph View Container
+            HourlyWeatherGraph {
+                id: hourlyGraph
+                Layout.fillWidth: true
+                Layout.preferredHeight: 400
+                hourlyForecastData: weatherScreen.currentWeatherData ? weatherScreen.currentWeatherData.forecast_hourly : null
+                loading: weatherScreen.statusMessage !== ""
+                // Add sunrise and sunset times from sunrise-sunset.org API
+                sunriseTime: {
+                    // First try to use the new sunrise_sunset data
+                    if (weatherScreen.currentWeatherData && weatherScreen.currentWeatherData.sunrise_sunset) {
+                        return weatherScreen.currentWeatherData.sunrise_sunset.sunrise;
+                    }
+                    
+                    // Fall back to grid_forecast data if available
+                    if (weatherScreen.currentWeatherData && 
+                        weatherScreen.currentWeatherData.grid_forecast && 
+                        weatherScreen.currentWeatherData.grid_forecast.properties && 
+                        weatherScreen.currentWeatherData.grid_forecast.properties.sunrise) {
+                        var sunrise = weatherScreen.currentWeatherData.grid_forecast.properties.sunrise.values;
+                        if (sunrise && sunrise.length > 0) {
+                            return sunrise[0].value;
+                        }
+                    }
+                    return null;
+                }
+                sunsetTime: {
+                    // First try to use the new sunrise_sunset data
+                    if (weatherScreen.currentWeatherData && weatherScreen.currentWeatherData.sunrise_sunset) {
+                        return weatherScreen.currentWeatherData.sunrise_sunset.sunset;
+                    }
+                    
+                    // Fall back to grid_forecast data if available
+                    if (weatherScreen.currentWeatherData && 
+                        weatherScreen.currentWeatherData.grid_forecast && 
+                        weatherScreen.currentWeatherData.grid_forecast.properties && 
+                        weatherScreen.currentWeatherData.grid_forecast.properties.sunset) {
+                        var sunset = weatherScreen.currentWeatherData.grid_forecast.properties.sunset.values;
+                        if (sunset && sunset.length > 0) {
+                            return sunset[0].value;
+                        }
+                    }
+                    return null;
+                }
+                visible: currentView === "hourly"
             }
             
             // Original Forecast View Container (now hidden, replaced by SevenDayForecast)
