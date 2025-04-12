@@ -1,0 +1,18 @@
+[
+    {
+        "text": "whats the time",
+        "isUser": true
+    },
+    {
+        "text": "It's 9:23 PM. Time to relax!",
+        "isUser": false
+    },
+    {
+        "text": "whats the weatehr",
+        "isUser": true
+    },
+    {
+        "text": "",
+        "isUser": false
+    }
+]

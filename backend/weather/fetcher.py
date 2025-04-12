@@ -25,6 +25,11 @@ async def fetch_weather_data(
 
     Returns:
         A dictionary containing the weather data, or None if an error occurs.
+        The dictionary includes:
+          - "properties": current observation data
+          - "forecast": narrative forecast data
+          - "forecast_hourly": hourly forecast data
+          - "grid_forecast": detailed grid forecast data
     """
     base_url = "https://api.weather.gov"
     headers = {
@@ -43,25 +48,44 @@ async def fetch_weather_data(
             points_response.raise_for_status()
             points_data = points_response.json()
 
-            # Extract forecast URL and other relevant information
-            forecast_url = points_data.get("properties", {}).get("forecast")
-            observation_stations_url = points_data.get("properties", {}).get(
-                "observationStations"
-            )
+            # Extract URLs for all needed endpoints
+            properties = points_data.get("properties", {})
+            forecast_url = properties.get("forecast")
+            forecast_hourly_url = properties.get("forecastHourly")
+            grid_forecast_url = properties.get("forecastGridData")
+            observation_stations_url = properties.get("observationStations")
 
+            # Validate all required URLs are present
             if not forecast_url:
                 logger.error("Forecast URL not found in points response")
                 return None
-
+            if not forecast_hourly_url:
+                logger.error("Hourly forecast URL not found in points response")
+                return None
+            if not grid_forecast_url:
+                logger.error("Grid forecast URL not found in points response")
+                return None
             if not observation_stations_url:
                 logger.error("Observation stations URL not found in points response")
                 return None
 
-            # Get forecast data
+            # Get narrative forecast data
             logger.info(f"Fetching forecast from {forecast_url}")
             forecast_response = await client.get(forecast_url, headers=headers)
             forecast_response.raise_for_status()
             forecast_data = forecast_response.json()
+
+            # Get hourly forecast data
+            logger.info(f"Fetching hourly forecast from {forecast_hourly_url}")
+            forecast_hourly_response = await client.get(forecast_hourly_url, headers=headers)
+            forecast_hourly_response.raise_for_status()
+            forecast_hourly_data = forecast_hourly_response.json()
+
+            # Get detailed grid forecast data
+            logger.info(f"Fetching grid forecast from {grid_forecast_url}")
+            grid_forecast_response = await client.get(grid_forecast_url, headers=headers)
+            grid_forecast_response.raise_for_status()
+            grid_forecast_data = grid_forecast_response.json()
 
             # Get observation stations
             logger.info(
@@ -78,7 +102,9 @@ async def fetch_weather_data(
                 return None
 
             # Get the first station's observations
-            station_url = stations_data["features"][0]["properties"].get("@id")
+            station = stations_data["features"][0]
+            # Try to get the station URL: check for "@id" or fallback to the "id" property
+            station_url = station["properties"].get("@id") or station.get("id")
             if not station_url:
                 logger.error("Station URL not found")
                 return None
@@ -90,11 +116,14 @@ async def fetch_weather_data(
             obs_data = obs_response.json()
 
             # Return the raw NWS API data for the new UI
+            # Maintain backward compatibility while adding new data
             combined_data = {
                 "properties": obs_data.get("properties", {}),
                 "forecast": forecast_data,
+                "forecast_hourly": forecast_hourly_data,
+                "grid_forecast": grid_forecast_data,
             }
-            logger.info(f"Successfully fetched weather data for lat={lat}, lon={lon}")
+            logger.info(f"Successfully fetched complete weather data for lat={lat}, lon={lon}")
 
             return combined_data
 
@@ -167,45 +196,7 @@ def estimate_precipitation_probability(short_forecast, detailed_forecast):
     return probability
 
 
-def map_nws_icon_to_owm(nws_icon_url):
-    """
-    Map NWS icon URLs to OpenWeatherMap icon codes for compatibility with existing frontend
-    """
-    if not nws_icon_url:
-        return "01d"  # Default to clear day
-
-    # Extract the icon name from URL
-    # Example URL: https://api.weather.gov/icons/land/day/skc?size=medium
-    icon_name = nws_icon_url.split("/")[-1].split("?")[0]
-    is_day = "/day/" in nws_icon_url
-    suffix = "d" if is_day else "n"
-
-    # Map NWS icons to OpenWeatherMap codes
-    icon_map = {
-        "skc": f"01{suffix}",  # clear sky
-        "few": f"02{suffix}",  # few clouds
-        "sct": f"03{suffix}",  # scattered clouds
-        "bkn": f"04{suffix}",  # broken clouds
-        "ovc": f"04{suffix}",  # overcast clouds
-        "rain": f"10{suffix}",  # rain
-        "rain_showers": f"09{suffix}",  # showers
-        "rain_showers_hi": f"09{suffix}",  # showers high intensity
-        "tsra": f"11{suffix}",  # thunderstorm
-        "tsra_sct": f"11{suffix}",  # scattered thunderstorms
-        "tsra_hi": f"11{suffix}",  # heavy thunderstorms
-        "snow": f"13{suffix}",  # snow
-        "rain_snow": f"13{suffix}",  # rain and snow
-        "fzra": f"13{suffix}",  # freezing rain
-        "snow_fzra": f"13{suffix}",  # snow and freezing rain
-        "sleet": f"13{suffix}",  # sleet
-        "fog": f"50{suffix}",  # fog
-    }
-
-    for key, value in icon_map.items():
-        if key in icon_name:
-            return value
-
-    return f"01{suffix}"  # Default to clear sky
+# Function map_nws_icon_to_owm removed - NWS icons are used directly now
 
 
 # Example usage (for testing)
