@@ -41,11 +41,20 @@ async def periodic_weather_update(interval_seconds: int = 1800):
     # Initial fetch immediately
     logger.info("Performing initial weather data fetch...")
     data = await fetch_weather_data()
+    
     if data:
         weather_state.latest_weather_data = data
         logger.info("Initial weather data fetched successfully.")
     else:
         logger.warning("Initial weather data fetch failed.")
+        # No fallback data - we'll return 503 until real data is available
+        
+        # Retry sooner for the first attempt
+        await asyncio.sleep(30)  # Wait 30 seconds before retrying
+        data = await fetch_weather_data()
+        if data:
+            weather_state.latest_weather_data = data
+            logger.info("Second attempt weather data fetched successfully.")
 
     # Start periodic updates after the initial fetch
     while True:

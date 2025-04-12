@@ -8,7 +8,7 @@ import asyncio
 # Load environment variables from .env file, if present.
 load_dotenv()
 
-# Default to Winter Park, FL (adjust via environment or change values here)
+# Default to Winter Park, FL (for forecasts)
 DEFAULT_LAT = os.getenv("DEFAULT_LAT", "28.5988")
 DEFAULT_LON = os.getenv("DEFAULT_LON", "-81.3583")
 

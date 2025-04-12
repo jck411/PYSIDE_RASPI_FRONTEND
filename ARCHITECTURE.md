@@ -223,6 +223,19 @@ To enable these visual effects, the application requires PySide6 6.5 or later. A
 
 The weather data is fetched from the National Weather Service API and then formatted to be compatible with the existing frontend UI structure. The backend handles the mapping of NWS weather icons and descriptions to the appropriate visual elements.
 
+### Weather Display Improvements (May 2025)
+- **Observation Time Display:** The CurrentWeather component shows "as of" the actual observation time from the National Weather Service, providing users with the exact time of the weather reading.
+- **Real-time Data:** The application always displays the most current observation data available from NWS, refreshing automatically every 30 minutes.
+- **UI Text Update:** The "As of" text in the current weather section uses the observation timestamp to accurately reflect when the weather reading was taken.
+- **Code Cleanup:** Removed unused properties and functions from the CurrentWeather component to maintain code cleanliness.
+
+### Weather Fetching Optimizations (May 2025)
+- **Concurrent API Requests:** Modified the weather fetcher to use `asyncio.gather()` for parallel requests, significantly reducing total fetch time.
+- **Request Timeouts:** Added explicit timeouts to prevent the application from hanging on slow network connections.
+- **Accurate Data Only:** The system strictly displays only real data from the National Weather Service, with clear status messages when data is not yet available.
+- **Faster Retry:** Added a shorter retry interval (30 seconds) after an initial failed fetch to reduce wait time for data.
+- **Location Update (May 2025):** Implemented a hybrid location approach that uses Orlando International Airport (KMCO) data for current observations while using Winter Park location data for forecast information. This provides accurate aviation weather observations from KMCO while maintaining relevant local forecasts for Winter Park.
+
 ## Calendar Screen Implementation
 
 The CalendarScreen provides an intuitive calendar interface with simplified navigation between views:

@@ -6,9 +6,13 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Default to Winter Park, FL
+# Winter Park coordinates (for forecast data)
 DEFAULT_LAT = os.getenv("DEFAULT_LAT", "28.5988")
 DEFAULT_LON = os.getenv("DEFAULT_LON", "-81.3583")
+
+# Orlando International Airport (KMCO) coordinates - used only for observations
+KMCO_LAT = "28.4256"
+KMCO_LON = "-81.3089"
 
 logger = logging.getLogger(__name__)
 
@@ -18,96 +22,124 @@ async def fetch_weather_data(
 ) -> dict | None:
     """
     Fetches weather data from National Weather Service API.
+    Uses Winter Park for forecasts but gets observations from KMCO.
 
     Args:
-        lat: Latitude for the weather location.
-        lon: Longitude for the weather location.
+        lat: Latitude for the weather location (forecasts).
+        lon: Longitude for the weather location (forecasts).
 
     Returns:
         A dictionary containing the weather data, or None if an error occurs.
         The dictionary includes:
-          - "properties": current observation data
-          - "forecast": narrative forecast data
-          - "forecast_hourly": hourly forecast data
-          - "grid_forecast": detailed grid forecast data
+          - "properties": current observation data from KMCO
+          - "forecast": narrative forecast data from Winter Park
+          - "forecast_hourly": hourly forecast data from Winter Park
+          - "grid_forecast": detailed grid forecast data from Winter Park
     """
     base_url = "https://api.weather.gov"
     headers = {
         "User-Agent": "RaspberryPi-WeatherApp/1.0 (pyside-weather-app)",
         "Accept": "application/json",
     }
+    timeout = 10.0  # 10 second timeout for each request
 
     try:
-        # First, get the grid point information
-        points_url = f"{base_url}/points/{lat},{lon}"
-        logger.info(f"Fetching gridpoints for lat={lat}, lon={lon} from {points_url}")
-
-        async with httpx.AsyncClient() as client:
-            # Get grid points
+        # Create a single client for all requests with timeout
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            # First, get the grid point information for Winter Park (for forecasts)
+            points_url = f"{base_url}/points/{lat},{lon}"
+            logger.info(f"Fetching gridpoints for Winter Park lat={lat}, lon={lon} from {points_url}")
+            
             points_response = await client.get(points_url, headers=headers)
             points_response.raise_for_status()
             points_data = points_response.json()
 
-            # Extract URLs for all needed endpoints
+            # Extract URLs for all needed forecast endpoints
             properties = points_data.get("properties", {})
             forecast_url = properties.get("forecast")
             forecast_hourly_url = properties.get("forecastHourly")
             grid_forecast_url = properties.get("forecastGridData")
-            observation_stations_url = properties.get("observationStations")
-
+            
+            # Now get grid point information for KMCO (for observations)
+            kmco_points_url = f"{base_url}/points/{KMCO_LAT},{KMCO_LON}"
+            logger.info(f"Fetching gridpoints for KMCO lat={KMCO_LAT}, lon={KMCO_LON} from {kmco_points_url}")
+            
+            kmco_points_response = await client.get(kmco_points_url, headers=headers)
+            kmco_points_response.raise_for_status()
+            kmco_points_data = kmco_points_response.json()
+            
+            # Get observation stations URL for KMCO
+            kmco_properties = kmco_points_data.get("properties", {})
+            observation_stations_url = kmco_properties.get("observationStations")
+            
             # Validate all required URLs are present
-            if not forecast_url:
-                logger.error("Forecast URL not found in points response")
-                return None
-            if not forecast_hourly_url:
-                logger.error("Hourly forecast URL not found in points response")
-                return None
-            if not grid_forecast_url:
-                logger.error("Grid forecast URL not found in points response")
-                return None
-            if not observation_stations_url:
-                logger.error("Observation stations URL not found in points response")
+            if not all([forecast_url, forecast_hourly_url, grid_forecast_url, observation_stations_url]):
+                logger.error("One or more required URLs not found in points responses")
                 return None
 
-            # Get narrative forecast data
-            logger.info(f"Fetching forecast from {forecast_url}")
-            forecast_response = await client.get(forecast_url, headers=headers)
-            forecast_response.raise_for_status()
+            # Use gather to fetch all forecast data concurrently
+            import asyncio
+            
+            # Fetch forecast data concurrently
+            forecast_task = client.get(forecast_url, headers=headers)
+            forecast_hourly_task = client.get(forecast_hourly_url, headers=headers)
+            grid_forecast_task = client.get(grid_forecast_url, headers=headers)
+            stations_task = client.get(observation_stations_url, headers=headers)
+            
+            logger.info(f"Fetching all forecast data concurrently")
+            responses = await asyncio.gather(
+                forecast_task,
+                forecast_hourly_task,
+                grid_forecast_task,
+                stations_task,
+                return_exceptions=True
+            )
+            
+            # Check for exceptions
+            for i, resp in enumerate(responses):
+                if isinstance(resp, Exception):
+                    logger.error(f"Error in concurrent request {i}: {resp}")
+                    return None
+            
+            # Process responses
+            forecast_response, forecast_hourly_response, grid_forecast_response, stations_response = responses
+            
+            # Validate responses
+            for resp in [forecast_response, forecast_hourly_response, grid_forecast_response, stations_response]:
+                resp.raise_for_status()
+            
+            # Parse JSON data
             forecast_data = forecast_response.json()
-
-            # Get hourly forecast data
-            logger.info(f"Fetching hourly forecast from {forecast_hourly_url}")
-            forecast_hourly_response = await client.get(forecast_hourly_url, headers=headers)
-            forecast_hourly_response.raise_for_status()
             forecast_hourly_data = forecast_hourly_response.json()
-
-            # Get detailed grid forecast data
-            logger.info(f"Fetching grid forecast from {grid_forecast_url}")
-            grid_forecast_response = await client.get(grid_forecast_url, headers=headers)
-            grid_forecast_response.raise_for_status()
             grid_forecast_data = grid_forecast_response.json()
-
-            # Get observation stations
-            logger.info(
-                f"Fetching observation stations from {observation_stations_url}"
-            )
-            stations_response = await client.get(
-                observation_stations_url, headers=headers
-            )
-            stations_response.raise_for_status()
             stations_data = stations_response.json()
 
+            # Process stations data from KMCO
             if not stations_data.get("features") or len(stations_data["features"]) == 0:
-                logger.error("No observation stations found")
+                logger.error("No observation stations found for KMCO")
                 return None
 
-            # Get the first station's observations
-            station = stations_data["features"][0]
-            # Try to get the station URL: check for "@id" or fallback to the "id" property
+            # Look for KMCO station in the list or use the first one as fallback
+            station = None
+            for feature in stations_data["features"]:
+                station_id = feature["properties"].get("stationIdentifier", "")
+                if station_id == "KMCO":
+                    logger.info("Found KMCO station in observation stations list")
+                    station = feature
+                    break
+            
+            # If KMCO not found, use the first station as fallback
+            if not station:
+                logger.info("KMCO station not found, using first available station")
+                station = stations_data["features"][0]
+                
             station_url = station["properties"].get("@id") or station.get("id")
             if not station_url:
                 logger.error("Station URL not found")
                 return None
+                
+            station_id = station["properties"].get("stationIdentifier", "Unknown")
+            logger.info(f"Using observation station: {station_id}")
 
             observations_url = f"{station_url}/observations/latest"
             logger.info(f"Fetching latest observations from {observations_url}")
@@ -115,15 +147,14 @@ async def fetch_weather_data(
             obs_response.raise_for_status()
             obs_data = obs_response.json()
 
-            # Return the raw NWS API data for the new UI
-            # Maintain backward compatibility while adding new data
+            # Return the combined data
             combined_data = {
                 "properties": obs_data.get("properties", {}),
                 "forecast": forecast_data,
                 "forecast_hourly": forecast_hourly_data,
                 "grid_forecast": grid_forecast_data,
             }
-            logger.info(f"Successfully fetched complete weather data for lat={lat}, lon={lon}")
+            logger.info(f"Successfully fetched observations from {station_id} and forecast data for Winter Park")
 
             return combined_data
 

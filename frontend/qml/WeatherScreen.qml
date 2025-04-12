@@ -70,6 +70,14 @@ BaseScreen {
                         statusMessage = ""; 
                         console.log("Weather data fetched successfully (WeatherScreen).");
                         
+                        // We don't need to set the fetchedAt property anymore
+                        // Just use the timestamp from the observation data
+                        
+                        // Cancel retry timer if it's running
+                        if (retryTimer.running) {
+                            retryTimer.stop();
+                        }
+                        
                     } catch (e) {
                         console.error("Error parsing weather data (WeatherScreen):", e);
                         statusMessage = "Error parsing weather data.";
@@ -80,7 +88,11 @@ BaseScreen {
                     console.error("Error fetching weather data (WeatherScreen). Status:", xhr.status);
                     statusMessage = "Error fetching weather data. Status: " + xhr.status;
                     if (xhr.status === 503) { 
-                        statusMessage = "Weather data not yet available."; 
+                        statusMessage = "Weather data is not available yet. Waiting for National Weather Service data..."; 
+                        // Start short retry timer if it's not already running
+                        if (!retryTimer.running) {
+                            retryTimer.start();
+                        }
                     }
                     currentWeatherData = null;
                     forecastPeriods = null;
@@ -381,6 +393,9 @@ BaseScreen {
         console.log("- Lottie player path:", lottiePlayerPath);
         console.log("- PNG icons base:", pngIconsBase);
         
+        // Set initial status message
+        statusMessage = "Requesting weather data from National Weather Service..."
+        
         fetchWeather();
         weatherTimer.start();
     }
@@ -392,6 +407,18 @@ BaseScreen {
         repeat: true
         running: false 
         onTriggered: { fetchWeather(); }
+    }
+    
+    // Short timer to retry weather data fetch during initial loading
+    Timer {
+        id: retryTimer
+        interval: 5000 // 5 seconds
+        repeat: true
+        running: false
+        onTriggered: { 
+            console.log("Retrying weather data fetch...")
+            fetchWeather();
+        }
     }
     
     // --- Content Area ---
