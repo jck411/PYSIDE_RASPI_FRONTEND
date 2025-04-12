@@ -28,13 +28,14 @@ Rectangle {
     
     // Content layout
     Column {
-        anchors.centerIn: parent
+        anchors.left: parent.left
+        anchors.leftMargin: 10
+        anchors.verticalCenter: parent.verticalCenter
         spacing: 2
         
         // Day name (Mon, Tue, etc)
         Text {
             id: dayNameText
-            anchors.horizontalCenter: parent.horizontalCenter
             text: dayName
             font.pixelSize: showDayNumber ? 14 : 16
             font.bold: true
@@ -44,7 +45,6 @@ Rectangle {
         // Date (e.g., "15") - only shown when showDayNumber is true
         Text {
             id: dayNumberText
-            anchors.horizontalCenter: parent.horizontalCenter
             text: dayNumber
             visible: showDayNumber
             font.pixelSize: 18

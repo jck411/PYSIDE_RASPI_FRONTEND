@@ -62,6 +62,9 @@ Item {
                 viewMode = "week"; 
                 break;
             case "week": 
+                viewMode = "3day"; 
+                break;
+            case "3day":
             default: 
                 viewMode = "month"; 
                 break;
@@ -242,7 +245,7 @@ Item {
                         // Tooltip
                         ToolTip {
                             visible: parent.containsMouse
-                            text: "Toggle Calendar View Mode"
+                            text: "Toggle Calendar View (Month/Week/3-Day)"
                             delay: 500
                         }
                     }

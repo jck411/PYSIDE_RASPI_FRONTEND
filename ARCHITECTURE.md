@@ -382,6 +382,7 @@ The calendar component has been refactored to use a more efficient and maintaina
     - This reduces visual clutter and potential user confusion
     - Provides a cleaner, more focused calendar interface
     - Maintains all navigation functionality through the controls in the bottom bar
+    - View toggle button now cycles through all three main view modes: Month → Week → 3-Day, making the 3-day view more accessible
 
 11. **Completed Component Migration**: The calendar implementation has been fully migrated to use the improved components:
     - Successfully migrated from the legacy `CustomCalendarView.qml` to `WeekCalendarView.qml`
@@ -389,6 +390,12 @@ The calendar component has been refactored to use a more efficient and maintaina
     - Renamed instance from `customCalendar` to `weekCalendarView` for clarity
     - Maintained the same property bindings and visibility conditions
     - The more maintainable component architecture is now fully in use
+
+12. **UI Alignment Improvements**: The calendar day headers in single day view have been modified:
+    - Changed from center-aligned to left-aligned for better readability
+    - Applied a consistent left margin (10px) to ensure proper spacing from the edge
+    - Maintained vertical centering for proper visual balance
+    - This change makes the date headers more visually consistent with other text-heavy components in the application
 
 These changes allow the calendar to display many more events per day while maintaining a usable interface, addressing one of the key usability issues with the previous implementation.
 
