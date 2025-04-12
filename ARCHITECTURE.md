@@ -334,6 +334,10 @@ This section documents specific UI changes implemented recently:
 - **Refresh Button:** A new refresh button was added using the `../icons/refresh.svg` icon (consistent with the Weather screen).
 - **Functionality:** This button is intended to trigger a data refresh/sync for calendar events and is currently configured to call `CalendarController.refreshEvents()`.
 
+### Main Navigation (`frontend/qml/MainWindow.qml`)
+- **Icon Reordering:** The Photos and Clock icons in the main navigation bar were swapped to improve workflow. The order is now: Chat, Weather, Calendar, Photos, Clock, Theme Toggle, Settings.
+- **Alignment:** This change provides a more logical grouping by placing the visual content screens (Photos) closer to the Calendar and Weather, with utility screens (Clock, Settings) grouped together.
+
 ## Future Development Tips
 
 Based on recent work, consider the following for future development:

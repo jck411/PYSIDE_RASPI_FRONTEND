@@ -76,8 +76,8 @@ Window {
                 TouchFriendlyButton { id: chatButton; source: "../icons/chat.svg"; text: "Chat"; onClicked: stackView.replace("ChatScreen.qml") }
                 TouchFriendlyButton { id: weatherButton; source: "../icons/weather.svg"; text: "Weather"; onClicked: stackView.replace("WeatherScreen.qml") }
                 TouchFriendlyButton { id: calendarButton; source: "../icons/calendar.svg"; text: "Calendar"; onClicked: stackView.replace("CalendarScreen.qml") }
-                TouchFriendlyButton { id: clockButton; source: "../icons/clock.svg"; text: "Clock"; onClicked: stackView.replace("ClockScreen.qml") }
                 TouchFriendlyButton { id: photosButton; source: "../icons/photos.svg"; text: "Photos"; onClicked: stackView.replace("PhotoScreen.qml") }
+                TouchFriendlyButton { id: clockButton; source: "../icons/clock.svg"; text: "Clock"; onClicked: stackView.replace("ClockScreen.qml") }
                 TouchFriendlyButton { id: themeToggleButton; source: ThemeManager.is_dark_mode ? "../icons/light_mode.svg" : "../icons/dark_mode.svg"; text: ThemeManager.is_dark_mode ? "Switch to Light Mode" : "Switch to Dark Mode"; onClicked: ThemeManager.toggle_theme() }
                 TouchFriendlyButton { id: settingsButton; source: "../icons/settings.svg"; text: "Settings"; onClicked: stackView.replace("SettingsScreen.qml") }
             
