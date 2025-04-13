@@ -1,0 +1,26 @@
+[
+    {
+        "text": "What's the time right now?",
+        "isUser": true
+    },
+    {
+        "text": "It's 2:03 AM. Perfect time for a midnight snack!",
+        "isUser": false
+    },
+    {
+        "text": "Can you tell me a poem and then make all the words that are rhyme in bold?",
+        "isUser": true
+    },
+    {
+        "text": "Sure! Here's a little poem for you:\n\nIn the **night**, the stars are **bright**,  \nGuiding dreams with their soft **light**.  \nWhispers of the gentle **breeze**,  \nDancing through the swaying **trees**.  \n\nHow's that for some poetic flair?",
+        "isUser": false
+    },
+    {
+        "text": "That's nice. Can you give me the link for Google.com?",
+        "isUser": true
+    },
+    {
+        "text": "Sure, here you go: [Google.com](https://www.google.com) Enjoy your searching!",
+        "isUser": false
+    }
+]
