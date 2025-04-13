@@ -6,8 +6,8 @@ import asyncio
 from fastapi import HTTPException
 
 from backend.config.config import CONFIG
-from backend.tools.functions import get_tools, get_available_functions
-from backend.tools.helpers import get_function_and_args
+from backend.tools.registry import get_tools, get_available_functions
+from backend.tools.helpers import get_function_and_args, execute_function
 
 
 def log_segment(segment: str) -> None:
@@ -204,7 +204,7 @@ async def stream_openai_completion(
             for tc in tool_calls:
                 try:
                     fn, fn_args = get_function_and_args(tc, funcs)
-                    resp = fn(**fn_args)
+                    resp = await execute_function(fn, fn_args)
                     log_function_call_result(fn.__name__, resp)
                     messages.append(
                         {

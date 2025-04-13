@@ -1,0 +1,26 @@
+[
+    {
+        "text": "what are the chaces of rain tomorrow",
+        "isUser": true
+    },
+    {
+        "text": "Zero chance of rain tomorrow. Enjoy the clear skies! ☀️",
+        "isUser": false
+    },
+    {
+        "text": "any rain next week",
+        "isUser": true
+    },
+    {
+        "text": "No rain next week, just sun and clouds. Perfect for outdoor plans! ☀️🌤️",
+        "isUser": false
+    },
+    {
+        "text": "whats the temp now",
+        "isUser": true
+    },
+    {
+        "text": "It's currently about 61°F. Pretty chill for Orlando! 🥶",
+        "isUser": false
+    }
+]

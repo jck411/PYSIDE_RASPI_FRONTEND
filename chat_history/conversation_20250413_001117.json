@@ -1,0 +1,10 @@
+[
+    {
+        "text": "what are the chances of rain tomorrow",
+        "isUser": true
+    },
+    {
+        "text": "There's a 55% chance of light rain tomorrow. Don't forget your umbrella!",
+        "isUser": false
+    }
+]

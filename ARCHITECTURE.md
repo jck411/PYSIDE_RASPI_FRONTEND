@@ -435,3 +435,27 @@ The codebase follows these organizational principles:
 - State management via lightweight state modules with clear interfaces
 - Event-driven mechanisms for async operations
 - Clean import structure to avoid circular dependencies
+
+### Tool Functions Architecture
+The application uses a modular tool functions system that allows for easy extension with new capabilities:
+
+- **Individual Tool Modules**: Each tool function is in its own file (e.g., `weather.py`, `time.py`)
+  - Each module exposes one primary function (e.g., `fetch_weather`, `get_time`)
+  - Each module provides a `get_schema()` function that defines its OpenAI function calling schema
+  - Functions can be synchronous or asynchronous (using `async/await`)
+
+- **API Integration**:
+  - `weather.py`: Uses OpenWeatherMap API for current weather and National Weather Service API for forecasts
+  - `time.py`: Uses TimezoneFinder and pytz for accurate local time
+
+- **Tool Registry** (`registry.py`): Central management of all available tools
+  - Automatically discovers and registers tool modules (both sync and async functions)
+  - Provides `get_tools()` to retrieve all schema definitions
+  - Provides `get_available_functions()` to map function names to implementations
+
+- **Tool Helpers** (`helpers.py`): Utilities for tool execution
+  - Validates function arguments
+  - Maps OpenAI function call requests to actual Python implementations
+  - Handles execution of both synchronous and asynchronous functions
+
+This architecture allows for easy extension by simply adding new Python files to the tools directory, following the pattern of existing tools. The registry will automatically discover and register new tools without requiring changes to other parts of the codebase.

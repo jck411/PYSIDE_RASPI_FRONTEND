@@ -1,0 +1,42 @@
+[
+    {
+        "text": "whats the time",
+        "isUser": true
+    },
+    {
+        "text": "It's 11:35 PM. Time for bed, or maybe a snack?",
+        "isUser": false
+    },
+    {
+        "text": "whats the weather",
+        "isUser": true
+    },
+    {
+        "text": "It's 61°F with scattered clouds. Perfect for a cozy night in!",
+        "isUser": false
+    },
+    {
+        "text": "any chance of rain?",
+        "isUser": true
+    },
+    {
+        "text": "No rain in sight! Just enjoy those scattered clouds.",
+        "isUser": false
+    },
+    {
+        "text": "how about tomorrow",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow, expect partly cloudy skies with a chance of light rain. High around 73°F. Grab an umbrella just in case!",
+        "isUser": false
+    },
+    {
+        "text": "what are the chances or rain and what time",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow, there's a 55% chance of light rain, mainly in the afternoon. Expect it around 2 PM. Don't forget your umbrella!",
+        "isUser": false
+    }
+]
