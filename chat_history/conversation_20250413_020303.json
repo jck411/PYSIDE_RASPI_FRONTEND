@@ -1,0 +1,42 @@
+[
+    {
+        "text": "whats the weather like now and tomorrow?",
+        "isUser": true
+    },
+    {
+        "text": "Currently, it's around **59°F** and mostly clear in Orlando. Tomorrow, expect a sunny day with a high of about **80°F**. Enjoy the warmth!",
+        "isUser": false
+    },
+    {
+        "text": "any chance for rain next week?",
+        "isUser": true
+    },
+    {
+        "text": "Next week looks pretty dry, but there's a slight chance of rain mid-week. Just your typical Florida unpredictability!",
+        "isUser": false
+    },
+    {
+        "text": "whats the time",
+        "isUser": true
+    },
+    {
+        "text": "It’s currently **1:55 PM** in Orlando. Time flies, huh?",
+        "isUser": false
+    },
+    {
+        "text": "can you write a poem with the rhyming workds in bold",
+        "isUser": true
+    },
+    {
+        "text": "Sure, here’s a little ditty for you:\n\nIn **Orlando** where the sun does **shine**,  \nThe parks are filled with joy, so **divine**.  \nWith laughter and fun, we all **align**,  \nCreating memories, oh so **fine**.  \n\nEnjoy the day, don’t waste your **time**,  \nLife’s a sweet journey, a perfect **rhyme**!",
+        "isUser": false
+    },
+    {
+        "text": "Let's do another one.",
+        "isUser": true
+    },
+    {
+        "text": "Absolutely, here’s another one for you:\n\nIn the evenings, as the stars **twinkle**,  \nThe laughter of friends starts to **crinkle**.  \nWith stories shared, our hearts do **sinkle**,  \nIn Orlando's charm, we all **mingle**.  \n\nSo raise a glass to joy, let it **jingle**,  \nIn this sunny place, where life’s a **dingle**!",
+        "isUser": false
+    }
+]

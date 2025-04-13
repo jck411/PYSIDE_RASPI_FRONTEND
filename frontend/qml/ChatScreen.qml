@@ -5,6 +5,7 @@ import QtQuick.Layouts 1.15
 // import MyScreens 1.0 // REMOVED - Module no longer defined/needed here
 import MyTheme 1.0  // Import our ThemeManager
 import MyServices 1.0 // Needed for SettingsService AND ChatService
+import MyUtils 1.0 // Import for MarkdownUtils
 
 BaseScreen {
     id: chatScreen
@@ -146,12 +147,14 @@ BaseScreen {
                         
                         Text {
                             id: contentLabel
-                            text: model.text
+                            text: MarkdownUtils.markdownToHtml(model.text)
+                            textFormat: Text.RichText
                             wrapMode: Text.Wrap
                             width: parent.width - 16
                             color: ThemeManager.text_primary_color
                             anchors.margins: 8
                             anchors.centerIn: parent
+                            onLinkActivated: Qt.openUrlExternally(link)
                         }
                     }
                     

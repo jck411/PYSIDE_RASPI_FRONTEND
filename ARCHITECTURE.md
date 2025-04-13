@@ -459,3 +459,30 @@ The application uses a modular tool functions system that allows for easy extens
   - Handles execution of both synchronous and asynchronous functions
 
 This architecture allows for easy extension by simply adding new Python files to the tools directory, following the pattern of existing tools. The registry will automatically discover and register new tools without requiring changes to other parts of the codebase.
+
+### Utility Services
+The application includes several utility services to provide common functionality:
+
+#### MarkdownUtils
+A service that provides conversion of markdown formatting to HTML for rich text display in QML:
+
+- **markdownToHtml(text)**: Converts markdown syntax to HTML for use in QML Text elements with textFormat: Text.RichText
+- Supports common markdown syntax:
+  - **bold text** for bold formatting
+  - *italic text* for italic formatting
+  - `code` for inline code
+  - [link text](url) for hyperlinks
+  - Line breaks converted to HTML <br> tags
+
+The utility is registered as a QML singleton and can be used in any QML file:
+```qml
+import MyUtils 1.0  // Import the utility module
+
+Text {
+    text: MarkdownUtils.markdownToHtml("**Bold** and *italic* text")
+    textFormat: Text.RichText  // Required for HTML formatting
+    onLinkActivated: Qt.openUrlExternally(link)  // Handle any links
+}
+```
+
+The implementation provides a clean separation between the text formatting logic (Python) and the UI display (QML), ensuring consistent text formatting across the application.

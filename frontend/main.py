@@ -17,6 +17,7 @@ from frontend.settings_service import SettingsService
 from frontend.error_handler import error_handler_instance, ErrorHandler
 from frontend.photo_controller import PhotoController
 from frontend.logic.calendar_controller import CalendarController # Add import
+from frontend.utils.markdown_utils import markdown_utils  # Add markdown utils import
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -163,6 +164,16 @@ def main():
         0,
         "CalendarController", # Name exposed to QML
         calendar_controller_instance,
+    )
+
+    # Register MarkdownUtils instance as a singleton
+    qmlRegisterSingletonInstance(
+        QObject,  # Base type
+        "MyUtils", 
+        1, 
+        0, 
+        "MarkdownUtils",  # Name exposed to QML 
+        markdown_utils,
     )
     # -----------------------------------------
 
