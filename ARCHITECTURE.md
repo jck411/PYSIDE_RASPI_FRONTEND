@@ -411,3 +411,27 @@ This section documents specific UI changes implemented recently:
 Based on recent work, consider the following for future development:
 
 - **Implement `CalendarController.refreshEvents()`:** Ensure the Python method `CalendarController.refreshEvents()`
+
+## Code Maintenance
+
+### Empty Files and Clean Code
+This codebase maintains a policy of avoiding empty or unused files. Empty files like `backend/weather/current.py` that are not referenced anywhere have been cleaned up to maintain code cleanliness. Empty `__init__.py` files are kept as they are necessary for Python package structure.
+
+Several minimal files exist in the codebase that serve important purposes:
+- `backend/weather/state.py`: Contains a global variable to store the latest weather data
+- `backend/endpoints/state.py`: Contains event flags used for controlling async operations
+
+Regular code maintenance tasks include:
+- Removing unused files and code
+- Ensuring proper Python package structure 
+- Maintaining clean imports and dependencies
+- Refactoring files that grow beyond 200-300 lines
+- Periodically checking for dead code or unused modules
+
+### Code Organization
+The codebase follows these organizational principles:
+- Clear separation between backend and frontend components
+- Module-specific subdirectories for related functionality (e.g., weather, tts)
+- State management via lightweight state modules with clear interfaces
+- Event-driven mechanisms for async operations
+- Clean import structure to avoid circular dependencies
