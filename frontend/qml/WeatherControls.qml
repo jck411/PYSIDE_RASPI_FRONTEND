@@ -113,7 +113,7 @@ BaseControls {
         text: "Refresh"
         onClicked: {
             if (screen) {
-                screen.fetchWeather()
+                screen.fetchWeather(true)
             }
         }
     }

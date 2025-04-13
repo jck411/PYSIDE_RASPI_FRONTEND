@@ -14,6 +14,7 @@ from backend.tts.processor import process_streams
 
 # Import weather components
 from backend.weather.fetcher import fetch_weather_data
+from backend.weather.openweather_fetcher import fetch_openweather_data
 import backend.weather.state as weather_state  # Use alias to avoid name collision
 
 from contextlib import asynccontextmanager
@@ -40,31 +41,89 @@ async def periodic_weather_update(interval_seconds: int = 1800):
     """Periodically fetches weather data and updates the global state."""
     # Initial fetch immediately
     logger.info("Performing initial weather data fetch...")
-    data = await fetch_weather_data()
     
-    if data:
-        weather_state.latest_weather_data = data
+    # Fetch NWS data (used for forecasts, but not for current weather)
+    nws_data = await fetch_weather_data()
+    
+    # Fetch OpenWeatherMap data (for current weather)
+    ow_data = await fetch_openweather_data()
+    
+    if nws_data:
+        # Store NWS data in weather state
+        weather_state.latest_weather_data = nws_data
+        
+        # Integrate OpenWeatherMap current weather data if available
+        if ow_data:
+            # Replace NWS current weather data with OpenWeatherMap data
+            weather_state.latest_weather_data["ow_current"] = ow_data.get("current", {})
+            weather_state.latest_weather_data["ow_minutely"] = ow_data.get("minutely", [])
+            weather_state.latest_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
+            logger.info("OpenWeatherMap current data integrated successfully.")
+        else:
+            logger.warning("OpenWeatherMap data fetch failed.")
+            
         logger.info("Initial weather data fetched successfully.")
     else:
-        logger.warning("Initial weather data fetch failed.")
+        logger.warning("Initial NWS data fetch failed.")
         # No fallback data - we'll return 503 until real data is available
         
         # Retry sooner for the first attempt
         await asyncio.sleep(30)  # Wait 30 seconds before retrying
-        data = await fetch_weather_data()
-        if data:
-            weather_state.latest_weather_data = data
+        
+        # Retry both data sources
+        nws_data = await fetch_weather_data()
+        ow_data = await fetch_openweather_data()
+        
+        if nws_data:
+            weather_state.latest_weather_data = nws_data
+            
+            # Integrate OpenWeatherMap current weather data if available
+            if ow_data:
+                # Replace NWS current weather data with OpenWeatherMap data
+                weather_state.latest_weather_data["ow_current"] = ow_data.get("current", {})
+                weather_state.latest_weather_data["ow_minutely"] = ow_data.get("minutely", [])
+                weather_state.latest_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
+                logger.info("OpenWeatherMap current data integrated successfully.")
+            else:
+                logger.warning("OpenWeatherMap data fetch failed.")
+                
             logger.info("Second attempt weather data fetched successfully.")
 
     # Start periodic updates after the initial fetch
     while True:
-        await asyncio.sleep(interval_seconds)  # Wait for 30 minutes
+        await asyncio.sleep(interval_seconds)  # Wait for specified interval
         logger.info("Attempting periodic weather update...")
-        # TODO: Make lat/lon configurable later
-        data = await fetch_weather_data()
-        if data:
-            weather_state.latest_weather_data = data
-            logger.info("Weather data updated successfully.")
+        
+        # Fetch both data sources concurrently
+        nws_task = fetch_weather_data()
+        ow_task = fetch_openweather_data()
+        
+        # Wait for both to complete
+        nws_data, ow_data = await asyncio.gather(nws_task, ow_task, return_exceptions=True)
+        
+        # Handle NWS data
+        if isinstance(nws_data, Exception):
+            logger.error(f"NWS periodic update failed: {nws_data}")
+            nws_data = None
+        
+        # Handle OpenWeatherMap data
+        if isinstance(ow_data, Exception):
+            logger.error(f"OpenWeatherMap periodic update failed: {ow_data}")
+            ow_data = None
+        
+        # Update the weather state if NWS data is available
+        if nws_data:
+            weather_state.latest_weather_data = nws_data
+            
+            # Integrate OpenWeatherMap current weather data if available
+            if ow_data:
+                # Replace NWS current weather data with OpenWeatherMap data
+                weather_state.latest_weather_data["ow_current"] = ow_data.get("current", {})
+                weather_state.latest_weather_data["ow_minutely"] = ow_data.get("minutely", [])
+                weather_state.latest_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
+                logger.info("Both NWS and OpenWeatherMap data updated successfully.")
+            else:
+                logger.warning("Only NWS data updated successfully.")
         else:
             logger.warning("Periodic weather update failed.")
 

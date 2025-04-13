@@ -50,14 +50,29 @@ BaseScreen {
     }
     
     // --- Data Fetching Logic ---
-    function fetchWeather() {
-        console.log("Attempting to fetch weather data (WeatherScreen)...")
+    function fetchWeather(forceRefresh = false) {
+        console.log("Attempting to fetch weather data (WeatherScreen)..." + (forceRefresh ? " (Force refresh)" : ""))
+        
+        // If forceRefresh is true, use the refresh endpoint instead
+        var endpoint = forceRefresh ? 
+            SettingsService.httpBaseUrl + "/api/weather/refresh" : 
+            SettingsService.httpBaseUrl + "/api/weather";
+        
         var xhr = new XMLHttpRequest();
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 200) {
                     try {
                         var response = JSON.parse(xhr.responseText);
+                        
+                        // If this was a refresh request, we need to fetch the updated data
+                        if (forceRefresh) {
+                            console.log("Refresh completed:", response.message);
+                            // After successful refresh, get the updated data
+                            fetchWeather(false);
+                            return;
+                        }
+                        
                         console.log("FULL WEATHER RESPONSE:", JSON.stringify(response));
                         
                         // Process the forecast periods
@@ -89,9 +104,6 @@ BaseScreen {
                         statusMessage = ""; 
                         console.log("Weather data fetched successfully (WeatherScreen).");
                         
-                        // We don't need to set the fetchedAt property anymore
-                        // Just use the timestamp from the observation data
-                        
                         // Cancel retry timer if it's running
                         if (retryTimer.running) {
                             retryTimer.stop();
@@ -118,7 +130,16 @@ BaseScreen {
                 }
             }
         }
-        xhr.open("GET", SettingsService.httpBaseUrl + "/api/weather"); 
+        
+        if (forceRefresh) {
+            // Use POST for refresh
+            xhr.open("POST", endpoint);
+            statusMessage = "Refreshing weather data...";
+        } else {
+            // Use GET for normal fetch
+            xhr.open("GET", endpoint);
+        }
+        
         xhr.send();
     }
     
@@ -491,12 +512,29 @@ BaseScreen {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            if (currentWeatherData && currentWeatherData.properties) {
-                                var currentForecast = createCurrentForecastObject();
-                                if (currentForecast) {
-                                    selectedForecastPeriod = currentForecast;
-                                    detailedForecastDialog.open();
+                            if (currentWeatherData && currentWeatherData.ow_current) {
+                                // Display OpenWeatherMap data in the dialog
+                                var minutelyRainData = "";
+                                if (currentWeatherData.ow_minutely && currentWeatherData.ow_minutely.length > 0) {
+                                    // Process first 30 minutes of rain data
+                                    for (var i = 0; i < Math.min(30, currentWeatherData.ow_minutely.length); i++) {
+                                        var m = currentWeatherData.ow_minutely[i];
+                                        var dt = new Date(m.dt * 1000);
+                                        var time = Qt.formatTime(dt, "hh:mm");
+                                        var rainMm = m.precipitation.toFixed(2);
+                                        if (i % 3 === 0) { // Show every 3 minutes to save space
+                                            minutelyRainData += time + ": " + rainMm + " mm\n";
+                                        }
+                                    }
                                 }
+                                
+                                // Create a custom object for the dialog
+                                selectedForecastPeriod = {
+                                    name: "Current Weather",
+                                    detailedForecast: currentWeatherData.ow_weather_overview + 
+                                        (minutelyRainData ? "\n\nMinute-by-Minute Rain Forecast:\n" + minutelyRainData : "")
+                                };
+                                detailedForecastDialog.open();
                             }
                         }
                         cursorShape: Qt.PointingHandCursor
@@ -530,8 +568,8 @@ BaseScreen {
                             
                             Text {
                                 anchors.fill: parent
-                                text: currentWeatherData && currentWeatherData.properties ? 
-                                      "As of " + formatTime(currentWeatherData.properties.timestamp) : "N/A"
+                                text: currentWeatherData && currentWeatherData.ow_current ? 
+                                      "As of " + formatTime(new Date(currentWeatherData.ow_current.dt * 1000)) : "N/A"
                                 font.pixelSize: 12
                                 color: ThemeManager.text_secondary_color
                                 horizontalAlignment: Text.AlignHCenter
@@ -539,41 +577,35 @@ BaseScreen {
                             }
                         }
                         
-                        // Weather Icon - fixed height
+                        // Weather Icon - Removed since we're not using icons
+                        // Instead, let's display the weather condition
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 90
+                            Layout.preferredHeight: 30
                             
-                            Rectangle {
-                                width: 80
-                                height: 80
-                                color: "transparent"
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                
-                                WebEngineView {
-                                    id: currentWeatherIcon
-                                    anchors.fill: parent
-                                    backgroundColor: Qt.rgba(0, 0, 0, 0)
-                                    settings.accelerated2dCanvasEnabled: true
-                                    settings.allowRunningInsecureContent: true
-                                    settings.javascriptEnabled: true
-                                    settings.showScrollBars: false
-                                }
+                            Text {
+                                anchors.fill: parent
+                                text: currentWeatherData && currentWeatherData.ow_current && currentWeatherData.ow_current.weather && currentWeatherData.ow_current.weather.length > 0 ? 
+                                      currentWeatherData.ow_current.weather[0].description.charAt(0).toUpperCase() + 
+                                      currentWeatherData.ow_current.weather[0].description.slice(1) : "N/A"
+                                font.pixelSize: 16
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                wrapMode: Text.WordWrap
                             }
                         }
                         
                         // Temperature - fixed height
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 25
+                            Layout.preferredHeight: 30
                             
                             Text {
                                 anchors.fill: parent
-                                text: currentWeatherData && currentWeatherData.properties ? 
-                                      (currentWeatherData.properties.temperature && 
-                                       currentWeatherData.properties.temperature.value !== null ? 
-                                       celsiusToFahrenheit(currentWeatherData.properties.temperature.value).toFixed(1) + " °F" : "N/A") : "N/A"
-                                font.pixelSize: 20
+                                text: currentWeatherData && currentWeatherData.ow_current ? 
+                                      currentWeatherData.ow_current.temp.toFixed(1) + " °F" : "N/A"
+                                font.pixelSize: 24
                                 font.bold: true
                                 color: ThemeManager.text_primary_color
                                 horizontalAlignment: Text.AlignHCenter
@@ -581,18 +613,17 @@ BaseScreen {
                             }
                         }
                         
-                        // Description - flexible height
+                        // Feels Like Temperature
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.fillWidth: true
                             Layout.maximumWidth: parent.width
-                            text: currentWeatherData && currentWeatherData.properties ? 
-                                  currentWeatherData.properties.textDescription || "N/A" : "N/A"
+                            text: currentWeatherData && currentWeatherData.ow_current ? 
+                                  "Feels like: " + currentWeatherData.ow_current.feels_like.toFixed(1) + " °F" : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
-                            elide: Text.ElideRight
                         }
                         
                         // Humidity - fixed height
@@ -600,9 +631,21 @@ BaseScreen {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.fillWidth: true
                             Layout.maximumWidth: parent.width
-                            text: currentWeatherData && currentWeatherData.properties ? 
-                                  "Humidity: " + (currentWeatherData.properties.relativeHumidity ? 
-                                   currentWeatherData.properties.relativeHumidity.value.toFixed(0) + "%" : "N/A") : "N/A"
+                            text: currentWeatherData && currentWeatherData.ow_current ? 
+                                  "Humidity: " + currentWeatherData.ow_current.humidity + "%" : "N/A"
+                            font.pixelSize: 14
+                            color: ThemeManager.text_secondary_color
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        
+                        // Wind Speed and Direction
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
+                            text: currentWeatherData && currentWeatherData.ow_current ? 
+                                  "Wind: " + currentWeatherData.ow_current.wind_speed.toFixed(1) + " mph at " + 
+                                  currentWeatherData.ow_current.wind_deg + "°" : "N/A"
                             font.pixelSize: 14
                             color: ThemeManager.text_secondary_color
                             horizontalAlignment: Text.AlignHCenter
@@ -978,11 +1021,9 @@ BaseScreen {
                         console.log("Forecast data available, loading animations...");
                         var periods = currentWeatherData.forecast.properties.periods;
                         
-                        // Load animations for each section
-                        loadLottieAnimation(currentWeatherIcon, 
-                            currentWeatherData.properties && currentWeatherData.properties.icon ? 
-                            mapWeatherIcon(currentWeatherData.properties.icon) : "thermometer.json");
-                        console.log("Current weather icon:", currentWeatherData.properties.icon);
+                        // We don't need to load animation for current weather anymore since we're using OpenWeatherMap text
+                        // Instead of the animation, just log that we're using OpenWeatherMap data
+                        console.log("Using OpenWeatherMap data for current weather");
                             
                         loadLottieAnimation(currentPeriodIcon, 
                             periods[0].icon ? 

@@ -15,6 +15,17 @@ Item {
     property string sunriseTime: null  // ISO time string for sunrise
     property string sunsetTime: null   // ISO time string for sunset
     
+    // Timer to update current time position
+    Timer {
+        id: currentTimeUpdateTimer
+        interval: 60000 // Update every minute
+        running: visible
+        repeat: true
+        onTriggered: {
+            tempCanvas.requestPaint();
+        }
+    }
+    
     // --- Functions ---
     // Format time display (e.g. "3 PM")
     function formatHourlyTime(timeString) {
@@ -320,6 +331,12 @@ Item {
                         }
                     }
                     
+                    // Store the current hour for time label bolding - we'll calculate once here
+                    // rather than in each repeater item
+                    var now = new Date();
+                    var currentHour = now.getHours();
+                    var currentMinutes = now.getMinutes();
+                    
                     // --- Temperature line ---
                     ctx.beginPath();
                     ctx.setLineDash([]); // Solid line
@@ -447,6 +464,16 @@ Item {
                 anchors.bottom: parent.bottom
                 height: 20
                 
+                // Store the current time information as properties for the repeater
+                property int currentHour: {
+                    var now = new Date();
+                    return now.getHours();
+                }
+                property int currentMinutes: {
+                    var now = new Date();
+                    return now.getMinutes();
+                }
+                
                 Repeater {
                     model: hourlyForecastData && hourlyForecastData.properties && hourlyForecastData.properties.periods ? 
                            Math.min(hourlyForecastData.properties.periods.length, 24) : 0
@@ -455,11 +482,39 @@ Item {
                         width: parent.width / 24
                         height: parent.height
                         
+                        // Check if this time is the current hour
+                        property bool isCurrentHour: {
+                            if (hourlyForecastData && hourlyForecastData.properties && 
+                                hourlyForecastData.properties.periods && index < hourlyForecastData.properties.periods.length) {
+                                
+                                var periodDate = new Date(hourlyForecastData.properties.periods[index].startTime);
+                                // If it's a valid date
+                                if (!isNaN(periodDate.getTime())) {
+                                    var periodHour = periodDate.getHours();
+                                    
+                                    // Check if it's the current hour
+                                    if (periodHour === timeLabelsRow.currentHour) {
+                                        return true;
+                                    }
+                                    
+                                    // If we're within the last 15 minutes of the previous hour, 
+                                    // also highlight the next hour (transition period)
+                                    if (periodHour === (timeLabelsRow.currentHour + 1) % 24 && 
+                                        timeLabelsRow.currentMinutes >= 45) {
+                                        return true;
+                                    }
+                                }
+                            }
+                            return false;
+                        }
+                        
                         Text {
                             anchors.centerIn: parent
                             text: formatHourlyTime(hourlyForecastData.properties.periods[index].startTime)
                             color: ThemeManager.text_secondary_color
                             font.pixelSize: 10
+                            font.bold: isCurrentHour  // Bold if this is the current hour
+                            font.pointSize: isCurrentHour ? 12 : 10  // Slightly larger if current hour
                             rotation: 45  // Rotate labels to avoid overlap
                             transformOrigin: Item.Center
                         }
@@ -469,8 +524,21 @@ Item {
         }
     }
     
+    // Start the timer when component completes
+    Component.onCompleted: {
+        currentTimeUpdateTimer.start();
+        tempCanvas.requestPaint();
+    }
+    
     // Update the graph when data changes
     onHourlyForecastDataChanged: {
         tempCanvas.requestPaint();
+    }
+    
+    // Force update when visibility changes
+    onVisibleChanged: {
+        if (visible) {
+            tempCanvas.requestPaint();
+        }
     }
 } 

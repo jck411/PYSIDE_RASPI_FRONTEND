@@ -171,6 +171,8 @@ The hourly weather graph provides a visualization of temperature and precipitati
 - Sunrise and sunset times are indicated with sun icons at the top of the graph
 - Sunrise is marked with a full sun icon and golden/orange color
 - Sunset is marked with a half-sun icon and salmon/tomato color 
+- Current time is indicated by bolding and slightly enlarging the relevant time label on the x-axis
+- Time labels update automatically every minute
 - The graph is fully responsive and adapts to different screen sizes
 - Theme-aware color scheme matches the application's light/dark theme
 
@@ -248,6 +250,29 @@ The weather data is fetched from the National Weather Service API and then forma
 - **Concurrent API Requests:** Modified the weather fetcher to use `asyncio.gather()` for parallel requests, significantly reducing total fetch time.
 - **Request Timeouts:** Added explicit timeouts to prevent the application from hanging on slow network connections.
 - **Accurate Data Only:** The system strictly displays only real data from the National Weather Service, with clear status messages when data is not yet available.
+
+### OpenWeatherMap Integration (June 2025)
+- **OpenWeatherMap API:** Integrated OpenWeatherMap One Call 3.0 API for more accurate current weather data, replacing NWS for current conditions.
+- **Two API Calls Design:** Implementation makes two concurrent API calls:
+  1. Current weather + minutely rain forecast (1 API call)
+  2. Human-readable weather overview (1 API call)
+- **Current Weather Card:** The current weather card displays OpenWeatherMap data including:
+  - Current temperature
+  - "Feels like" temperature
+  - Weather description
+  - Wind speed and direction
+  - Humidity
+- **Enhanced Detailed View:** When clicking on the current weather card, users see:
+  - Human-readable weather overview
+  - Minute-by-minute rain forecast for the next 30 minutes (if available)
+- **NWS Data Preserved:** NWS data is still used for hourly and daily forecasts, preserving forecast capabilities.
+- **Environment Variables:** API key is stored in the `.env` file as `OPENWEATHER_API_KEY`.
+- **Concurrent Fetching:** Both NWS and OpenWeatherMap data are fetched concurrently to minimize loading times.
+- **Manual Refresh:** Added a manual refresh button that updates both OpenWeatherMap current data and NWS forecasts:
+  - Sends a POST request to a dedicated refresh endpoint
+  - Forces immediate fetch of new data from all sources 
+  - Provides visual feedback during the refresh process
+  - Updates all views after refresh completion
 
 ### Sunrise and Sunset Data Enhancement (April 2025)
 - **Dedicated API Integration:** Added integration with the sunrise-sunset.org API for accurate sunrise and sunset time data.
