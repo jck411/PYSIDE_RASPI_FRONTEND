@@ -243,6 +243,39 @@ Item {
                                 }
                             }
                         }
+                        
+                        // Auto Day/Night Theme Setting
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 16
+
+                            Text {
+                                text: "Auto Day/Night Theme:"
+                                color: ThemeManager.text_primary_color
+                                Layout.preferredWidth: 150
+                                elide: Text.ElideRight
+
+                                ToolTip.visible: autoThemeModeMouseArea.containsMouse
+                                ToolTip.text: "Automatically switch between light and dark themes based on sunrise/sunset"
+
+                                MouseArea {
+                                    id: autoThemeModeMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                }
+                            }
+
+                            Switch {
+                                id: autoThemeModeSwitch
+                                checked: ThemeManager.auto_theme_mode
+                                
+                                onToggled: {
+                                    // Toggle auto theme mode
+                                    var result = ThemeManager.toggle_auto_theme_mode()
+                                    console.log("Auto theme mode toggled to:", result)
+                                }
+                            }
+                        }
                     }
                 }
                 

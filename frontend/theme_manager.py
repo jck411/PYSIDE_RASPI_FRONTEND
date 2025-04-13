@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
-from PySide6.QtCore import QObject, Signal, Property, Slot
+from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 from PySide6.QtGui import QColor
 from frontend.style import DARK_COLORS, LIGHT_COLORS
 from frontend.config import logger
 import json
 import os
+from datetime import datetime, timezone
 
 
 class ThemeManager(QObject):
     themeChanged = Signal()
+    autoThemeModeChanged = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._is_dark_mode = True
+        self._auto_theme_mode = False  # Auto theme mode disabled by default
         self._colors = DARK_COLORS.copy()
+        self._sunrise_time = None
+        self._sunset_time = None
         self._load_theme_preferences()
 
         # QML color properties
@@ -27,6 +32,14 @@ class ThemeManager(QObject):
         self._button_pressed_color = QColor(self._colors["button_pressed"])
         self._input_background_color = QColor(self._colors["input_background"])
         self._input_border_color = QColor(self._colors["input_border"])
+        
+        # Create timer for day/night checks
+        self._auto_theme_timer = QTimer(self)
+        self._auto_theme_timer.timeout.connect(self._check_day_night_status)
+        
+        # Only start the timer if auto mode is enabled
+        if self._auto_theme_mode:
+            self._auto_theme_timer.start(60000)  # Check every minute
 
     def _load_theme_preferences(self):
         """Load theme preferences from file if it exists"""
@@ -43,6 +56,10 @@ class ThemeManager(QObject):
                         logger.info(
                             f"Loaded theme preference: {'dark' if self._is_dark_mode else 'light'} mode"
                         )
+                    # Load auto theme mode setting
+                    if "auto_theme_mode" in config:
+                        self._auto_theme_mode = config["auto_theme_mode"]
+                        logger.info(f"Loaded auto theme mode: {self._auto_theme_mode}")
         except Exception as e:
             logger.error(f"Error loading theme preferences: {e}")
 
@@ -56,12 +73,13 @@ class ThemeManager(QObject):
                     config = json.load(f)
 
             config["is_dark_mode"] = self._is_dark_mode
+            config["auto_theme_mode"] = self._auto_theme_mode
 
             with open(config_path, "w") as f:
                 json.dump(config, f)
 
             logger.info(
-                f"Saved theme preference: {'dark' if self._is_dark_mode else 'light'} mode"
+                f"Saved theme preferences: {'dark' if self._is_dark_mode else 'light'} mode, auto mode: {self._auto_theme_mode}"
             )
         except Exception as e:
             logger.error(f"Error saving theme preferences: {e}")
@@ -89,6 +107,84 @@ class ThemeManager(QObject):
 
             self.themeChanged.emit()
             logger.info(f"Theme changed to {'dark' if value else 'light'} mode")
+            
+    def _get_auto_theme_mode(self):
+        return self._auto_theme_mode
+        
+    def update_sun_times(self, sunrise=None, sunset=None):
+        """Update the sunrise and sunset times used for auto theming"""
+        times_changed = False
+        
+        if sunrise and sunrise != self._sunrise_time:
+            self._sunrise_time = sunrise
+            times_changed = True
+            logger.info(f"Updated sunrise time: {sunrise}")
+            
+        if sunset and sunset != self._sunset_time:
+            self._sunset_time = sunset
+            times_changed = True
+            logger.info(f"Updated sunset time: {sunset}")
+            
+        if times_changed and self._auto_theme_mode:
+            # Immediately check if theme should change
+            self._check_day_night_status()
+    
+    def _check_day_night_status(self):
+        """Check if it's day or night and update theme accordingly"""
+        if not self._auto_theme_mode or not self._sunrise_time or not self._sunset_time:
+            return
+            
+        try:
+            # Get current time in UTC
+            now = datetime.now(timezone.utc)
+            
+            # Parse sunrise and sunset times
+            # Assuming format like "2025-04-12T10:43:12+00:00"
+            sunrise = datetime.fromisoformat(self._sunrise_time)
+            sunset = datetime.fromisoformat(self._sunset_time)
+            
+            # Determine if it's night or day
+            is_night = now < sunrise or now > sunset
+            
+            # Only change theme if needed
+            if is_night != self._is_dark_mode:
+                logger.info(f"Auto switching to {'dark' if is_night else 'light'} theme")
+                self.is_dark_mode = is_night  # This will trigger _save_theme_preferences
+        except Exception as e:
+            logger.error(f"Error checking day/night status: {e}")
+
+    @Slot()
+    def toggle_theme(self):
+        # Only manually toggle if not in auto mode
+        if not self._auto_theme_mode:
+            self.is_dark_mode = not self._is_dark_mode
+            
+    @Slot(result=bool)
+    def toggle_auto_theme_mode(self):
+        """Toggle automatic theme switching based on day/night"""
+        self._auto_theme_mode = not self._auto_theme_mode
+        
+        if self._auto_theme_mode:
+            # Start the timer when enabling auto mode
+            self._auto_theme_timer.start(60000)  # Check every minute
+            # Immediately check status
+            self._check_day_night_status()
+        else:
+            # Stop timer when disabling auto mode
+            self._auto_theme_timer.stop()
+            
+        self._save_theme_preferences()
+        self.autoThemeModeChanged.emit()
+        return self._auto_theme_mode
+
+    # Define the properties
+    is_dark_mode = Property(
+        bool, _get_is_dark_mode, _set_is_dark_mode, notify=themeChanged
+    )
+    
+    auto_theme_mode = Property(
+        bool, _get_auto_theme_mode, notify=autoThemeModeChanged
+    )
 
     # Define properties for direct QML use
     def _get_background_color(self):
@@ -120,15 +216,6 @@ class ThemeManager(QObject):
 
     def _get_input_border_color(self):
         return self._input_border_color
-
-    @Slot()
-    def toggle_theme(self):
-        self.is_dark_mode = not self._is_dark_mode
-
-    # Define the properties
-    is_dark_mode = Property(
-        bool, _get_is_dark_mode, _set_is_dark_mode, notify=themeChanged
-    )
 
     # QML color properties
     background_color = Property(QColor, _get_background_color, notify=themeChanged)

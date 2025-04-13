@@ -21,6 +21,9 @@ from frontend.logic.calendar_controller import CalendarController # Add import
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
 
+# Define app as a module-level variable so it's accessible outside of main()
+app = None
+
 
 # Add a new path provider class
 class PathProvider(QObject):
@@ -49,6 +52,8 @@ logger = logging.getLogger("frontend.config")
 
 
 def main():
+    global app  # Use the global app variable
+    
     # Set environment variable to allow loading local files via XMLHttpRequest
     os.environ["QML_XHR_ALLOW_FILE_READ"] = "1"
     logger.info("Enabled QML_XHR_ALLOW_FILE_READ for local file access")
@@ -94,6 +99,8 @@ def main():
 
     # Create theme manager instance
     theme_manager = ThemeManager()
+    # Make theme_manager globally accessible
+    app.theme_manager = theme_manager
 
     # Create settings service instance
     settings_service = SettingsService()

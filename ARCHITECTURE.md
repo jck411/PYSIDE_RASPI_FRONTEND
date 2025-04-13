@@ -41,6 +41,11 @@ The application includes multiple screens that can be navigated via the tab bar:
 Services provide functionality to QML components:
 
 - **ThemeManager**: Manages light/dark theme switching
+  - Supports manual light/dark mode toggling
+  - Supports automatic day/night theme switching based on sunrise/sunset times
+  - Obtains sunrise/sunset data from weather API
+  - Persists theme preferences, including auto theme mode
+  - Automatically checks day/night status periodically when auto mode is enabled
 - **SettingsService**: Manages application settings
 - **ErrorHandler**: Centralized error handling
 - **ChatService**: Handles chat interactions
@@ -232,6 +237,10 @@ The application uses modern visual effects for a polished user experience:
   - The detailed weather forecast popup uses a consistent visual style matching the active navigation buttons, with a solid primary button color and matching border
 - **Gradient Overlays**: Semi-transparent gradients are used to create visual depth
 - **Adaptive Theming**: All UI components respect the application's current theme settings
+  - Automatic day/night theme switching based on sunrise/sunset times
+  - Theme transitions are smooth and consistent across the UI
+  - Theme preferences (including auto mode) are persisted between sessions
+  - Settings screen allows users to toggle automatic theme mode
 
 To enable these visual effects, the application requires PySide6 6.5 or later. A script is provided to upgrade to the latest version:
 ```bash
@@ -250,6 +259,7 @@ The weather data is fetched from the National Weather Service API and then forma
 - **Concurrent API Requests:** Modified the weather fetcher to use `asyncio.gather()` for parallel requests, significantly reducing total fetch time.
 - **Request Timeouts:** Added explicit timeouts to prevent the application from hanging on slow network connections.
 - **Accurate Data Only:** The system strictly displays only real data from the National Weather Service, with clear status messages when data is not yet available.
+- **Sunrise/Sunset Integration:** The weather API provides sunrise and sunset data that is used for the automatic day/night theme switching feature.
 
 ### OpenWeatherMap Integration (June 2025)
 - **OpenWeatherMap API:** Integrated OpenWeatherMap One Call 3.0 API for more accurate current weather data, replacing NWS for current conditions.

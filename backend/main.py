@@ -59,6 +59,20 @@ async def periodic_weather_update(interval_seconds: int = 1800):
             weather_state.latest_weather_data["ow_minutely"] = ow_data.get("minutely", [])
             weather_state.latest_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
             logger.info("OpenWeatherMap current data integrated successfully.")
+            
+            # Update theme manager with sunrise/sunset times if available (from NWS data)
+            from frontend.main import app
+            if hasattr(app, "theme_manager") and app.theme_manager:
+                # Get sunrise/sunset times from the data
+                sunrise_sunset = nws_data.get("sunrise_sunset", {})
+                if sunrise_sunset:
+                    sunrise = sunrise_sunset.get("sunrise")
+                    sunset = sunrise_sunset.get("sunset")
+                    
+                    if sunrise and sunset:
+                        # Update theme manager with sunrise/sunset times
+                        app.theme_manager.update_sun_times(sunrise, sunset)
+                        logger.info("Updated theme manager with sunrise/sunset times.")
         else:
             logger.warning("OpenWeatherMap data fetch failed.")
             
@@ -84,8 +98,20 @@ async def periodic_weather_update(interval_seconds: int = 1800):
                 weather_state.latest_weather_data["ow_minutely"] = ow_data.get("minutely", [])
                 weather_state.latest_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
                 logger.info("OpenWeatherMap current data integrated successfully.")
-            else:
-                logger.warning("OpenWeatherMap data fetch failed.")
+                
+                # Update theme manager with sunrise/sunset times if available (from NWS data)
+                from frontend.main import app
+                if hasattr(app, "theme_manager") and app.theme_manager:
+                    # Get sunrise/sunset times from the data
+                    sunrise_sunset = nws_data.get("sunrise_sunset", {})
+                    if sunrise_sunset:
+                        sunrise = sunrise_sunset.get("sunrise")
+                        sunset = sunrise_sunset.get("sunset")
+                        
+                        if sunrise and sunset:
+                            # Update theme manager with sunrise/sunset times
+                            app.theme_manager.update_sun_times(sunrise, sunset)
+                            logger.info("Updated theme manager with sunrise/sunset times.")
                 
             logger.info("Second attempt weather data fetched successfully.")
 
@@ -122,6 +148,20 @@ async def periodic_weather_update(interval_seconds: int = 1800):
                 weather_state.latest_weather_data["ow_minutely"] = ow_data.get("minutely", [])
                 weather_state.latest_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
                 logger.info("Both NWS and OpenWeatherMap data updated successfully.")
+                
+                # Update theme manager with sunrise/sunset times if available (from NWS data)
+                from frontend.main import app
+                if hasattr(app, "theme_manager") and app.theme_manager:
+                    # Get sunrise/sunset times from the data
+                    sunrise_sunset = nws_data.get("sunrise_sunset", {})
+                    if sunrise_sunset:
+                        sunrise = sunrise_sunset.get("sunrise")
+                        sunset = sunrise_sunset.get("sunset")
+                        
+                        if sunrise and sunset:
+                            # Update theme manager with sunrise/sunset times
+                            app.theme_manager.update_sun_times(sunrise, sunset)
+                            logger.info("Updated theme manager with sunrise/sunset times.")
             else:
                 logger.warning("Only NWS data updated successfully.")
         else:
