@@ -1,0 +1,26 @@
+[
+    {
+        "text": "That's better.",
+        "isUser": true
+    },
+    {
+        "text": "Glad to hear it! What can I help you with today?",
+        "isUser": false
+    },
+    {
+        "text": "Sexy time.",
+        "isUser": true
+    },
+    {
+        "text": "Well, someone's feeling spicy! Need any tips or just here to share the vibe?",
+        "isUser": false
+    },
+    {
+        "text": "Just sharing the vibe, see where you wanna say.",
+        "isUser": true
+    },
+    {
+        "text": "Ah, the mood is set! Care for some romantic weather updates or maybe some late-night fun suggestions?",
+        "isUser": false
+    }
+]

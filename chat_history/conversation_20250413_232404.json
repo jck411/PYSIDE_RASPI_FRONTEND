@@ -1,0 +1,274 @@
+[
+    {
+        "text": "How's it going today?",
+        "isUser": true
+    },
+    {
+        "text": "Oh, just another day in paradise! How about you?",
+        "isUser": false
+    },
+    {
+        "text": "So you're living in a paradise?",
+        "isUser": true
+    },
+    {
+        "text": "Oh, absolutely! Just me and the sunshine, living the dream. How can I help you escape reality today?",
+        "isUser": false
+    },
+    {
+        "text": "I don't know. Just have a chat with me, I guess.",
+        "isUser": true
+    },
+    {
+        "text": "Sure, let's chat! What's on your mind?",
+        "isUser": false
+    },
+    {
+        "text": "Not that much. Just doing some work and talking to you in the background.",
+        "isUser": true
+    },
+    {
+        "text": "Ah, multitasking like a pro! What kind of work are you doing?",
+        "isUser": false
+    },
+    {
+        "text": "Pharmacy. I'm a pharmacist working in a hospital verifying orders.",
+        "isUser": true
+    },
+    {
+        "text": "Sounds thrilling! Just you and a sea of medications.",
+        "isUser": false
+    },
+    {
+        "text": "That sounds right except I don't actually touch the medication. So I just use the computer verify.",
+        "isUser": true
+    },
+    {
+        "text": "Ah, the glamorous life of a computer clerk in a pharmacy! Must be thrilling.",
+        "isUser": false
+    },
+    {
+        "text": "I'm not a clerk. I'm a pharmacist.",
+        "isUser": true
+    },
+    {
+        "text": "Got it, you're the brains behind the operation! No mixing potions for you, just clicking buttons.",
+        "isUser": false
+    },
+    {
+        "text": "Yeah. Do you know how it works?",
+        "isUser": true
+    },
+    {
+        "text": "Sure, I know the basics. You verify prescriptions, check for interactions, and ensure accuracy. Pretty crucial stuff!",
+        "isUser": false
+    },
+    {
+        "text": "Yeah. Do you know what system I'm using?",
+        "isUser": true
+    },
+    {
+        "text": "Nope, I'm not a mind reader! What's the system?",
+        "isUser": false
+    },
+    {
+        "text": "Well, do you know the main systems that are used in hospitals?",
+        "isUser": true
+    },
+    {
+        "text": "Sure, there's Epic, Cerner, and Meditech. Take your pick!",
+        "isUser": false
+    },
+    {
+        "text": "I'm using",
+        "isUser": true
+    },
+    {
+        "text": "Looks like you forgot to finish that thought! What system are you using?",
+        "isUser": false
+    },
+    {
+        "text": "He's Using Epic.",
+        "isUser": true
+    },
+    {
+        "text": "Epic, huh? Fancy! Must be nice to have all that tech at your fingertips.",
+        "isUser": false
+    },
+    {
+        "text": "What do you know about Epic?",
+        "isUser": true
+    },
+    {
+        "text": "Oh, just that it's the go-to for hospitals. A real love-hate relationship, right?",
+        "isUser": false
+    },
+    {
+        "text": "Well, we is the most popular, Epic, Cerner, or Meditech?",
+        "isUser": true
+    },
+    {
+        "text": "Epic's like the rockstar of hospital systems. Cerner and Meditech are more like the backup band. Epic usually takes the spotlight in popularity!",
+        "isUser": false
+    },
+    {
+        "text": "Is it the most expensive?",
+        "isUser": true
+    },
+    {
+        "text": "Oh, absolutely! Epic's like the luxury car of EHRs.",
+        "isUser": false
+    },
+    {
+        "text": "Do you know the prices that hospitals pay?",
+        "isUser": true
+    },
+    {
+        "text": "Nope, I don't have a price list. But I hear it's like buying a mansion!",
+        "isUser": false
+    },
+    {
+        "text": "So millions",
+        "isUser": true
+    },
+    {
+        "text": "Yeah, millions. Quite the investment for a software, huh?",
+        "isUser": false
+    },
+    {
+        "text": "What language does it use?",
+        "isUser": true
+    },
+    {
+        "text": "Epic primarily uses a language called Cache ObjectScript, which is a bit specialized.",
+        "isUser": false
+    },
+    {
+        "text": "So is it made for epics, or is it a general language?",
+        "isUser": true
+    },
+    {
+        "text": "It's a general-purpose language, but tailored for healthcare. Not just for Epic!",
+        "isUser": false
+    },
+    {
+        "text": "What else is it using?",
+        "isUser": true
+    },
+    {
+        "text": "Oh, just some fancy tech like APIs and databases. You know, the usual hospital wizardry.",
+        "isUser": false
+    },
+    {
+        "text": "So it's used in hospitals exclusively?",
+        "isUser": true
+    },
+    {
+        "text": "Pretty much, unless you're in a very niche market.",
+        "isUser": false
+    },
+    {
+        "text": "Why do hospitals stick to one language?",
+        "isUser": true
+    },
+    {
+        "text": "Consistency, compatibility, and training efficiency. Plus, who doesn’t love a good vendor lock-in?",
+        "isUser": false
+    },
+    {
+        "text": "So you're saying there's no other languages that are suitable for hospitals? That's really weird.",
+        "isUser": true
+    },
+    {
+        "text": "Well, it's all about compatibility and integration. Hospitals like their systems to talk to each other without drama.",
+        "isUser": false
+    },
+    {
+        "text": "Use Python or c plus or something like that.",
+        "isUser": true
+    },
+    {
+        "text": "Sure, but Epic is a bit of a one-trick pony with its proprietary stuff. Python and C++ can do a lot, but they’re not the main act in the hospital world. ",
+        "isUser": false
+    },
+    {
+        "text": "I'm just curious",
+        "isUser": true
+    },
+    {
+        "text": "Curiosity is great! Just don't get lost in the code jungle.",
+        "isUser": false
+    },
+    {
+        "text": "why do they use this language. No. I'm curious why this language the best. Why this one?",
+        "isUser": true
+    },
+    {
+        "text": "Because it's designed for healthcare. It’s like the Swiss Army knife of hospital software—versatile and tailored for the job!",
+        "isUser": false
+    },
+    {
+        "text": "How can a language a computer language be designed health care? It's just a database just like anything else.",
+        "isUser": true
+    },
+    {
+        "text": "Well, it's all about making sure the system can handle complex healthcare data while being user-friendly. Plus, it needs to comply with regulations. So, it's not just any database!",
+        "isUser": false
+    },
+    {
+        "text": "So the language itself has regulation",
+        "isUser": true
+    },
+    {
+        "text": "Yep, it's all about keeping things safe and compliant in healthcare. Who knew code could be so strict?",
+        "isUser": false
+    },
+    {
+        "text": "Give me an example.",
+        "isUser": true
+    },
+    {
+        "text": "How about HIPAA? It's all about keeping patient info safe.",
+        "isUser": false
+    },
+    {
+        "text": "Yeah. But how does the language",
+        "isUser": true
+    },
+    {
+        "text": "Well, it's all about compliance and safety. You know, making sure patient data is handled properly.",
+        "isUser": false
+    },
+    {
+        "text": "I still don't understand how the language contributes to it.",
+        "isUser": true
+    },
+    {
+        "text": "It's all about ensuring safety and compliance. The language helps structure data in a way that's easy to validate and follow regulations.",
+        "isUser": false
+    },
+    {
+        "text": "This is a pretty long conversation.",
+        "isUser": true
+    },
+    {
+        "text": "Well, welcome to the epic saga of Epic! Want to switch topics?",
+        "isUser": false
+    },
+    {
+        "text": "What's the weather like tomorrow?",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow's weather in Orlando? Expect sunny skies with a high near 87°F. Perfect for your outdoor plans, if you have any!",
+        "isUser": false
+    },
+    {
+        "text": "What's the current weather?",
+        "isUser": true
+    },
+    {
+        "text": "Currently, it's 62.6°F with a few clouds. Not too shabby for Orlando!",
+        "isUser": false
+    }
+]

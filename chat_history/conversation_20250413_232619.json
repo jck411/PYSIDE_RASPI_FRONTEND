@@ -1,0 +1,18 @@
+[
+    {
+        "text": "Just checking if you're working.",
+        "isUser": true
+    },
+    {
+        "text": "Oh, just sitting here twiddling my thumbs. What do you need?",
+        "isUser": false
+    },
+    {
+        "text": "Tell me the weather tomorrow.",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow in Orlando, expect sunny skies with a high of 87°F. Perfect for outdoor plans! 🌞",
+        "isUser": false
+    }
+]

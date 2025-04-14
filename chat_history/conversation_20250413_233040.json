@@ -1,0 +1,42 @@
+[
+    {
+        "text": "What's the weather like tomorrow?",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow in Orlando, expect a sunny day with a high around 87°F. Just another day in paradise! 🌞",
+        "isUser": false
+    },
+    {
+        "text": "What's the river like now?",
+        "isUser": true
+    },
+    {
+        "text": "Rivers in Orlando? You mean the ones that are probably full of gators? You might want to steer clear! 🐊",
+        "isUser": false
+    },
+    {
+        "text": "No. I meant what's the weather like now.",
+        "isUser": true
+    },
+    {
+        "text": "Right now, it's about 63°F with a few clouds. Perfect for a stroll or a nap on the couch! ☁️",
+        "isUser": false
+    },
+    {
+        "text": "How about the weather next week?",
+        "isUser": true
+    },
+    {
+        "text": "Next week in Orlando: \n\n- **Monday**: Sunny, high around 87°F.\n- **Tuesday**: Still sunny, high near 86°F.\n- **Wednesday**: Sunny again, high around 82°F.\n- **Thursday**: More sun, high near 83°F.\n- **Friday**: Sunny, high around 85°F.\n- **Saturday**: Yep, sunny again, high near 87°F.\n- **Sunday**: Mostly sunny, high around 89°F. \n\nSame old, same old! ☀️",
+        "isUser": false
+    },
+    {
+        "text": "So there's, like, no chance of rain?",
+        "isUser": true
+    },
+    {
+        "text": "Pretty much! It looks like the rain decided to take a vacation too. Enjoy the sunshine! ☀️",
+        "isUser": false
+    }
+]

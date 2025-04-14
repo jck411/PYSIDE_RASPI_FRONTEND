@@ -34,7 +34,7 @@ class PathProvider(QObject):
         self._base_path = str(Path(__file__).resolve().parent.parent)
         logger.info(f"Base application path: {self._base_path}")
 
-    @Property(str, constant=True)
+    @Property(str, constant=True) # type: ignore
     def basePath(self):
         return self._base_path
 
@@ -51,6 +51,7 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("frontend.config")
+logger.setLevel(logging.WARNING)  # Reduce log verbosity for this specific logger
 
 
 def main():
@@ -62,7 +63,7 @@ def main():
 
     # Enable touch input
     app = QGuiApplication(sys.argv)
-    app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    app.setAttribute(Qt.AA_EnableHighDpiScaling, True) # type: ignore
     app.setOrganizationName("SmartScreen")
     app.setOrganizationDomain("smartscreen.local")
 
@@ -102,7 +103,7 @@ def main():
     # Create theme manager instance
     theme_manager = ThemeManager()
     # Make theme_manager globally accessible
-    app.theme_manager = theme_manager
+    app.theme_manager = theme_manager # type: ignore
 
     # Create settings service instance
     settings_service = SettingsService()
@@ -124,22 +125,22 @@ def main():
     # --- Register QML Types and Singletons ---
     # Register ThemeManager as a singleton
     qmlRegisterSingletonInstance(
-        ThemeManager, "MyTheme", 1, 0, "ThemeManager", theme_manager
+        ThemeManager, "MyTheme", 1, 0, "ThemeManager", theme_manager # type: ignore
     )
 
     # Register SettingsService as a singleton
     qmlRegisterSingletonInstance(
-        SettingsService, "MyServices", 1, 0, "SettingsService", settings_service
+        SettingsService, "MyServices", 1, 0, "SettingsService", settings_service # type: ignore
     )
 
     # Register ErrorHandler as a singleton
     qmlRegisterSingletonInstance(
-        ErrorHandler, "MyServices", 1, 0, "ErrorHandler", error_handler_instance
+        ErrorHandler, "MyServices", 1, 0, "ErrorHandler", error_handler_instance # type: ignore
     )
 
     # Register ChatController instance as a singleton
     qmlRegisterSingletonInstance(
-        ChatController, "MyServices", 1, 0, "ChatService", chat_controller_instance
+        ChatController, "MyServices", 1, 0, "ChatService", chat_controller_instance # type: ignore
     )
 
     # Register PhotoController instance as a singleton
@@ -148,7 +149,7 @@ def main():
         "MyServices",
         1,
         0,
-        "PhotoController",
+        "PhotoController", # type: ignore
         photo_controller_instance,
     )
 
@@ -157,7 +158,7 @@ def main():
 
     # Register PathProvider as a singleton
     qmlRegisterSingletonInstance(
-        PathProvider, "MyServices", 1, 0, "PathProvider", path_provider
+        PathProvider, "MyServices", 1, 0, "PathProvider", path_provider # type: ignore
     )
 
     # Register CalendarController instance as a singleton
@@ -166,17 +167,17 @@ def main():
         "MyServices",
         1,
         0,
-        "CalendarController", # Name exposed to QML
+        "CalendarController", # Name exposed to QML # type: ignore
         calendar_controller_instance,
     )
 
     # Register MarkdownUtils instance as a singleton
     qmlRegisterSingletonInstance(
         QObject,  # Base type
-        "MyUtils", 
-        1, 
-        0, 
-        "MarkdownUtils",  # Name exposed to QML 
+        "MyUtils",
+        1,
+        0,
+        "MarkdownUtils",  # Name exposed to QML # type: ignore
         markdown_utils,
     )
     
@@ -186,7 +187,7 @@ def main():
         "MyServices",
         1,
         0,
-        "AlarmController",  # Name exposed to QML
+        "AlarmController",  # Name exposed to QML # type: ignore
         alarm_controller_instance,
     )
     # -----------------------------------------
@@ -233,8 +234,8 @@ def main():
     if root_objects:
         logger.info(f"Number of root objects loaded: {len(root_objects)}")
         main_window = root_objects[0]
-        main_window.setVisible(True)
-        logger.info(f"Main window size: {main_window.width()}x{main_window.height()}")
+        main_window.setVisible(True) # type: ignore
+        logger.info(f"Main window size: {main_window.width()}x{main_window.height()}") # type: ignore
 
     # Set up a timer to process asyncio events
     timer = QTimer()
@@ -251,7 +252,7 @@ def main():
     # Handle graceful shutdown
     def signal_handler(sig, frame):
         logger.info("Signal received => shutting down.")
-        app.quit()
+        app.quit() # type: ignore
 
     signal.signal(signal.SIGINT, signal_handler)
 

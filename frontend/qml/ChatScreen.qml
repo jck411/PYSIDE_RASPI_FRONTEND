@@ -140,7 +140,7 @@ BaseScreen {
                         radius: 8
                         height: contentLabel.paintedHeight + 16
                         
-                        anchors.right: model.isUser ? parent.right : undefined
+                        anchors.right: (parent && model.isUser) ? parent.right : undefined // Add null check for parent
                         anchors.left: parent && !model.isUser ? parent.left : undefined
                         anchors.rightMargin: model.isUser ? 8 : 0
                         anchors.leftMargin: model.isUser ? 0 : 8

@@ -120,7 +120,7 @@ BaseControls {
         font.pixelSize: sttButton.font ? sttButton.font.pixelSize : 14 
         color: "#565f89" // Updated color to match icons
         font.bold: true
-        verticalAlignment: Text.AlignVCenter
+        anchors.verticalCenter: parent.verticalCenter // Align with parent row
         visible: chatControls.timerRunning && chatControls.remainingMs > 0
         Layout.preferredWidth: 40 // Give it some fixed width
         horizontalAlignment: Text.AlignRight // Align text to the right within its space

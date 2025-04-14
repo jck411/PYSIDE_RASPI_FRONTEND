@@ -1,0 +1,42 @@
+[
+    {
+        "text": "Are you working or not?",
+        "isUser": true
+    },
+    {
+        "text": "Oh, I'm just here for show. What do you need?",
+        "isUser": false
+    },
+    {
+        "text": "Just checking if you're working. That's all.",
+        "isUser": true
+    },
+    {
+        "text": "Oh, just sitting here twiddling my thumbs. What do you need? 😄",
+        "isUser": false
+    },
+    {
+        "text": "Give me some tips on how to have better sex.",
+        "isUser": true
+    },
+    {
+        "text": "1. Communicate openly.\n2. Explore each other's bodies.\n3. Try new positions.\n4. Set the mood with lighting.\n5. Focus on foreplay.\n6. Don’t rush; take your time.\n7. Use protection for safety.",
+        "isUser": false
+    },
+    {
+        "text": "I want more intimate things.",
+        "isUser": true
+    },
+    {
+        "text": "Try communication, explore fantasies, and prioritize foreplay. Intimacy is all about connection!",
+        "isUser": false
+    },
+    {
+        "text": "Interesting.",
+        "isUser": true
+    },
+    {
+        "text": "Well, intimacy is key! Here are a few tips: \n\n1. **Communication**: Talk openly about desires.\n2. **Set the Mood**: Create a comfortable environment.\n3. **Take Your Time**: Don't rush; enjoy the moment.\n4. **Explore Together**: Try new things and be adventurous.\n5. **Focus on Foreplay**: It builds anticipation and connection.\n\nHappy exploring!",
+        "isUser": false
+    }
+]

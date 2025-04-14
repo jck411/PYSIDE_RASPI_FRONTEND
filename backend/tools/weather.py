@@ -76,12 +76,12 @@ async def fetch_nws_data(lat, lon):
             
             # Validate responses
             for resp in [forecast_response, forecast_hourly_response, grid_forecast_response]:
-                resp.raise_for_status()
+                resp.raise_for_status() # type: ignore
             
             # Parse JSON data
-            forecast_data = forecast_response.json()
-            forecast_hourly_data = forecast_hourly_response.json()
-            grid_forecast_data = grid_forecast_response.json()
+            forecast_data = forecast_response.json() # type: ignore
+            forecast_hourly_data = forecast_hourly_response.json() # type: ignore
+            grid_forecast_data = grid_forecast_response.json() # type: ignore
 
             # Return the combined forecast data
             combined_data = {
@@ -98,34 +98,38 @@ async def fetch_nws_data(lat, lon):
         logger.error(f"Error fetching NWS data: {e}")
         return None
 
-def fetch_ow_current(lat, lon, units, lang):
+async def fetch_ow_current(lat, lon, units, lang):
     """
-    Fetch current weather data from OpenWeatherMap API.
-    
+    Fetch current weather data from OpenWeatherMap API asynchronously.
+
     Args:
         lat: Latitude coordinates
         lon: Longitude coordinates
         units: Units of measurement (metric, imperial, standard)
         lang: Language for the response
-        
+
     Returns:
         Current weather data from OpenWeatherMap API
     """
     api_key = os.getenv("OPENWEATHER_API_KEY")
     if not api_key:
-        raise ValueError(
-            "API key not found. Please set OPENWEATHER_API_KEY in your .env file."
-        )
-    
+        logger.error("OpenWeatherMap API key not found.")
+        return None # Return None instead of raising ValueError in async context
+
     # For current weather only
     url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&appid={api_key}&units={units}&lang={lang}&exclude=minutely,hourly,daily,alerts"
-    
+    headers = {"Accept": "application/json"}
+    timeout = 10.0
+
     try:
-        response = requests.get(url, timeout=10.0)
-        response.raise_for_status()
-        data = response.json()
-        data["source"] = "OpenWeatherMap"
-        return data
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            logger.info(f"Fetching OpenWeatherMap current data for lat={lat}, lon={lon} from {url}")
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            data["source"] = "OpenWeatherMap"
+            logger.info(f"Successfully fetched OpenWeatherMap current data for lat={lat}, lon={lon}")
+            return data
     except Exception as e:
         logger.error(f"Error fetching OpenWeatherMap data: {e}")
         return None
@@ -153,15 +157,42 @@ async def fetch_weather(
     """
     result = {}
     
-    if data_type in ["current", "both"]:
-        # Use OpenWeatherMap for current weather
-        current_data = fetch_ow_current(lat, lon, units, lang)
+    tasks = []
+    fetch_current = data_type in ["current", "both"]
+    fetch_forecast = data_type in ["forecast", "both"]
+
+    if fetch_current:
+        # Use OpenWeatherMap for current weather (now async)
+        tasks.append(fetch_ow_current(lat, lon, units, lang))
+        
+    if fetch_forecast:
+        # Use NWS for forecast data (already async)
+        tasks.append(fetch_nws_data(lat, lon))
+
+    if tasks:
+        # Run fetches concurrently
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Process results
+        current_data = None
+        forecast_data = None
+        
+        task_index = 0
+        if fetch_current:
+            if isinstance(results[task_index], Exception):
+                logger.error(f"Error fetching current weather: {results[task_index]}")
+            else:
+                current_data = results[task_index]
+            task_index += 1
+            
+        if fetch_forecast:
+            if isinstance(results[task_index], Exception):
+                 logger.error(f"Error fetching forecast weather: {results[task_index]}")
+            else:
+                forecast_data = results[task_index]
+
         if current_data:
             result["current"] = current_data
-    
-    if data_type in ["forecast", "both"]:
-        # Use NWS for forecast data (async)
-        forecast_data = await fetch_nws_data(lat, lon)
         if forecast_data:
             result["forecast"] = forecast_data
     
