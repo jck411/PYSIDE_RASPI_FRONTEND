@@ -1,0 +1,10 @@
+[
+    {
+        "text": "whats the date",
+        "isUser": true
+    },
+    {
+        "text": "It's April 14, 2025. Mark your calendar!",
+        "isUser": false
+    }
+]

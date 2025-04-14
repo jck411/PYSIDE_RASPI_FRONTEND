@@ -23,7 +23,7 @@ from contextlib import asynccontextmanager
 # Logging Setup (Configure basic logging)
 # ------------------------------------------------------------------------------
 logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.WARNING, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 

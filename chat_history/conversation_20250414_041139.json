@@ -1,0 +1,26 @@
+[
+    {
+        "text": "whats the time",
+        "isUser": true
+    },
+    {
+        "text": "It's 4:11 AM. Enjoy your early morning!",
+        "isUser": false
+    },
+    {
+        "text": "and date?",
+        "isUser": true
+    },
+    {
+        "text": "Today's date is October 20, 2023. Mark your calendar!",
+        "isUser": false
+    },
+    {
+        "text": "whats the time and date",
+        "isUser": true
+    },
+    {
+        "text": "It's 4:11 AM on April 14, 2025. Time flies, huh?",
+        "isUser": false
+    }
+]

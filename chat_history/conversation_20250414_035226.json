@@ -1,0 +1,58 @@
+[
+    {
+        "text": "what time is sunrise",
+        "isUser": true
+    },
+    {
+        "text": "Sunrise is at 6:59 AM today. Don't forget your sunglasses!",
+        "isUser": false
+    },
+    {
+        "text": "what about sunset",
+        "isUser": true
+    },
+    {
+        "text": "Sunset is at 6:48 PM. Perfect for that evening stroll!",
+        "isUser": false
+    },
+    {
+        "text": "try that again for april 14 2025",
+        "isUser": true
+    },
+    {
+        "text": "On April 14, 2025, sunrise will be at 6:59 AM and sunset at 7:52 PM. Enjoy the day!",
+        "isUser": false
+    },
+    {
+        "text": "what was the 6:48 Pm one for?",
+        "isUser": true
+    },
+    {
+        "text": "That was for today! But hey, it’s still good info for a future reference.",
+        "isUser": false
+    },
+    {
+        "text": "and today is",
+        "isUser": true
+    },
+    {
+        "text": "Today is October 25, 2023. Time flies, huh?",
+        "isUser": false
+    },
+    {
+        "text": "ok what the weatehr like this week?",
+        "isUser": true
+    },
+    {
+        "text": "This week’s weather looks pretty nice! Here’s a sneak peek:\n\n- **Today**: Sunny, high of 87°F.\n- **Tonight**: Clear, low around 61°F.\n- **Tomorrow**: Sunny again, high near 85°F.\n\nEnjoy the sunshine!",
+        "isUser": false
+    },
+    {
+        "text": "and the current weather?",
+        "isUser": true
+    },
+    {
+        "text": "Looks like I missed the current weather details! But it’s usually warm and sunny in Orlando. Check your local app for the latest!",
+        "isUser": false
+    }
+]

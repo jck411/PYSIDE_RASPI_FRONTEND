@@ -1,0 +1,10 @@
+[
+    {
+        "text": "whats the weather like tomorrow",
+        "isUser": true
+    },
+    {
+        "text": "I can't check the weather, but you might want to try a weather app or website. They're super helpful, you know!",
+        "isUser": false
+    }
+]

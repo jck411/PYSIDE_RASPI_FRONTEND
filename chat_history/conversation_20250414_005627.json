@@ -1,0 +1,18 @@
+[
+    {
+        "text": "whats the weatehr like",
+        "isUser": true
+    },
+    {
+        "text": "A chill 60°F with a few clouds. Perfect for a sweater, if you like that sort of thing!",
+        "isUser": false
+    },
+    {
+        "text": "how about tomorrow",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow? Sunny and toasty at 87°F. Don't forget your sunscreen!",
+        "isUser": false
+    }
+]

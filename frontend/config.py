@@ -60,7 +60,7 @@ DEEPGRAM_CONFIG = {
 # ========================
 # LOGGING CONFIGURATION
 # ========================
-def setup_logger(name=__name__, level=logging.DEBUG):
+def setup_logger(name=__name__, level=logging.WARNING):
     """
     Set up a logger with consistent formatting
 

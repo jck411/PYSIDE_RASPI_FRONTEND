@@ -1,0 +1,10 @@
+[
+    {
+        "text": "whats the current weather",
+        "isUser": true
+    },
+    {
+        "text": "It's a chilly 60°F with a few clouds. Better grab a sweater!",
+        "isUser": false
+    }
+]

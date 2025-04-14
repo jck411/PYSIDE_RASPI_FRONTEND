@@ -1,0 +1,10 @@
+[
+    {
+        "text": "What time is the sunrise and sunset, and what will the temperatures be during those times?",
+        "isUser": true
+    },
+    {
+        "text": "Sunrise: 6:59 AM  \nSunset: 7:52 PM  \n\n**Temperatures:**  \n- Sunrise: 56°F (clear)  \n- Sunset: 87°F (sunny)  \n\nEnjoy the lovely Florida weather!",
+        "isUser": false
+    }
+]

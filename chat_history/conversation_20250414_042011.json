@@ -1,0 +1,34 @@
+[
+    {
+        "text": "what time is the sunrise",
+        "isUser": true
+    },
+    {
+        "text": "What's your location? Or do you just want to guess?",
+        "isUser": false
+    },
+    {
+        "text": "you know it",
+        "isUser": true
+    },
+    {
+        "text": "Sunrise is at 6:59 AM. Set your alarm!",
+        "isUser": false
+    },
+    {
+        "text": "and sunset",
+        "isUser": true
+    },
+    {
+        "text": "Sunset is at 7:52 PM. Don't miss it!",
+        "isUser": false
+    },
+    {
+        "text": "what date is it",
+        "isUser": true
+    },
+    {
+        "text": "It's April 14, 2025. Time flies, huh?",
+        "isUser": false
+    }
+]

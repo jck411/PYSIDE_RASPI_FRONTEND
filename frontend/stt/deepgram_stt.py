@@ -20,7 +20,7 @@ from frontend.config import DEEPGRAM_CONFIG, STT_CONFIG
 # Use the logger from config
 from frontend.config import logger
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 load_dotenv()
 

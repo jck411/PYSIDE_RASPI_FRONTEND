@@ -497,26 +497,39 @@ The codebase follows these organizational principles:
 ### Tool Functions Architecture
 The application uses a modular tool functions system that allows for easy extension with new capabilities:
 
-- **Individual Tool Modules**: Each tool function is in its own file (e.g., `weather.py`, `time.py`)
-  - Each module exposes one primary function (e.g., `fetch_weather`, `get_time`)
-  - Each module provides a `get_schema()` function that defines its OpenAI function calling schema
-  - Functions can be synchronous or asynchronous (using `async/await`)
+- **Tool Registry**: Central management of all available tool functions
+  - Auto-discovers tool functions in the `backend/tools` directory
+  - Dynamically generates function schemas for API documentation
+  - Enforces consistent error handling and parameter validation
+  - Provides a unified interface for both synchronous and asynchronous tools
 
-- **API Integration**:
-  - `weather.py`: Uses OpenWeatherMap API for current weather and National Weather Service API for forecasts
-  - `time.py`: Uses TimezoneFinder and pytz for accurate local time
+- **One Tool Per Module Pattern**: Each module in the tools directory exposes one primary tool function
+  - `backend/tools/sunrise_sunset.py`: `get_sunrise_sunset` - Gets precise sunrise and sunset times for any location
+  - `backend/tools/weather_current.py`: `get_weather_current` - Gets current weather conditions (temperature, description, etc.)
+  - `backend/tools/weather_forecast.py`: `get_weather_forecast` - Retrieves detailed weather forecasts for upcoming days
+  - `backend/tools/time.py`: `get_time` - Retrieves the current time for a specific location based on coordinates
+  - Each module has a `get_schema()` function that defines its OpenAI function calling schema
+  - Consistent naming pattern (module name directly reflects its functionality) makes it easier for LLMs to understand and use tools
 
-- **Tool Registry** (`registry.py`): Central management of all available tools
-  - Automatically discovers and registers tool modules (both sync and async functions)
-  - Provides `get_tools()` to retrieve all schema definitions
-  - Provides `get_available_functions()` to map function names to implementations
+- **Code Reuse Pattern**: The tool functions follow a consistent pattern to promote code reuse:
+  - Tool functions import and call existing specialized fetcher functions
+  - Tool functions focus on formatting and filtering data for LLM consumption
+  - API interaction logic is centralized in dedicated fetcher modules
+  - This pattern ensures:
+    - Consistent error handling
+    - No duplication of API fetch logic
+    - Separation of concerns between data fetching and LLM formatting
+    - Easier maintenance when APIs change
 
-- **Tool Helpers** (`helpers.py`): Utilities for tool execution
-  - Validates function arguments
-  - Maps OpenAI function call requests to actual Python implementations
-  - Handles execution of both synchronous and asynchronous functions
+- **Future Tools**: The architecture is designed for easy extension with new tools
+  - Create new Python modules in `backend/tools` with standardized schema definitions
+  - Follow consistent naming pattern (module name should directly reflect its functionality)
+  - Follow consistent error handling patterns
+  - Support both synchronous and asynchronous operations
+  - Reuse existing fetcher functions when possible
+  - Each new module should expose one primary tool function
 
-This architecture allows for easy extension by simply adding new Python files to the tools directory, following the pattern of existing tools. The registry will automatically discover and register new tools without requiring changes to other parts of the codebase.
+This modular approach makes it easy to add new capabilities without modifying the core application architecture.
 
 ### Utility Services
 The application includes several utility services to provide common functionality:

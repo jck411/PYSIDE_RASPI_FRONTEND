@@ -1,0 +1,98 @@
+[
+    {
+        "text": "whats the time",
+        "isUser": true
+    },
+    {
+        "text": "It's 12:58 AM. Night owl, huh?",
+        "isUser": false
+    },
+    {
+        "text": "whats the temp",
+        "isUser": true
+    },
+    {
+        "text": "It's a chilly 59°F. Better grab a sweater!",
+        "isUser": false
+    },
+    {
+        "text": "how about tomorrow",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow's high is 87°F and sunny. Perfect for sweating!",
+        "isUser": false
+    },
+    {
+        "text": "and today? also give the date",
+        "isUser": true
+    },
+    {
+        "text": "Today's high is 79°F with a clear sky. And it's October 3rd. Enjoy!",
+        "isUser": false
+    },
+    {
+        "text": "so today is 79?",
+        "isUser": true
+    },
+    {
+        "text": "Yep, today’s high is 79°F. Nice and comfy!",
+        "isUser": false
+    },
+    {
+        "text": "where are you getting that info",
+        "isUser": true
+    },
+    {
+        "text": "Just pulling it from my weather crystal ball... or maybe from OpenWeatherMap.",
+        "isUser": false
+    },
+    {
+        "text": "whats tomorrows forecast",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow's forecast: sunny with a high around 87°F. Enjoy that sunshine!",
+        "isUser": false
+    },
+    {
+        "text": "how about monday",
+        "isUser": true
+    },
+    {
+        "text": "Monday's forecast: sunny with a high of 87°F. Perfect beach weather!",
+        "isUser": false
+    },
+    {
+        "text": "how about tonight",
+        "isUser": true
+    },
+    {
+        "text": "Tonight's low is 66°F. Not too shabby for a night out!",
+        "isUser": false
+    },
+    {
+        "text": "how about now",
+        "isUser": true
+    },
+    {
+        "text": "Right now, it's about 60°F with a clear sky. Cozy!",
+        "isUser": false
+    },
+    {
+        "text": "and today?",
+        "isUser": true
+    },
+    {
+        "text": "Today’s temp is around 60°F with a clear sky. Perfect for a stroll!",
+        "isUser": false
+    },
+    {
+        "text": "how about later today",
+        "isUser": true
+    },
+    {
+        "text": "Later today, expect a high of 79°F. Nice and warm!",
+        "isUser": false
+    }
+]
