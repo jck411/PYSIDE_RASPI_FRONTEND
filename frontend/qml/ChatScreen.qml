@@ -61,21 +61,21 @@ BaseScreen {
     Connections {
         target: ChatService // <-- Use ChatService
 
-        onHistoryCleared: {
+        function onHistoryCleared() {
             console.log("ChatScreen: Received historyCleared signal. Clearing model.")
             chatModel.clear()
         }
 
         // Handlers for real-time updates while screen is visible
         // These signals are emitted by the ChatService singleton
-        onMessageReceived: function(text) {
+        function onMessageReceived(text) {
             chatModel.append({"text": text, "isUser": false})
             if (chatView.autoScroll) {
                 chatView.positionViewAtEnd()
             }
         }
         
-        onMessageChunkReceived: function(text, isFinal) {
+        function onMessageChunkReceived(text, isFinal) {
             var lastIndex = chatModel.count - 1
             if (lastIndex >= 0 && !chatModel.get(lastIndex).isUser) {
                 chatModel.setProperty(lastIndex, "text", text)
@@ -92,16 +92,16 @@ BaseScreen {
             }
         }
         
-        onConnectionStatusChanged: function(connected) {
+        function onConnectionStatusChanged(connected) {
             console.log("Connection changed => " + connected)
             chatScreen.title = connected ? "Chat Interface - Connected" : "Chat Interface - Disconnected"
         }
         
-        onSttInputTextReceived: function(text) {
+        function onSttInputTextReceived(text) {
             inputField.text = text
         }
         
-        onUserMessageAutoSubmitted: function(text) {
+        function onUserMessageAutoSubmitted(text) {
             chatModel.append({"text": text, "isUser": true})
             if (chatView.autoScroll) {
                 chatView.positionViewAtEnd()
@@ -246,4 +246,3 @@ BaseScreen {
         }
     }
 }
-

@@ -1,5 +1,7 @@
 DARK_COLORS = {
     "background": "#1a1b26",
+    "background_secondary": "#24283b",
+    "background_input": "#2E3440",
     "user_bubble": "#3b4261",
     "assistant_bubble": "transparent",
     "text_primary": "#a9b1d6",
@@ -10,11 +12,19 @@ DARK_COLORS = {
     "input_background": "#24283b",
     "input_border": "#414868",
     "card_color": "#24283b",
-    "card_alternate_color": "#2E3440"
+    "card_alternate_color": "#2E3440",
+    "accent_color": "#7aa2f7",
+    "accent_text_color": "#FFFFFF",
+    "border_color": "#414868",
+    "danger_color": "#f7768e",
+    "dialog_background_color": "#24283b",
+    "dialog_header_color": "#1a1b26"
 }
 
 LIGHT_COLORS = {
     "background": "#E8EEF5",
+    "background_secondary": "#F5F7FA",
+    "background_input": "#FFFFFF",
     "user_bubble": "#D0D7E1",
     "assistant_bubble": "#F7F9FB",
     "text_primary": "#3b4261",
@@ -25,7 +35,13 @@ LIGHT_COLORS = {
     "input_background": "#FFFFFF",
     "input_border": "#D3D7DC",
     "card_color": "#FFFFFF",
-    "card_alternate_color": "#F5F7FA"
+    "card_alternate_color": "#F5F7FA",
+    "accent_color": "#0D8BD9",
+    "accent_text_color": "#FFFFFF",
+    "border_color": "#D3D7DC",
+    "danger_color": "#E53935",
+    "dialog_background_color": "#FFFFFF",
+    "dialog_header_color": "#F5F7FA"
 }
 
 

@@ -23,6 +23,8 @@ class ThemeManager(QObject):
 
         # QML color properties
         self._background_color = QColor(self._colors["background"])
+        self._background_secondary_color = QColor(self._colors["background_secondary"])
+        self._background_input_color = QColor(self._colors["background_input"])
         self._user_bubble_color = QColor(self._colors["user_bubble"])
         self._assistant_bubble_color = QColor(self._colors["assistant_bubble"])
         self._text_primary_color = QColor(self._colors["text_primary"])
@@ -34,6 +36,12 @@ class ThemeManager(QObject):
         self._input_border_color = QColor(self._colors["input_border"])
         self._card_color = QColor(self._colors["card_color"])
         self._card_alternate_color = QColor(self._colors["card_alternate_color"])
+        self._accent_color = QColor(self._colors["accent_color"])
+        self._accent_text_color = QColor(self._colors["accent_text_color"])
+        self._border_color = QColor(self._colors["border_color"])
+        self._danger_color = QColor(self._colors["danger_color"])
+        self._dialog_background_color = QColor(self._colors["dialog_background_color"])
+        self._dialog_header_color = QColor(self._colors["dialog_header_color"])
         
         # Create timer for day/night checks
         self._auto_theme_timer = QTimer(self)
@@ -97,6 +105,8 @@ class ThemeManager(QObject):
 
             # Update all QML colors
             self._background_color = QColor(self._colors["background"])
+            self._background_secondary_color = QColor(self._colors["background_secondary"])
+            self._background_input_color = QColor(self._colors["background_input"])
             self._user_bubble_color = QColor(self._colors["user_bubble"])
             self._assistant_bubble_color = QColor(self._colors["assistant_bubble"])
             self._text_primary_color = QColor(self._colors["text_primary"])
@@ -108,6 +118,12 @@ class ThemeManager(QObject):
             self._input_border_color = QColor(self._colors["input_border"])
             self._card_color = QColor(self._colors["card_color"])
             self._card_alternate_color = QColor(self._colors["card_alternate_color"])
+            self._accent_color = QColor(self._colors["accent_color"])
+            self._accent_text_color = QColor(self._colors["accent_text_color"])
+            self._border_color = QColor(self._colors["border_color"])
+            self._danger_color = QColor(self._colors["danger_color"])
+            self._dialog_background_color = QColor(self._colors["dialog_background_color"])
+            self._dialog_header_color = QColor(self._colors["dialog_header_color"])
 
             self.themeChanged.emit()
             logger.info(f"Theme changed to {'dark' if value else 'light'} mode")
@@ -226,9 +242,35 @@ class ThemeManager(QObject):
 
     def _get_card_alternate_color(self):
         return self._card_alternate_color
+        
+    def _get_background_secondary_color(self):
+        return self._background_secondary_color
+        
+    def _get_background_input_color(self):
+        return self._background_input_color
+        
+    def _get_accent_color(self):
+        return self._accent_color
+        
+    def _get_accent_text_color(self):
+        return self._accent_text_color
+        
+    def _get_border_color(self):
+        return self._border_color
+        
+    def _get_danger_color(self):
+        return self._danger_color
+        
+    def _get_dialog_background_color(self):
+        return self._dialog_background_color
+        
+    def _get_dialog_header_color(self):
+        return self._dialog_header_color
 
     # QML color properties
     background_color = Property(QColor, _get_background_color, notify=themeChanged)
+    background_secondary_color = Property(QColor, _get_background_secondary_color, notify=themeChanged)
+    background_input_color = Property(QColor, _get_background_input_color, notify=themeChanged)
     user_bubble_color = Property(QColor, _get_user_bubble_color, notify=themeChanged)
     assistant_bubble_color = Property(
         QColor, _get_assistant_bubble_color, notify=themeChanged
@@ -250,3 +292,9 @@ class ThemeManager(QObject):
     input_border_color = Property(QColor, _get_input_border_color, notify=themeChanged)
     card_color = Property(QColor, _get_card_color, notify=themeChanged)
     card_alternate_color = Property(QColor, _get_card_alternate_color, notify=themeChanged)
+    accent_color = Property(QColor, _get_accent_color, notify=themeChanged)
+    accent_text_color = Property(QColor, _get_accent_text_color, notify=themeChanged)
+    border_color = Property(QColor, _get_border_color, notify=themeChanged)
+    danger_color = Property(QColor, _get_danger_color, notify=themeChanged)
+    dialog_background_color = Property(QColor, _get_dialog_background_color, notify=themeChanged)
+    dialog_header_color = Property(QColor, _get_dialog_header_color, notify=themeChanged)

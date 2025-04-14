@@ -5,6 +5,66 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from PySide6.QtCore import QObject, Signal, Slot, QTimer, QTime, QDateTime, QDate
+from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex
+
+class AlarmModel(QAbstractListModel):
+    """
+    A proper QAbstractListModel implementation for alarms
+    """
+    IdRole = Qt.UserRole + 1
+    NameRole = Qt.UserRole + 2
+    HourRole = Qt.UserRole + 3
+    MinuteRole = Qt.UserRole + 4
+    EnabledRole = Qt.UserRole + 5
+    RecurrenceRole = Qt.UserRole + 6
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._alarms = []
+        
+    def rowCount(self, parent=QModelIndex()):
+        return len(self._alarms)
+        
+    def data(self, index, role):
+        if not index.isValid() or index.row() >= len(self._alarms):
+            return None
+            
+        alarm = self._alarms[index.row()]
+        
+        if role == self.IdRole:
+            return alarm["id"]
+        elif role == self.NameRole:
+            return alarm["name"]
+        elif role == self.HourRole:
+            return alarm["hour"]
+        elif role == self.MinuteRole:
+            return alarm["minute"]
+        elif role == self.EnabledRole:
+            return alarm["enabled"]
+        elif role == self.RecurrenceRole:
+            return alarm["recurrence"]
+        
+        return None
+        
+    def roleNames(self):
+        return {
+            self.IdRole: b"id",
+            self.NameRole: b"name",
+            self.HourRole: b"hour",
+            self.MinuteRole: b"minute",
+            self.EnabledRole: b"enabled",
+            self.RecurrenceRole: b"recurrence"
+        }
+        
+    def setAlarms(self, alarms):
+        self.beginResetModel()
+        self._alarms = alarms
+        self.endResetModel()
+        
+    def getAlarm(self, index):
+        if 0 <= index < len(self._alarms):
+            return self._alarms[index]
+        return None
 
 class AlarmController(QObject):
     """
@@ -25,6 +85,10 @@ class AlarmController(QObject):
         self._data_dir = Path(os.path.dirname(os.path.abspath(__file__))).parent / "data"
         self._data_dir.mkdir(exist_ok=True)  # Ensure data directory exists
         self._alarms_file = self._data_dir / "alarms.json"
+        
+        # Create the model
+        self._alarm_model = AlarmModel(self)
+        
         self._load_alarms()
         self._schedule_next_alarm()
     
@@ -43,6 +107,7 @@ class AlarmController(QObject):
         Returns:
             ID of the new alarm
         """
+        print(f"qml: Adding alarm: {hour}:{minute} Label: {name} Days: {recurrence}")
         alarm_id = str(uuid.uuid4())
         alarm = {
             "id": alarm_id,
@@ -55,6 +120,10 @@ class AlarmController(QObject):
         self._alarms.append(alarm)
         self._save_alarms()
         self._schedule_next_alarm()  # Recalculate timer
+        
+        # Update the model
+        self._alarm_model.setAlarms(self._alarms)
+        
         self.alarmsChanged.emit()
         return alarm_id
     
@@ -82,6 +151,10 @@ class AlarmController(QObject):
         
         self._save_alarms()
         self._schedule_next_alarm()  # Recalculate timer
+        
+        # Update the model
+        self._alarm_model.setAlarms(self._alarms)
+        
         self.alarmsChanged.emit()
     
     @Slot(str, bool)
@@ -100,6 +173,10 @@ class AlarmController(QObject):
         
         self._save_alarms()
         self._schedule_next_alarm()  # Recalculate timer
+        
+        # Update the model
+        self._alarm_model.setAlarms(self._alarms)
+        
         self.alarmsChanged.emit()
     
     @Slot(str)
@@ -110,9 +187,22 @@ class AlarmController(QObject):
         Args:
             alarm_id: ID of the alarm to delete
         """
+        print(f"qml: Deleting alarm with ID: {alarm_id}")
+        old_length = len(self._alarms)
         self._alarms = [a for a in self._alarms if a["id"] != alarm_id]
+        new_length = len(self._alarms)
+        
+        if new_length < old_length:
+            print(f"qml: Successfully deleted alarm, removed {old_length - new_length} item(s)")
+        else:
+            print(f"qml: Failed to delete alarm with ID: {alarm_id}, no matching alarm found")
+            
         self._save_alarms()
         self._schedule_next_alarm()  # Recalculate timer
+        
+        # Update the model
+        self._alarm_model.setAlarms(self._alarms)
+        
         self.alarmsChanged.emit()
     
     @Slot(result=list)
@@ -124,6 +214,16 @@ class AlarmController(QObject):
             List of alarm objects
         """
         return self._alarms
+    
+    @Slot(result="QObject*")
+    def alarmModel(self):
+        """
+        Get the proper QAbstractListModel for alarms
+        
+        Returns:
+            AlarmModel instance
+        """
+        return self._alarm_model
     
     @Slot(str, result=dict)
     def getAlarm(self, alarm_id):
@@ -140,6 +240,22 @@ class AlarmController(QObject):
             if alarm["id"] == alarm_id:
                 return alarm
         return None
+    
+    @Slot()
+    def clearAllAlarms(self):
+        """
+        Delete all alarms and start fresh
+        """
+        print("Clearing all alarms from the system")
+        self._alarms = []
+        self._save_alarms()
+        self._schedule_next_alarm()
+        
+        # Update the model
+        self._alarm_model.setAlarms(self._alarms)
+        
+        self.alarmsChanged.emit()
+        return True
     
     def _handle_alarm_triggered(self):
         """
@@ -187,6 +303,10 @@ class AlarmController(QObject):
         
         if triggered_alarms:
             self._save_alarms()
+            
+            # Update the model
+            self._alarm_model.setAlarms(self._alarms)
+            
             self.alarmsChanged.emit()
         
         # Reschedule for next alarm
@@ -312,6 +432,9 @@ class AlarmController(QObject):
         try:
             with open(self._alarms_file, 'r') as file:
                 self._alarms = json.load(file)
+                
+            # Update the model
+            self._alarm_model.setAlarms(self._alarms)
         except (json.JSONDecodeError, FileNotFoundError):
             self._alarms = []
     

@@ -66,11 +66,22 @@ The application provides both time display and alarm management functionality:
   - Displays a list of configured alarms with time, name, and recurrence pattern
   - Provides controls to add, edit, and delete alarms
   - Supports various recurrence patterns (Once, Daily, Weekdays, Weekends, Custom)
+  - Includes improved property binding for alarm IDs to ensure reliable alarm deletion
+  - Uses multiple fallbacks for property access to handle different controller implementations
   
 - **Alarm Notifications**: When an alarm triggers, a notification dialog is shown
   - The notification appears over any screen that's currently active
   - Offers options to dismiss or snooze the alarm
   - Snoozing an alarm creates a new one-time alarm for 5 minutes later
+
+- **AlarmController**: Manages alarm data and functionality
+  - Located in `frontend/logic/alarm_controller.py`
+  - Provides methods for adding, updating, and deleting alarms
+  - Handles alarm persistence via JSON file storage
+  - Exposes signals to QML for alarm triggering and list updates
+  - Follows camelCase naming conventions for QML-exposed methods
+  - Enhanced error handling and validation for alarm management operations
+  - Improved debugging for alarm deletion with detailed logging
 
 ### Services
 Services provide functionality to QML components:
@@ -455,6 +466,12 @@ This section documents recent UI changes:
 - **Improved Usability**: The add button now appears at the bottom of the alarm list, making it easy to find and use
 - **Alternating Colors**: The add button respects the same alternating color scheme as the alarm items
 - **Simplified Interaction**: Clean implementation that retains theme-consistent styling
+- **Implementation Details**: The add button is implemented as a footer component in the ListView with:
+  - Matching height and visual style to alarm list items for consistency
+  - Proper color alternation based on the number of items in the list
+  - Clear visual indication of its purpose with icon and text
+  - Same interaction pattern as alarm items (tap/click to activate)
+  - Responsive layout that adapts to different screen sizes
 
 ### Calendar Controls (`frontend/qml/CalendarControls.qml`)
 - **Refresh Button:** A new refresh button was added using the `../icons/refresh.svg` icon (consistent with the Weather screen).

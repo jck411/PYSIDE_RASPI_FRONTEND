@@ -26,7 +26,7 @@ Window {
     property bool isFullScreen: visibility === Window.FullScreen // Track fullscreen state
 
     // Update title when visibility changes
-    onVisibilityChanged: {
+    onVisibilityChanged: function(visibility) {
         if (stackView && stackView.currentItem && stackView.currentItem.title) {
             if (visibility === Window.FullScreen) {
                 mainWindow.title = ""
@@ -232,7 +232,7 @@ Window {
     // Connect ThemeManager to PhotoController
     Connections {
         target: ThemeManager
-        function onIsDarkModeChanged() {
+        function onThemeChanged() {
             PhotoController.set_dark_mode(ThemeManager.is_dark_mode)
         }
     }

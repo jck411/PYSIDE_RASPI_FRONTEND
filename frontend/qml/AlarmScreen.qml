@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import MyTheme 1.0
 import MyServices 1.0
+import "dialogs" // <-- Import the dialogs directory
 
 BaseScreen {
     id: alarmScreen
@@ -11,16 +12,911 @@ BaseScreen {
     screenControls: "AlarmControls.qml"
     title: "Alarms"
     
-    // Minimal content to display
-    Rectangle {
+    property bool isEditMode: false
+    property var currentEditingAlarm: null
+    property var selectedDays: []
+    
+    // Function to format time (HH:MM)
+    function formatTime(hour, minute) {
+        // Simple alternative to sprintf for padding numbers
+        var hourStr = hour < 10 ? "0" + hour : "" + hour;
+        var minuteStr = minute < 10 ? "0" + minute : "" + minute;
+        return hourStr + ":" + minuteStr;
+    }
+    
+    // Function to format days of the week
+    function formatDays(daysList) {
+        // Handle null, undefined or empty arrays
+        if (!daysList || daysList.length === 0) return "Once";
+        
+        // Make sure we're working with a proper array
+        let days = Array.isArray(daysList) ? daysList : [];
+        
+        // Handle string values like "ONCE", "DAILY", "WEEKDAYS", "WEEKENDS"
+        if (days.includes("ONCE")) return "Once";
+        if (days.includes("DAILY")) return "Every Day";
+        if (days.includes("WEEKDAYS")) return "Weekdays";
+        if (days.includes("WEEKENDS")) return "Weekends";
+        
+        // Special cases
+        if (days.length === 7) return "Every Day";
+        
+        // Safe includes check with type conversion
+        function safeIncludes(arr, val) {
+            return arr.some(item => {
+                if (typeof item === 'string' && typeof val === 'number') {
+                    // Handle string day names
+                    const dayMap = {"MON": 0, "TUE": 1, "WED": 2, "THU": 3, "FRI": 4, "SAT": 5, "SUN": 6};
+                    return dayMap[item] === val;
+                } else if (typeof item === 'number' && typeof val === 'string') {
+                    // Handle numeric day indices
+                    const dayMap = {0: "MON", 1: "TUE", 2: "WED", 3: "THU", 4: "FRI", 5: "SAT", 6: "SUN"};
+                    return item === dayMap.indexOf(val);
+                }
+                return Number(item) === Number(val);
+            });
+        }
+        
+        // Check for weekdays (0-4) or weekend (5-6) patterns
+        if (days.length === 5 && 
+            safeIncludes(days, 0) && 
+            safeIncludes(days, 1) && 
+            safeIncludes(days, 2) && 
+            safeIncludes(days, 3) && 
+            safeIncludes(days, 4)) {
+            return "Weekdays";
+        }
+        
+        if (days.length === 2 && 
+            safeIncludes(days, 5) && 
+            safeIncludes(days, 6)) {
+            return "Weekends";
+        }
+        
+        // For any other pattern, list the days
+        const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        const dayMap = {"MON": 0, "TUE": 1, "WED": 2, "THU": 3, "FRI": 4, "SAT": 5, "SUN": 6};
+        
+        // Convert to numbers, sort, and map to names
+        const convertedDays = days.map(d => {
+            if (typeof d === 'string' && dayMap[d] !== undefined) {
+                return dayMap[d];
+            }
+            return Number(d);
+        })
+        .filter(d => !isNaN(d) && d >= 0 && d <= 6)
+        .sort((a, b) => a - b);
+        
+        return convertedDays.map(dayIndex => dayNames[dayIndex] || "").filter(n => n).join(", ") || "Once";
+    }
+    
+    // Update selected days property based on checkboxes
+    function updateSelectedDays() {
+        var days = []
+        for (var i = 0; i < dayRepeater.count; i++) {
+            if (dayRepeater.itemAt(i).checked) {
+                days.push(i)
+            }
+        }
+        selectedDays = days
+    }
+    
+    // Update day checkboxes based on a pattern
+    function updateDayPattern(pattern) {
+        for (var i = 0; i < dayRepeater.count; i++) {
+            var btn = dayRepeater.itemAt(i)
+            if (pattern === "weekdays") {
+                btn.checked = (i >= 0 && i <= 4)
+            } else if (pattern === "weekend") {
+                btn.checked = (i === 5 || i === 6)
+            } else if (pattern === "everyday") {
+                btn.checked = true
+            }
+        }
+        updateSelectedDays()
+    }
+    
+    // Function to start editing an alarm
+    function editAlarm(alarm) {
+        // Set edit mode
+        isEditMode = true
+        currentEditingAlarm = alarm
+        
+        // Set the edit fields
+        hourTumbler.currentIndex = alarm.hour
+        minuteTumbler.currentIndex = Math.floor(alarm.minute / 5)
+        labelField.text = alarm.label || ""
+        
+        // Update day selections
+        for (var i = 0; i < dayRepeater.count; i++) {
+            dayRepeater.itemAt(i).checked = alarm.days_of_week.includes(i)
+        }
+        updateSelectedDays()
+        
+        // Show edit panel
+        editPanel.visible = true
+    }
+    
+    // Function to start adding a new alarm
+    function startNewAlarm() {
+        // Reset edit mode
+        isEditMode = false
+        currentEditingAlarm = null
+        
+        // Default to current time + 5 minutes, rounded to nearest 5
+        var now = new Date()
+        var hour = now.getHours()
+        var minute = Math.ceil((now.getMinutes() + 5) / 5) * 5
+        
+        // Handle minute overflow
+        if (minute >= 60) {
+            minute = minute - 60
+            hour = (hour + 1) % 24
+        }
+        
+        // Reset UI elements
+        hourTumbler.currentIndex = hour
+        minuteTumbler.currentIndex = Math.floor(minute / 5)
+        labelField.text = ""
+        
+        // Reset day selection
+        for (var i = 0; i < dayRepeater.count; i++) {
+            dayRepeater.itemAt(i).checked = false
+        }
+        updateSelectedDays()
+        
+        // Show edit panel
+        editPanel.visible = true
+    }
+    
+    // Save the alarm (add or update)
+    function saveAlarm() {
+        var hour = hourTumbler.currentIndex
+        var minute = minuteTumbler.currentIndex * 5
+        var label = labelField.text.trim() || "Alarm"
+        var days = selectedDays.length > 0 ? selectedDays : []
+        
+        console.log("Adding alarm:", hour + ":" + minute, "Label:", label, "Days:", days)
+        
+        if (isEditMode && currentEditingAlarm) {
+            // Update existing alarm
+            AlarmController.updateAlarm(
+                currentEditingAlarm.id,
+                label,
+                hour,
+                minute,
+                true, // Enabled
+                days
+            )
+        } else {
+            // Add new alarm - adjust parameters to match the controller
+            // Check what signature is expected
+            if (typeof AlarmController.addAlarm === 'function') {
+                if (AlarmController.addAlarm.length === 5) {
+                    AlarmController.addAlarm(
+                        hour,
+                        minute,
+                        label,
+                        days,
+                        true // Enabled
+                    )
+                } else {
+                    // Try with label first, which seems to be what the logic controller expects
+                    AlarmController.addAlarm(
+                        label,
+                        hour,
+                        minute,
+                        true, // Enabled
+                        days
+                    )
+                }
+            }
+        }
+        
+        // Hide edit panel
+        editPanel.visible = false
+    }
+    
+    // Cancel editing
+    function cancelEditing() {
+        editPanel.visible = false
+    }
+
+    // Handle alarm trigger notification and other alarm controller signals
+    Connections {
+        target: AlarmController
+        
+        function onAlarmTriggered(alarmId, alarmLabel) {
+            alarmNotification.alarmTitle = alarmLabel || "Alarm"
+            alarmNotification.open()
+        }
+        
+        function onAlarmsChanged() {
+            console.log("Alarms changed, refreshing model")
+            
+            // Force refresh of the ListView model 
+            // Use getAlarms() method instead of the property
+            var temp = AlarmController.getAlarms()
+            console.log("Current alarms:", JSON.stringify(temp))
+            
+            // Log IDs of all alarms
+            if (temp && temp.length) {
+                console.log("Alarm IDs:")
+                for (var i = 0; i < temp.length; i++) {
+                    if (temp[i] && temp[i].id) {
+                        console.log("  " + i + ": " + temp[i].id)
+                    } else {
+                        console.log("  " + i + ": MISSING ID")
+                    }
+                }
+            }
+            
+            // Clear model and set it again to trigger update
+            alarmListView.model = null  
+            alarmListView.model = temp  
+        }
+    }
+    
+    // Main layout
+    ColumnLayout {
         anchors.fill: parent
-                color: "transparent"
+        spacing: 0
+        
+        // Alarm List 
+        ListView {
+            id: alarmListView
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.margins: 10
+            clip: true
+            spacing: 15
+            
+            // Use the QAbstractListModel
+            Component.onCompleted: {
+                console.log("Setting model to AlarmController.alarmModel()");
+                model = AlarmController.alarmModel();
+            }
+            
+            // Placeholder for empty list
+            Rectangle {
+                anchors.centerIn: parent
+                width: parent.width * 0.8
+                height: 80
+                color: ThemeManager.background_secondary_color
+                radius: 10
+                visible: alarmListView.count === 0
                 
                 Text {
                     anchors.centerIn: parent
-            text: "Alarm Screen"
-                    font.pixelSize: 32
-                                                color: ThemeManager.text_primary_color
+                    text: "No alarms set. Tap + to add one."
+                    font.pixelSize: 18
+                    color: ThemeManager.text_secondary_color
+                }
+            }
+            
+            delegate: Rectangle {
+                width: alarmListView.width
+                height: 80
+                color: ThemeManager.background_secondary_color
+                radius: 10
+                
+                // Direct access to model data with properties defined based on JSON keys
+                property string alarmId: {
+                    // Try all possible property names used in the system
+                    var id = model.id || model.alarm_id || (typeof modelData !== 'undefined' ? modelData.id : "");
+                    // More verbose logging for debugging
+                    console.log("Alarm item ID resolution:", 
+                        "model.id =", model.id, 
+                        "model.alarm_id =", model.alarm_id,
+                        "modelData =", typeof modelData !== 'undefined' ? JSON.stringify(modelData) : "undefined");
+                    return id;
+                }
+                property string alarmName: model.name || model.label || "Alarm"
+                property int alarmHour: model.hour || 0
+                property int alarmMinute: model.minute || 0
+                property bool alarmEnabled: model.enabled !== undefined ? model.enabled : true
+                property var alarmRecurrence: model.recurrence || model.days_of_week || []
+                
+                Component.onCompleted: {
+                    console.log("Created delegate for item:", JSON.stringify({
+                        id: alarmId,
+                        name: alarmName,
+                        hour: alarmHour,
+                        minute: alarmMinute
+                    }));
+                }
+                
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        // Create a consistent object to pass to editAlarm
+                        editAlarm({
+                            id: alarmId,
+                            label: alarmName,
+                            name: alarmName,
+                            hour: alarmHour,
+                            minute: alarmMinute,
+                            enabled: alarmEnabled,
+                            days_of_week: alarmRecurrence,
+                            recurrence: alarmRecurrence
+                        })
+                    }
+                }
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 20
+                    anchors.rightMargin: 20
+                    spacing: 20
+
+                    // Alarm Time
+                    Text {
+                        text: formatTime(alarmHour, alarmMinute)
+                        font.pixelSize: 28
+                        font.bold: true
+                        color: ThemeManager.text_primary_color
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    // Alarm Label and Days
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 2
+                        
+                        Text {
+                            text: alarmName
+                            font.pixelSize: 18
+                            color: ThemeManager.text_primary_color
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        Text {
+                            text: formatDays(alarmRecurrence)
+                            font.pixelSize: 14
+                            color: ThemeManager.text_secondary_color
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    // Enable Switch
+                    Switch {
+                        checked: alarmEnabled
+                        Layout.alignment: Qt.AlignVCenter
+                        onClicked: AlarmController.setAlarmEnabled(alarmId, checked)
+                    }
+
+                    // Delete Button
+                    Button {
+                        text: "×" // Unicode multiplication sign as a cleaner X
+                        font.pixelSize: 20
+                        font.bold: true
+                        Layout.preferredWidth: 40
+                        Layout.preferredHeight: 40
+                        Layout.alignment: Qt.AlignVCenter
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font: parent.font
+                            color: ThemeManager.accent_text_color
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            color: parent.pressed ? Qt.darker(ThemeManager.danger_color, 1.2) : ThemeManager.danger_color
+                            radius: width / 2
+                        }
+                        
+                        onClicked: {
+                            console.log("Delete button clicked for alarm with ID:", alarmId)
+                            console.log("Full model data:", JSON.stringify({
+                                id: alarmId,
+                                name: alarmName,
+                                hour: alarmHour,
+                                minute: alarmMinute
+                            }))
+                            
+                            // Only attempt to delete if we have a valid ID
+                            if (alarmId && alarmId.length > 0) {
+                                AlarmController.deleteAlarm(alarmId)
+                            } else {
+                                console.error("Cannot delete alarm with invalid ID:", alarmId)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Footer component - "Add new alarm" button
+            footer: Column {
+                width: alarmListView.width
+                spacing: 10
+                
+                Rectangle {
+                    width: parent.width
+                    height: 80
+                    color: ThemeManager.background_secondary_color
+                    radius: 10
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: startNewAlarm()
+                    }
+                    
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 20
+                        anchors.rightMargin: 20
+                        spacing: 20
+                        
+                        // Add button - using a circle with + symbol as a simple approach
+                        Rectangle {
+                            width: 40
+                            height: 40
+                            radius: width / 2
+                            color: ThemeManager.accent_color
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: "+"
+                                color: ThemeManager.accent_text_color
+                                font.pixelSize: 28
+                                font.bold: true
+                            }
+                        }
+                        
+                        // Text
+                        Text {
+                            text: "Add new alarm"
+                            font.pixelSize: 18
+                            color: ThemeManager.text_primary_color
+                            Layout.fillWidth: true
+                        }
+                    }
+                }
+                
+                // Clear All Alarms button
+                Rectangle {
+                    width: parent.width
+                    height: 60
+                    color: ThemeManager.danger_color
+                    radius: 10
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            confirmClearDialog.open()
+                        }
+                    }
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Clear All Alarms"
+                        font.pixelSize: 18
+                        color: ThemeManager.accent_text_color
+                        font.bold: true
+                    }
+                }
+            }
+        }
+        
+        // Edit Panel - Slides up from bottom when adding/editing
+        Rectangle {
+            id: editPanel
+            Layout.fillWidth: true
+            Layout.preferredHeight: editPanelContent.height + 20
+            color: ThemeManager.background_color
+            visible: false
+            
+            // Add slide-up animation
+            states: State {
+                name: "visible"
+                when: editPanel.visible
+                PropertyChanges { target: editPanel; y: parent.height - editPanel.height }
+            }
+            
+            transitions: Transition {
+                NumberAnimation { properties: "y"; duration: 200; easing.type: Easing.OutQuad }
+            }
+            
+            ColumnLayout {
+                id: editPanelContent
+                width: parent.width
+                anchors.centerIn: parent
+                spacing: 20
+                
+                // Time selection with Tumblers
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: parent.width * 0.8
+                    Layout.preferredHeight: 150
+                    color: ThemeManager.background_secondary_color
+                    radius: 10
+                    
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 20
+                        
+                        // Hour tumbler
+                        Tumbler {
+                            id: hourTumbler
+                            model: 24
+                            visibleItemCount: 3
+                            height: 120
+                            width: 80
+                            
+                            delegate: Text {
+                                text: String(modelData).padStart(2, '0')
+                                color: ThemeManager.text_primary_color
+                                font.pixelSize: hourTumbler.currentIndex === index ? 30 : 20
+                                font.bold: hourTumbler.currentIndex === index
+                                opacity: 1.0 - Math.abs(Tumbler.displacement) / (hourTumbler.visibleItemCount / 2)
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        // Separator
+                        Text {
+                            text: ":"
+                            font.pixelSize: 40
+                            font.bold: true
+                            color: ThemeManager.text_primary_color
+                        }
+                        
+                        // Minute tumbler
+                        Tumbler {
+                            id: minuteTumbler
+                            model: 12
+                            visibleItemCount: 3
+                            height: 120
+                            width: 80
+                            
+                            delegate: Text {
+                                text: String(modelData * 5).padStart(2, '0')
+                                color: ThemeManager.text_primary_color
+                                font.pixelSize: minuteTumbler.currentIndex === index ? 30 : 20
+                                font.bold: minuteTumbler.currentIndex === index
+                                opacity: 1.0 - Math.abs(Tumbler.displacement) / (minuteTumbler.visibleItemCount / 2)
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                    }
+                }
+                
+                // Label Field
+                ColumnLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: parent.width * 0.8
+                    spacing: 5
+                    
+                    Text {
+                        text: "Alarm Label"
+                        font.pixelSize: 16
+                        color: ThemeManager.text_primary_color
+                    }
+                    
+                    TextField {
+                        id: labelField
+                        Layout.fillWidth: true
+                        placeholderText: "Enter label (optional)"
+                        font.pixelSize: 16
+                        color: ThemeManager.text_primary_color
+                        
+                        background: Rectangle {
+                            radius: 5
+                            color: ThemeManager.background_secondary_color
+                        }
+                    }
+                }
+                
+                // Repeat options - button row 
+                ColumnLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: parent.width * 0.8
+                    spacing: 10
+                    
+                    Text {
+                        text: "Repeat on:"
+                        font.pixelSize: 16
+                        color: ThemeManager.text_primary_color
+                    }
+                    
+                    // Quick selection buttons
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+                        
+                        Button {
+                            text: "Weekdays"
+                            Layout.fillWidth: true
+                            onClicked: updateDayPattern("weekdays")
+                            
+                            contentItem: Text {
+                                text: parent.text
+                                font: parent.font
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            
+                            background: Rectangle {
+                                radius: 8
+                                color: ThemeManager.background_secondary_color
+                            }
+                        }
+                        
+                        Button {
+                            text: "Weekend"
+                            Layout.fillWidth: true
+                            onClicked: updateDayPattern("weekend")
+                            
+                            contentItem: Text {
+                                text: parent.text
+                                font: parent.font
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            
+                            background: Rectangle {
+                                radius: 8
+                                color: ThemeManager.background_secondary_color
+                            }
+                        }
+                        
+                        Button {
+                            text: "Every Day"
+                            Layout.fillWidth: true
+                            onClicked: updateDayPattern("everyday")
+                            
+                            contentItem: Text {
+                                text: parent.text
+                                font: parent.font
+                                color: ThemeManager.text_primary_color
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            
+                            background: Rectangle {
+                                radius: 8
+                                color: ThemeManager.background_secondary_color
+                            }
+                        }
+                    }
+                    
+                    // Day selection
+                    GridLayout {
+                        id: dayGrid
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 80
+                        columns: 7
+                        rowSpacing: 10
+                        columnSpacing: 10
+                        
+                        property var dayLabels: ["M", "T", "W", "T", "F", "S", "S"]
+                        
+                        Repeater {
+                            id: dayRepeater
+                            model: 7
+                            
+                            Rectangle {
+                                id: dayToggle
+                                property bool checked: false
+                                property string dayText: dayGrid.dayLabels[index]
+                                
+                                Layout.preferredWidth: 40
+                                Layout.preferredHeight: 40
+                                Layout.alignment: Qt.AlignHCenter
+                                radius: width / 2
+                                
+                                color: checked ? ThemeManager.accent_color : ThemeManager.background_secondary_color
+                                
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: parent.dayText
+                                    color: parent.checked ? ThemeManager.accent_text_color : ThemeManager.text_primary_color
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        parent.checked = !parent.checked
+                                        updateSelectedDays()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Action buttons
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: parent.width * 0.8
+                    spacing: 20
+                    
+                    Button {
+                        text: "Cancel"
+                        Layout.fillWidth: true
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font: parent.font
+                            color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            radius: 8
+                            color: ThemeManager.background_secondary_color
+                        }
+                        
+                        onClicked: cancelEditing()
+                    }
+                    
+                    Button {
+                        text: isEditMode ? "Update" : "Add"
+                        Layout.fillWidth: true
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font: parent.font
+                            color: ThemeManager.accent_text_color
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            radius: 8
+                            color: ThemeManager.accent_color
+                        }
+                        
+                        onClicked: saveAlarm()
+                    }
+                }
+            }
+        }
+    }
+    
+    // Alarm notification dialog
+    Dialog {
+        id: alarmNotification
+        title: "Alarm"
+        modal: true
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        width: Math.min(parent.width * 0.8, 400)
+        
+        property string alarmTitle: "Alarm"
+        
+        contentItem: Item {
+            implicitHeight: 150
+            
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 20
+                
+                Text {
+                    text: alarmNotification.alarmTitle
+                    font.pixelSize: 24
+                    font.bold: true
+                    color: ThemeManager.text_primary_color
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.fillWidth: true
+                }
+                
+                Text {
+                    text: {
+                        var now = new Date();
+                        return now.toLocaleTimeString(Qt.locale(), "hh:mm");
+                    }
+                    font.pixelSize: 20
+                    color: ThemeManager.text_secondary_color
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.fillWidth: true
+                }
+                
+                RowLayout {
+                    spacing: 20
+                    Layout.alignment: Qt.AlignHCenter
+                    
+                    Button {
+                        text: "Dismiss"
+                        onClicked: alarmNotification.close()
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font: parent.font
+                            color: ThemeManager.accent_text_color
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            radius: 8
+                            color: ThemeManager.accent_color
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Confirmation dialog for clearing all alarms
+    Dialog {
+        id: confirmClearDialog
+        title: "Clear All Alarms"
+        modal: true
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        width: Math.min(parent.width * 0.8, 400)
+        
+        contentItem: Item {
+            implicitHeight: 150
+            
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 20
+                
+                Text {
+                    text: "Are you sure you want to delete all alarms?\nThis action cannot be undone."
+                    font.pixelSize: 18
+                    color: ThemeManager.text_primary_color
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                }
+                
+                RowLayout {
+                    spacing: 20
+                    Layout.alignment: Qt.AlignHCenter
+                    
+                    Button {
+                        text: "Cancel"
+                        onClicked: confirmClearDialog.close()
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font: parent.font
+                            color: ThemeManager.text_primary_color
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            radius: 8
+                            color: ThemeManager.background_secondary_color
+                        }
+                    }
+                    
+                    Button {
+                        text: "Clear All"
+                        onClicked: {
+                            AlarmController.clearAllAlarms()
+                            confirmClearDialog.close()
+                        }
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font: parent.font
+                            color: ThemeManager.accent_text_color
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            radius: 8
+                            color: ThemeManager.danger_color
+                        }
+                    }
+                }
+            }
         }
     }
 }
