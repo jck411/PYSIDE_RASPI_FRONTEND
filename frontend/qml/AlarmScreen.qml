@@ -234,26 +234,9 @@ BaseScreen {
         function onAlarmsChanged() {
             console.log("Alarms changed, refreshing model")
             
-            // Force refresh of the ListView model 
-            // Use getAlarms() method instead of the property
-            var temp = AlarmController.getAlarms()
-            console.log("Current alarms:", JSON.stringify(temp))
-            
-            // Log IDs of all alarms
-            if (temp && temp.length) {
-                console.log("Alarm IDs:")
-                for (var i = 0; i < temp.length; i++) {
-                    if (temp[i] && temp[i].id) {
-                        console.log("  " + i + ": " + temp[i].id)
-                    } else {
-                        console.log("  " + i + ": MISSING ID")
-                    }
-                }
-            }
-            
-            // Clear model and set it again to trigger update
-            alarmListView.model = null  
-            alarmListView.model = temp  
+            // Force refresh of the ListView model using alarmModel
+            alarmListView.model = null
+            alarmListView.model = AlarmController.alarmModel()
         }
     }
     
@@ -300,22 +283,13 @@ BaseScreen {
                 color: ThemeManager.background_secondary_color
                 radius: 10
                 
-                // Direct access to model data with properties defined based on JSON keys
-                property string alarmId: {
-                    // Try all possible property names used in the system
-                    var id = model.id || model.alarm_id || (typeof modelData !== 'undefined' ? modelData.id : "");
-                    // More verbose logging for debugging
-                    console.log("Alarm item ID resolution:", 
-                        "model.id =", model.id, 
-                        "model.alarm_id =", model.alarm_id,
-                        "modelData =", typeof modelData !== 'undefined' ? JSON.stringify(modelData) : "undefined");
-                    return id;
-                }
-                property string alarmName: model.name || model.label || "Alarm"
-                property int alarmHour: model.hour || 0
-                property int alarmMinute: model.minute || 0
-                property bool alarmEnabled: model.enabled !== undefined ? model.enabled : true
-                property var alarmRecurrence: model.recurrence || model.days_of_week || []
+                // Direct access to model data
+                property string alarmId: model.id
+                property string alarmName: model.name || "Alarm"
+                property int alarmHour: model.hour
+                property int alarmMinute: model.minute
+                property bool alarmEnabled: model.enabled
+                property var alarmRecurrence: model.recurrence
                 
                 Component.onCompleted: {
                     console.log("Created delegate for item:", JSON.stringify({
@@ -332,7 +306,6 @@ BaseScreen {
                         // Create a consistent object to pass to editAlarm
                         editAlarm({
                             id: alarmId,
-                            label: alarmName,
                             name: alarmName,
                             hour: alarmHour,
                             minute: alarmMinute,

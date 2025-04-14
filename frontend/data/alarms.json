@@ -1,18 +1,16 @@
 [
   {
-    "id": "ad915878-dc60-4379-812c-46f96e415bdc",
-    "name": "test",
+    "id": "688c6ad0-9b74-458d-b9cf-d6cdd53282f3",
+    "name": "new",
     "hour": 13,
-    "minute": 35,
+    "minute": 50,
     "enabled": true,
     "recurrence": [
       0,
       1,
       2,
       3,
-      4,
-      5,
-      6
+      4
     ]
   }
 ]

@@ -6,13 +6,10 @@ import MyServices 1.0
 BaseControls {
     id: alarmControls
     
-    // Reference to the alarm screen
-    property var alarmScreen: null
-    
     // Reference to the main StackView for navigation
     property var mainStackView: null
     
-    // Find the alarm screen when completed
+    // Initialize controls when component is completed
     Component.onCompleted: {
         // Clock button to navigate to clock screen
         var clockButton = createButton("../icons/clock.svg", "Show Clock", 24);
@@ -42,21 +39,5 @@ BaseControls {
         return null;
     }
     
-    // Function to find the alarm screen
-    function findAlarmScreen() {
-        if (!alarmScreen) {
-            // Find parent that has the openAlarmDialog function
-            var root = parent;
-            while (root && !root.hasOwnProperty("openAlarmDialog")) {
-                root = root.parent;
-            }
-            
-            if (root && root.hasOwnProperty("openAlarmDialog")) {
-                alarmScreen = root;
-                return true;
-            }
-            return false;
-        }
-        return true;
-    }
+    // No need for findAlarmScreen function as we navigate directly using mainStackView
 }
