@@ -32,6 +32,8 @@ class ThemeManager(QObject):
         self._button_pressed_color = QColor(self._colors["button_pressed"])
         self._input_background_color = QColor(self._colors["input_background"])
         self._input_border_color = QColor(self._colors["input_border"])
+        self._card_color = QColor(self._colors["card_color"])
+        self._card_alternate_color = QColor(self._colors["card_alternate_color"])
         
         # Create timer for day/night checks
         self._auto_theme_timer = QTimer(self)
@@ -104,6 +106,8 @@ class ThemeManager(QObject):
             self._button_pressed_color = QColor(self._colors["button_pressed"])
             self._input_background_color = QColor(self._colors["input_background"])
             self._input_border_color = QColor(self._colors["input_border"])
+            self._card_color = QColor(self._colors["card_color"])
+            self._card_alternate_color = QColor(self._colors["card_alternate_color"])
 
             self.themeChanged.emit()
             logger.info(f"Theme changed to {'dark' if value else 'light'} mode")
@@ -217,6 +221,12 @@ class ThemeManager(QObject):
     def _get_input_border_color(self):
         return self._input_border_color
 
+    def _get_card_color(self):
+        return self._card_color
+
+    def _get_card_alternate_color(self):
+        return self._card_alternate_color
+
     # QML color properties
     background_color = Property(QColor, _get_background_color, notify=themeChanged)
     user_bubble_color = Property(QColor, _get_user_bubble_color, notify=themeChanged)
@@ -238,3 +248,5 @@ class ThemeManager(QObject):
         QColor, _get_input_background_color, notify=themeChanged
     )
     input_border_color = Property(QColor, _get_input_border_color, notify=themeChanged)
+    card_color = Property(QColor, _get_card_color, notify=themeChanged)
+    card_alternate_color = Property(QColor, _get_card_alternate_color, notify=themeChanged)

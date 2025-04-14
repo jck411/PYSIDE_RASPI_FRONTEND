@@ -33,9 +33,44 @@ The application includes multiple screens that can be navigated via the tab bar:
 - **ChatScreen**: Conversational interface
 - **WeatherScreen**: Displays weather information with animated Lottie icons
 - **CalendarScreen**: Shows calendar events
-- **ClockScreen**: Displays time and date
+- **ClockScreen**: Displays time and date with a digital clock
+- **AlarmScreen**: Dedicated screen for managing alarms
 - **PhotoScreen**: Displays photos and videos in a slideshow
 - **SettingsScreen**: Application settings
+
+### Screen Navigation
+Screens can be navigated in two ways:
+- Via the top navigation bar buttons in MainWindow.qml
+- Via screen-specific control buttons (e.g., ClockScreen's "Show Alarms" button navigates to AlarmScreen, and AlarmScreen's "Show Clock" button navigates back to ClockScreen)
+
+The navigation is handled using the StackView component, with each screen having access to the MainWindow's stackView for navigation between screens.
+
+Screen controls maintain consistent navigation patterns:
+- Each screen has its own controls file (e.g., ClockControls.qml, AlarmControls.qml) that inherits from BaseControls
+- Navigation buttons use consistent icons across screens
+- Related screens maintain simple, bidirectional navigation:
+  - ClockScreen has a "Show Alarms" button that navigates to AlarmScreen
+  - AlarmScreen has a "Show Clock" button that navigates back to ClockScreen
+- Controls are positioned on the left side of the screen using a simple Row layout
+- The MainWindow's screenControlsLoader positions and initializes all controls consistently
+
+### Clock and Alarm Architecture
+The application provides both time display and alarm management functionality:
+
+- **ClockScreen**: Focused on displaying the current time and date with a large, easy-to-read digital display
+  - Shows hours, minutes, seconds in a large font
+  - Displays current date (month, day, year)
+  - Shows the day of the week
+
+- **AlarmScreen**: Dedicated screen for managing alarms
+  - Displays a list of configured alarms with time, name, and recurrence pattern
+  - Provides controls to add, edit, and delete alarms
+  - Supports various recurrence patterns (Once, Daily, Weekdays, Weekends, Custom)
+  
+- **Alarm Notifications**: When an alarm triggers, a notification dialog is shown
+  - The notification appears over any screen that's currently active
+  - Offers options to dismiss or snooze the alarm
+  - Snoozing an alarm creates a new one-time alarm for 5 minutes later
 
 ### Services
 Services provide functionality to QML components:
@@ -361,42 +396,65 @@ When implementing the refactoring:
 4. Implement vertical scrolling at the appropriate level (calendar view vs. day cell)
 5. Test thoroughly with many events in a single day
 
-## Development Notes & Known Issues
+## Clock Screen Implementation
+The ClockScreen provides time/date display plus an integrated alarm management system:
 
-This section captures insights gained during recent debugging and cleanup efforts (April 2025).
+- **Dual-View Interface**: The ClockScreen has two main views, toggled via the controls:
+  - Primary Clock View: Large, prominent time/date display
+  - Alarm Management View: List of alarms with management controls
 
-### PhotoScreen Optimization (April 2025)
-- **Crossfade Implementation:** The PhotoScreen was enhanced with a dual-image crossfade system that ensures seamless transitions between images. This prevents any "blank screen" moments during image loading and creates a more polished user experience.
-- **Navigation Simplification:** The navigation system was simplified to use a fixed, sequential order based on filename sorting, making navigation more predictable and intuitive for users.
-- **Image Loading Logic:** Image loading was improved to prevent QML errors during rapid navigation and ensure transitions only happen when images are fully loaded.
-- **Debug Logs:** Additional logging was added to track image loading states and transition events, aiding future debugging efforts.
+- **Alarm Management**: Users can create, edit, disable, and delete alarms
+  - One-time alarms for specific times
+  - Recurring alarms with various patterns:
+    - Daily alarms
+    - Weekday alarms (Mon-Fri)
+    - Weekend alarms (Sat-Sun)
+    - Custom day selection for any combination of days
 
-### Dependency Management
-- The project's dependencies are managed via `requirements.txt`.
-- Initial analysis revealed the file was incomplete (missing `requests`, `fastapi`, `openai`, `Pillow`, etc.) and contained an unused package (`numpy`).
-- The `requirements.txt` file has been updated (April 2025) to accurately reflect runtime dependencies identified through code analysis for both frontend and backend. `pydub` was excluded as it appeared only necessary for a utility script (`frontend/wakeword/convert_format.py`).
-- **Recommendation:** Regularly verify `requirements.txt` against actual imports using tools like `pipreqs` or manual analysis, especially after adding/removing features.
+- **AlarmController**: Backend class that manages the alarm system
+  - Event-based triggering using Qt's timer and signal/slot system
+  - Persistent storage of alarm configurations in JSON format
+  - Smart scheduling that minimizes resource usage by calculating the exact time until the next alarm
+  - Automatic handling of recurrence patterns
 
-### Code Style & Quality
-- Static analysis using `flake8` identified numerous unused imports, a redefined function (`setup_chat_client` in `backend/config/config.py`), and an unused local variable (`msg_type` in `frontend/logic/message_handler.py`). These were removed.
-- `flake8` also identified many stylistic issues (line length, whitespace, indentation).
-- Automatic formatting using `black` has been applied to resolve most stylistic issues and enforce consistency. Most remaining `flake8` warnings are related to line length (E501), which `black` sometimes preserves for readability.
-- **Recommendation:** Consider integrating `flake8` and `black` into the development workflow (e.g., pre-commit hooks) to maintain code quality.
+- **UI Components**:
+  - Alarm list with visual indicators for recurrence patterns
+  - Time selection interface using tumbler controls for intuitive time picking
+  - Alarm setup dialog with various recurrence options
+  - Notification dialog with snooze functionality
+  - Controls for toggling between clock and alarm views
+  - Floating action button for adding new alarms, positioned in the bottom-right of the alarm list
+  - Modern UI with theme-aware styling
 
-### Runtime Issues & Fixes (Observed April 2025)
-- **Chat History Path (Fixed):** An error preventing chat history saving was identified due to a hardcoded user path (`/home/jack/...`) in `frontend/logic/chat_controller.py` (`_save_history_to_file` function). This caused a permission error for the actual user (`human`). The path was corrected to use a relative path (`./chat_history`) within the project directory. Ensure this directory exists or can be created by the application.
-- **Audio Configuration (Known Issue):** Logs showed numerous ALSA/JACK errors (e.g., `unable to open slave`, `Unknown PCM cards`, `Cannot open device /dev/dsp`). This indicates potential audio system misconfiguration on the target Linux environment (Raspberry Pi) that could cause instability and requires platform-specific investigation.
-- **Shutdown Error (Known Issue):** A QML TypeError (`PhotoController.stop_slideshow not available during cleanup`) occurs during application shutdown, originating from `PhotoScreen.qml`. This suggests an object lifetime or shutdown sequence issue between QML and the Python `PhotoController` that needs further debugging.
-- **Deepgram Connection (Observation):** Deepgram connection closure warnings and task cancellation errors were observed, potentially linked to shutdown or inactivity.
+### Alarm Edit Screen Layout Update (May 2025)
+- **Improved Layout**: The alarm edit screen layout was restructured to use a more intuitive arrangement
+  - The screen title and name field are positioned side by side at the top of the form
+  - Save and Cancel buttons are now positioned at the bottom right of the screen
+  - The main content area is organized into three distinct columns:
+    - Left column: Time selection with hour/minute tumblers
+    - Middle column: Repeat options (Once, Daily, Weekdays, etc.)
+    - Right column: Custom day selection (only visible when "Custom" is selected)
+  - Column headings are precisely aligned at the same height for visual consistency
+  - Content in each column starts at the same vertical position with consistent spacing
+- **Enhanced Usability**: The new layout is more consistent with standard form design patterns
+  - Improved visual hierarchy with the heading and name field at the top
+  - Action buttons (Save/Cancel) are consistently positioned at the bottom right
+  - Content organized into logical columns that flow left-to-right
+  - Custom days appear as an extension of the repeat options when needed
+  - Better use of screen space for a cleaner, more organized interface
+  - Consistent spacing and alignment across all form sections
 
-## Recent UI Updates (April 2025)
+## UI Updates (May 2025)
 
-This section documents specific UI changes implemented recently:
+This section documents recent UI changes:
 
-### Weather Controls (`frontend/qml/WeatherControls.qml`)
-- **Button Text:** The "7 Day Forecast" navigation button text was shortened to "7 Day".
-- **Selected Style:** The visual style for the selected navigation button ("72 Hour" or "7 Day") was updated. The semi-transparent background was removed, and a solid border with the color `#565f89` is now used to indicate selection.
-- **Button Width:** Both the "72 Hour" and "7 Day" buttons were set to a fixed `implicitWidth` of 90 pixels for visual consistency.
+### Alarm Screen UI Enhancement (May 2025)
+- **In-List Add Button**: Replaced the floating action button with an integrated "Add new alarm" button within the alarm list
+- **Consistent Visual Design**: The add button uses the same styling as alarm list items for visual consistency
+- **SVG Icon Integration**: Incorporated the `alarm_add.svg` icon for better visual recognition
+- **Improved Usability**: The add button now appears at the bottom of the alarm list, making it easy to find and use
+- **Alternating Colors**: The add button respects the same alternating color scheme as the alarm items
+- **Simplified Interaction**: Clean implementation that retains theme-consistent styling
 
 ### Calendar Controls (`frontend/qml/CalendarControls.qml`)
 - **Refresh Button:** A new refresh button was added using the `../icons/refresh.svg` icon (consistent with the Weather screen).
@@ -486,3 +544,81 @@ Text {
 ```
 
 The implementation provides a clean separation between the text formatting logic (Python) and the UI display (QML), ensuring consistent text formatting across the application.
+
+## Development Notes & Known Issues
+
+This section captures insights gained during recent debugging and cleanup efforts (April 2025).
+
+### PhotoScreen Optimization (April 2025)
+- **Crossfade Implementation:** The PhotoScreen was enhanced with a dual-image crossfade system that ensures seamless transitions between images. This prevents any "blank screen" moments during image loading and creates a more polished user experience.
+- **Navigation Simplification:** The navigation system was simplified to use a fixed, sequential order based on filename sorting, making navigation more predictable and intuitive for users.
+- **Image Loading Logic:** Image loading was improved to prevent QML errors during rapid navigation and ensure transitions only happen when images are fully loaded.
+- **Debug Logs:** Additional logging was added to track image loading states and transition events, aiding future debugging efforts.
+
+### Dependency Management
+- The project's dependencies are managed via `requirements.txt`.
+- Initial analysis revealed the file was incomplete (missing `requests`, `fastapi`, `openai`, `Pillow`, etc.) and contained an unused package (`numpy`).
+- The `requirements.txt` file has been updated (April 2025) to accurately reflect runtime dependencies identified through code analysis for both frontend and backend. `pydub` was excluded as it appeared only necessary for a utility script (`frontend/wakeword/convert_format.py`).
+- **Recommendation:** Regularly verify `requirements.txt` against actual imports using tools like `pipreqs` or manual analysis, especially after adding/removing features.
+
+### Code Style & Quality
+- Static analysis using `flake8` identified numerous unused imports, a redefined function (`setup_chat_client` in `backend/config/config.py`), and an unused local variable (`msg_type` in `frontend/logic/message_handler.py`). These were removed.
+- `flake8` also identified many stylistic issues (line length, whitespace, indentation).
+- Automatic formatting using `black` has been applied to resolve most stylistic issues and enforce consistency. Most remaining `flake8` warnings are related to line length (E501), which `black` sometimes preserves for readability.
+- **Recommendation:** Consider integrating `flake8` and `black` into the development workflow (e.g., pre-commit hooks) to maintain code quality.
+
+### Runtime Issues & Fixes (Observed April 2025)
+- **Chat History Path (Fixed):** An error preventing chat history saving was identified due to a hardcoded user path (`/home/jack/...`) in `frontend/logic/chat_controller.py` (`_save_history_to_file` function). This caused a permission error for the actual user (`human`). The path was corrected to use a relative path (`./chat_history`) within the project directory. Ensure this directory exists or can be created by the application.
+- **Audio Configuration (Known Issue):** Logs showed numerous ALSA/JACK errors (e.g., `unable to open slave`, `Unknown PCM cards`, `Cannot open device /dev/dsp`). This indicates potential audio system misconfiguration on the target Linux environment (Raspberry Pi) that could cause instability and requires platform-specific investigation.
+- **Shutdown Error (Known Issue):** A QML TypeError (`PhotoController.stop_slideshow not available during cleanup`) occurs during application shutdown, originating from `PhotoScreen.qml`. This suggests an object lifetime or shutdown sequence issue between QML and the Python `PhotoController` that needs further debugging.
+- **Deepgram Connection (Observation):** Deepgram connection closure warnings and task cancellation errors were observed, potentially linked to shutdown or inactivity.
+
+## Recent UI Updates (April 2025)
+
+This section documents specific UI changes implemented recently:
+
+### Weather Controls (`frontend/qml/WeatherControls.qml`)
+- **Button Text:** The "7 Day Forecast" navigation button text was shortened to "7 Day".
+- **Selected Style:** The visual style for the selected navigation button ("72 Hour" or "7 Day") was updated. The semi-transparent background was removed, and a solid border with the color `#565f89` is now used to indicate selection.
+- **Button Width:** Both the "72 Hour" and "7 Day" buttons were set to a fixed `implicitWidth` of 90 pixels for visual consistency.
+
+### Calendar Controls (`frontend/qml/CalendarControls.qml`)
+- **Refresh Button:** A new refresh button was added using the `../icons/refresh.svg` icon (consistent with the Weather screen).
+- **Functionality:** This button is intended to trigger a data refresh/sync for calendar events and is currently configured to call `CalendarController.refreshEvents()`.
+
+### Bug Fixes (May 2025)
+- **Navigation and QML Component Simplification:** Fixed "Property has already been assigned a value" errors by:
+  1. Eliminating complex code that was causing property conflicts
+  2. Drastically simplifying the AlarmScreen.qml to remove unnecessary properties and functions
+  3. Using direct StackView.replace() with string paths for navigation
+  4. Removing excessive error handling and utility files that were adding complexity
+  
+  This approach aligns with best practices: minimizing the codebase and eliminating complexity rather than adding layers to work around issues.
+
+- **AlarmNotificationDialog Creation (Fixed):** Fixed through simplification - by removing the complex dialog creation code that was no longer needed in our minimal implementation.
+
+### QML Design Philosophy (May 2025)
+
+The application follows these guidelines for component design and navigation:
+
+1. **Simplicity First**
+   - Keep components as simple as possible with minimal properties
+   - Avoid complex property bindings that can lead to conflicts
+   - Use direct string paths for navigation (e.g., `stackView.replace("ScreenName.qml")`)
+
+2. **Minimize Property Usage**
+   - Define only essential properties in components
+   - Avoid redefining properties that exist in parent components
+   - Be cautious with property initialization, especially for complex types
+
+3. **Direct Navigation**
+   - Navigate between screens using simple StackView operations
+   - Keep navigation logic straightforward without excessive error handling
+   - Avoid creating intermediate components dynamically when possible
+
+4. **Modular Components**
+   - Break large components into smaller, focused ones
+   - Keep files under 200-300 lines for maintainability
+   - Separate visual elements from business logic
+
+These principles help avoid common QML issues like property binding conflicts and component creation errors.

@@ -5,7 +5,7 @@ import signal
 import os
 import logging
 from pathlib import Path
-from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
+from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance, QQmlComponent
 from PySide6.QtCore import QTimer, Qt, QObject, Slot, Property
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWebEngineQuick import QtWebEngineQuick
@@ -18,6 +18,7 @@ from frontend.error_handler import error_handler_instance, ErrorHandler
 from frontend.photo_controller import PhotoController
 from frontend.logic.calendar_controller import CalendarController # Add import
 from frontend.utils.markdown_utils import markdown_utils  # Add markdown utils import
+from frontend.logic.alarm_controller import AlarmController  # Add alarm controller import
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -115,6 +116,9 @@ def main():
 
     # Create the single CalendarController instance
     calendar_controller_instance = CalendarController()
+    
+    # Create the single AlarmController instance
+    alarm_controller_instance = AlarmController()
     # ----------------------------------
 
     # --- Register QML Types and Singletons ---
@@ -175,6 +179,16 @@ def main():
         "MarkdownUtils",  # Name exposed to QML 
         markdown_utils,
     )
+    
+    # Register AlarmController instance as a singleton
+    qmlRegisterSingletonInstance(
+        AlarmController,
+        "MyServices",
+        1,
+        0,
+        "AlarmController",  # Name exposed to QML
+        alarm_controller_instance,
+    )
     # -----------------------------------------
 
     # Create QML engine
@@ -184,6 +198,11 @@ def main():
     engine.addImportPath("frontend/qml")
     engine.addImportPath("frontend/qml/components")
     engine.addImportPath("frontend/qml/utils")
+    
+    # Add the path of our custom QML components - this is the most critical part
+    qml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qml")
+    engine.addImportPath(qml_path)
+    logger.info(f"Added QML import path: {qml_path}")
 
     # Check PySide6 version and add QtQuick.Effects module if available
     try:

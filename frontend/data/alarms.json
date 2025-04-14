@@ -1,0 +1,12 @@
+[
+  {
+    "id": "02dd85c9-2973-4853-8dc9-87a074f3bc62",
+    "name": "Alarm",
+    "hour": 8,
+    "minute": 0,
+    "enabled": true,
+    "recurrence": [
+      "ONCE"
+    ]
+  }
+]

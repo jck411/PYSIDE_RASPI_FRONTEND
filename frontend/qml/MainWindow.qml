@@ -8,6 +8,8 @@ import MyTheme 1.0  // Import our ThemeManager
 import MyServices 1.0 // Need this for SettingsService
 // import MyServices 1.0 // No longer needed for ErrorHandler, check if SettingsService is used directly here
 import "." // Import the current directory to find TouchFriendlyButton.qml
+// Removing the navigation utility import since we're using direct navigation
+// import "utils/ScreenNavigation.js" as Navigation
 
 Window {
     id: mainWindow
@@ -37,7 +39,8 @@ Window {
     Component.onCompleted: {
         // Initial settings - use Windowed by default for stability
         visibility = Window.Windowed
-        // Initial title will be set by onCurrentItemChanged when StackView loads
+        
+        // Initial theme setup
         PhotoController.set_dark_mode(ThemeManager.is_dark_mode)
     }
     
@@ -72,14 +75,55 @@ Window {
                     Layout.preferredWidth: 250 // Increased spacer width
                 } 
                 
-                // Navigation icons
-                TouchFriendlyButton { id: chatButton; source: "../icons/chat.svg"; text: "Chat"; onClicked: stackView.replace("ChatScreen.qml") }
-                TouchFriendlyButton { id: weatherButton; source: "../icons/weather.svg"; text: "Weather"; onClicked: stackView.replace("WeatherScreen.qml") }
-                TouchFriendlyButton { id: calendarButton; source: "../icons/calendar.svg"; text: "Calendar"; onClicked: stackView.replace("CalendarScreen.qml") }
-                TouchFriendlyButton { id: photosButton; source: "../icons/photos.svg"; text: "Photos"; onClicked: stackView.replace("PhotoScreen.qml") }
-                TouchFriendlyButton { id: clockButton; source: "../icons/clock.svg"; text: "Clock"; onClicked: stackView.replace("ClockScreen.qml") }
-                TouchFriendlyButton { id: themeToggleButton; source: ThemeManager.is_dark_mode ? "../icons/light_mode.svg" : "../icons/dark_mode.svg"; text: ThemeManager.is_dark_mode ? "Switch to Light Mode" : "Switch to Dark Mode"; onClicked: ThemeManager.toggle_theme() }
-                TouchFriendlyButton { id: settingsButton; source: "../icons/settings.svg"; text: "Settings"; onClicked: stackView.replace("SettingsScreen.qml") }
+                // Navigation icons with simplified direct navigation
+                TouchFriendlyButton {
+                    id: chatButton
+                    source: "../icons/chat.svg"
+                    text: "Chat"
+                    onClicked: stackView.replace("ChatScreen.qml")
+                }
+                
+                TouchFriendlyButton {
+                    id: weatherButton
+                    source: "../icons/weather.svg"
+                    text: "Weather"
+                    onClicked: stackView.replace("WeatherScreen.qml")
+                }
+                
+                TouchFriendlyButton {
+                    id: calendarButton
+                    source: "../icons/calendar.svg"
+                    text: "Calendar"
+                    onClicked: stackView.replace("CalendarScreen.qml")
+                }
+                
+                TouchFriendlyButton {
+                    id: photosButton
+                    source: "../icons/photos.svg"
+                    text: "Photos"
+                    onClicked: stackView.replace("PhotoScreen.qml")
+                }
+                
+                TouchFriendlyButton {
+                    id: clockButton
+                    source: "../icons/clock.svg"
+                    text: "Clock"
+                    onClicked: stackView.replace("ClockScreen.qml")
+                }
+                
+                TouchFriendlyButton {
+                    id: themeToggleButton
+                    source: ThemeManager.is_dark_mode ? "../icons/light_mode.svg" : "../icons/dark_mode.svg"
+                    text: ThemeManager.is_dark_mode ? "Switch to Light Mode" : "Switch to Dark Mode"
+                    onClicked: ThemeManager.toggle_theme()
+                }
+                
+                TouchFriendlyButton {
+                    id: settingsButton
+                    source: "../icons/settings.svg"
+                    text: "Settings"
+                    onClicked: stackView.replace("SettingsScreen.qml")
+                }
             
             } // End RowLayout
         } // End topBar Rectangle
@@ -89,6 +133,7 @@ Window {
             id: stackView // This is the correct StackView
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // We need to provide an initial string path, but we'll replace it properly in Component.onCompleted
             initialItem: "ChatScreen.qml"
             
             onCurrentItemChanged: {
@@ -114,10 +159,8 @@ Window {
                 // Set top bar transparency based on the current screen
                 if (currentItem && currentItem.objectName === "photoScreen") {
                     topBarTransparent = true;
-                    // console.log("MainWindow: PhotoScreen active, setting topBarTransparent = true");
                 } else {
                     topBarTransparent = false;
-                    // console.log("MainWindow: Non-PhotoScreen active, setting topBarTransparent = false");
                 }
             }
         } // End StackView
@@ -139,10 +182,14 @@ Window {
 
         onStatusChanged: {
             if (status === Loader.Ready && item) {
-                // Ensure stackView is accessible, might need mainWindow.stackView if scope is tricky
-                item.screen = stackView.currentItem
-                // Pass the main stackView reference to the loaded controls if property exists
+                console.log("ScreenControlsLoader: Loading screen controls, stackView exists:", stackView !== null);
+                
+                // Pass screen reference
+                item.screen = stackView.currentItem;
+                
+                // Pass stackView reference if property exists
                 if (item.hasOwnProperty("mainStackView")) {
+                    console.log("ScreenControlsLoader: Setting mainStackView property on controls");
                     item.mainStackView = stackView;
                 }
             }

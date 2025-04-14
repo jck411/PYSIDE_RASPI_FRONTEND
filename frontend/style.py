@@ -9,6 +9,8 @@ DARK_COLORS = {
     "button_pressed": "#2ac3de",
     "input_background": "#24283b",
     "input_border": "#414868",
+    "card_color": "#24283b",
+    "card_alternate_color": "#2E3440"
 }
 
 LIGHT_COLORS = {
@@ -22,6 +24,8 @@ LIGHT_COLORS = {
     "button_pressed": "#084E7A",
     "input_background": "#FFFFFF",
     "input_border": "#D3D7DC",
+    "card_color": "#FFFFFF",
+    "card_alternate_color": "#F5F7FA"
 }
 
 
