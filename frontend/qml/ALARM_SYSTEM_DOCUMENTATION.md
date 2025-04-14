@@ -9,23 +9,48 @@ The alarm system follows a Model-View-Controller (MVC) architecture:
 - **View**: Implemented through QML files that define the UI components
 - **Controller**: `AlarmController` bridges between the QML UI and the backend `AlarmManager`
 
+## Efficient Alarm Triggering System
+
+The alarm system uses a precise timer-based approach rather than periodic checking:
+
+1. **Direct Timer Scheduling**:
+   - Each alarm has its own dedicated QTimer
+   - Timers are scheduled to trigger at the exact time of the alarm
+   - No periodic polling or checking required
+
+2. **Resource Efficiency**:
+   - CPU usage is minimized as there's no constant checking
+   - Only active when alarms are about to trigger
+   - Scales efficiently with the number of alarms
+
+3. **Precision**:
+   - Alarms trigger at the exact scheduled time
+   - No delay due to polling intervals
+   - Millisecond-level precision
+
+4. **Automatic Rescheduling**:
+   - Recurring alarms automatically reschedule after triggering
+   - One-time alarms are disabled after triggering
+   - System handles date boundaries and day-of-week patterns
+
 ## Key Files and Their Roles
 
 ### Backend / Python Files
 
-1. **utils/alarm_manager.py**:
-   - Core alarm data management
+1. **utils/alarm_manager_v2.py**:
+   - Core alarm data management with efficient timer scheduling
    - Persists alarms to JSON files
    - Handles CRUD operations (Create, Read, Update, Delete)
-   - Emits signals when alarms change
+   - Creates and manages precise timers for each alarm
+   - Emits signals when alarms change or trigger
 
-2. **frontend/logic/alarm_controller.py**:
+2. **frontend/logic/alarm_controller_v2.py**:
    - Python-QML bridge for alarm functionality
    - Implements a proper QAbstractListModel for efficient data binding
    - Exposes alarm operations to QML
    - Translates between Python and QML data formats
    - Connects signals between backend and frontend
-   - Implements both snake_case (Python) and camelCase (QML) method versions
+   - Maintains compatibility with existing QML code
 
 3. **frontend/theme_manager.py**:
    - Manages theming for the entire application
@@ -35,11 +60,6 @@ The alarm system follows a Model-View-Controller (MVC) architecture:
 4. **frontend/style.py**:
    - Defines color palettes for different themes
    - Contains color definitions used throughout the app
-
-5. **services/alarm_checker.py**:
-   - Background service that checks when alarms should trigger
-   - Runs on a timer to periodically check alarm times
-   - Emits signals when an alarm should be triggered
 
 ### Frontend / QML Files
 
@@ -75,13 +95,18 @@ Alarms are stored and managed as JSON objects with the following structure:
 ```json
 {
   "id": "unique-uuid-string",
-  "name": "Wake up",            // Alarm label text
+  "label": "Wake up",            // Alarm label text
   "hour": 8,                     // 0-23 hour
   "minute": 30,                  // 0-59 minute
-  "enabled": true,               // Whether alarm is active
-  "recurrence": [0, 1, 2, 3, 4]  // Days when alarm repeats (0=Monday, 6=Sunday)
+  "is_enabled": true,            // Whether alarm is active
+  "days_of_week": [0, 1, 2, 3, 4]  // Days when alarm repeats (0=Monday, 6=Sunday)
 }
 ```
+
+Note: The controller translates between this internal format and the QML-friendly format:
+- `label` in backend → `name` in QML
+- `is_enabled` in backend → `enabled` in QML
+- `days_of_week` in backend → `recurrence` in QML
 
 ### Data Flow
 
@@ -105,10 +130,11 @@ Alarms are stored and managed as JSON objects with the following structure:
    - Signal chain similar to creation flow
 
 3. **Trigger Flow**:
-   - AlarmChecker periodically compares current time with alarm times
-   - When an alarm should trigger, AlarmChecker emits a signal
-   - Signal is forwarded to Controller, which emits to QML
-   - QML displays a notification dialog
+   - When an alarm's scheduled time is reached, its dedicated timer fires
+   - The AlarmManager emits an `alarmTriggered` signal with the alarm data
+   - The Controller receives this signal and forwards it to QML
+   - QML displays a notification dialog and plays the alarm sound
+   - For recurring alarms, a new timer is automatically scheduled for the next occurrence
 
 ## Key Components
 
@@ -121,9 +147,12 @@ The central manager for alarm data with these key methods:
 - `add_alarm(hour, minute, label, days_of_week, is_enabled)`: Creates a new alarm
 - `update_alarm(alarm_id, **changes)`: Updates an existing alarm
 - `delete_alarm(alarm_id)`: Deletes an alarm
+- `set_alarm_enabled(alarm_id, enabled)`: Toggles an alarm's enabled state
+- `clear_all_alarms()`: Deletes all alarms
 
 Signals:
 - `alarmsChanged`: Emitted when alarms are added, updated, or deleted
+- `alarmTriggered`: Emitted when an alarm triggers
 
 ### AlarmController Class
 
@@ -236,8 +265,9 @@ Key utility functions in QML:
 
 5. **When an Alarm Triggers**:
    - Notification dialog appears
+   - Alarm sound plays
    - Shows alarm label and current time
-   - User can dismiss
+   - User can dismiss (which stops the sound)
 
 ## Error Handling and Edge Cases
 
@@ -256,6 +286,10 @@ The implementation includes robust error handling:
    - Safe handling of arrays and collections
    - Conversion between Python lists and QML arrays
 
+4. **Timer Management**:
+   - Proper cleanup of timers when alarms are deleted or disabled
+   - Handling of edge cases like time changes or system sleep
+
 ## Performance Considerations
 
 1. **Model Updates**:
@@ -270,6 +304,11 @@ The implementation includes robust error handling:
    - Property binding for immediate theme updates
    - Efficient color property updates
 
+4. **Timer Efficiency**:
+   - Single-shot timers that only activate when needed
+   - No continuous polling or checking
+   - Automatic cleanup to prevent memory leaks
+
 ## Implementation Notes
 
 1. **Signal Connection Pattern**:
@@ -283,6 +322,11 @@ The implementation includes robust error handling:
 3. **Component Reuse**:
    - Modular design for UI components
    - Reusable formatting functions
+
+4. **Timer Management**:
+   - Each alarm has its own dedicated QTimer
+   - Timers are single-shot and precisely scheduled
+   - Automatic rescheduling for recurring alarms
 
 ## Customization Guide
 
@@ -476,6 +520,10 @@ To modify the layout of the alarm screen:
    - Minimize complex property bindings
    - Use functions for complex calculations instead of bindings
 
+4. **Timer Optimization**:
+   - For very distant alarms, consider using a placeholder timer
+   - Reschedule timers after system time changes
+
 ### Debugging Tips
 
 1. **QML Debugging**:
@@ -489,6 +537,10 @@ To modify the layout of the alarm screen:
 3. **Model Debugging**:
    - Log model data before and after updates
    - Verify role names and data types
+
+4. **Timer Debugging**:
+   - Log timer creation, scheduling, and triggering
+   - Verify timer intervals and trigger times
 
 ## Troubleshooting Common Issues
 
@@ -514,9 +566,9 @@ To modify the layout of the alarm screen:
 **Symptoms**: Alarms don't trigger at the scheduled time.
 
 **Solutions**:
-1. Check if the AlarmChecker is running
+1. Check if the alarm is enabled
 2. Verify the alarm data is correct (hour, minute, days_of_week)
-3. Check if the alarm is enabled
+3. Check if the timer is being created and scheduled correctly
 4. Verify the system time is correct
 5. Check for errors in the console log
 
@@ -534,20 +586,29 @@ To modify the layout of the alarm screen:
 
 The alarm system has been significantly improved with the following changes:
 
-1. **Standardized Controller Implementation**:
-   - Removed duplicate controller implementation
-   - Standardized on the QAbstractListModel approach for better data binding
+1. **Efficient Timer-Based Alarm Triggering**:
+   - Replaced periodic checking with precise timer scheduling
+   - Each alarm now has its own dedicated timer
+   - Timers are scheduled to trigger at the exact alarm time
+   - Significantly reduced CPU usage and improved battery life
+   - Increased precision for alarm triggering
 
-2. **Simplified QML Implementation**:
-   - Integrated edit panel and notification dialog directly in AlarmScreen.qml
-   - Removed unused QML files for better maintainability
+2. **Improved Architecture**:
+   - New AlarmManager v2 with direct timer management
+   - New AlarmController v2 that maintains QML compatibility
+   - Better separation of concerns between components
+   - More robust error handling and edge case management
 
-3. **Fixed Alarm Deletion Issues**:
-   - Simplified property binding for alarmId
-   - Ensured consistent property naming between Python and QML
+3. **Enhanced Performance**:
+   - Eliminated polling overhead
+   - Reduced background CPU usage
+   - More efficient memory usage
+   - Better scaling with large numbers of alarms
 
-4. **Improved Model Binding**:
-   - Consistently using AlarmController.alarmModel() for ListView model
-   - Proper role mapping between Python and QML
+4. **Improved User Experience**:
+   - More precise alarm triggering
+   - Consistent behavior across system states
+   - Integrated audio playback for alarms
+   - Better handling of recurring alarms
 
-These improvements have resulted in a more reliable, maintainable, and efficient alarm system.
+These improvements have resulted in a more reliable, efficient, and user-friendly alarm system.

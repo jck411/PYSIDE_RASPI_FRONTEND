@@ -124,7 +124,7 @@ BaseScreen {
         
         // Set the edit fields
         hourTumbler.currentIndex = alarm.hour
-        minuteTumbler.currentIndex = Math.floor(alarm.minute / 5)
+        minuteTumbler.currentIndex = alarm.minute
         labelField.text = alarm.label || ""
         
         // Update day selections
@@ -146,17 +146,13 @@ BaseScreen {
         // Default to current time + 5 minutes, rounded to nearest 5
         var now = new Date()
         var hour = now.getHours()
-        var minute = Math.ceil((now.getMinutes() + 5) / 5) * 5
-        
-        // Handle minute overflow
+        var minute = now.getMinutes() + 1
         if (minute >= 60) {
-            minute = minute - 60
+            minute = 0
             hour = (hour + 1) % 24
         }
-        
-        // Reset UI elements
         hourTumbler.currentIndex = hour
-        minuteTumbler.currentIndex = Math.floor(minute / 5)
+        minuteTumbler.currentIndex = minute
         labelField.text = ""
         
         // Reset day selection
@@ -172,7 +168,7 @@ BaseScreen {
     // Save the alarm (add or update)
     function saveAlarm() {
         var hour = hourTumbler.currentIndex
-        var minute = minuteTumbler.currentIndex * 5
+        var minute = minuteTumbler.currentIndex
         var label = labelField.text.trim() || "Alarm"
         var days = selectedDays.length > 0 ? selectedDays : []
         
@@ -225,9 +221,9 @@ BaseScreen {
     // Handle alarm trigger notification and other alarm controller signals
     Connections {
         target: AlarmController
-        
         function onAlarmTriggered(alarmId, alarmLabel) {
             alarmNotification.alarmTitle = alarmLabel || "Alarm"
+            AudioManager.play_alarm_sound()
             alarmNotification.open()
         }
         
@@ -541,13 +537,13 @@ BaseScreen {
                         // Minute tumbler
                         Tumbler {
                             id: minuteTumbler
-                            model: 12
+                            model: 60
                             visibleItemCount: 3
                             height: 120
                             width: 80
                             
                             delegate: Text {
-                                text: String(modelData * 5).padStart(2, '0')
+                                text: String(modelData).padStart(2, '0')
                                 color: ThemeManager.text_primary_color
                                 font.pixelSize: minuteTumbler.currentIndex === index ? 30 : 20
                                 font.bold: minuteTumbler.currentIndex === index
@@ -819,6 +815,7 @@ BaseScreen {
                 }
             }
         }
+        onClosed: AudioManager.stop_playback()
     }
     
     // Confirmation dialog for clearing all alarms

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import asyncio
+import os
 
-from PySide6.QtCore import QMutex, QMutexLocker, QIODevice
+from PySide6.QtCore import QMutex, QMutexLocker, QIODevice, QObject, Slot
 from PySide6.QtMultimedia import QAudioFormat, QAudioSink, QMediaDevices, QAudio
 
 from frontend.config import logger
@@ -81,12 +82,13 @@ class QueueAudioDevice(QIODevice):
             )
 
 
-class AudioManager:
+class AudioManager(QObject):
     """
     Manages audio processing and playback.
     """
 
     def __init__(self):
+        super().__init__()
         self._audio_queue = asyncio.Queue()
         self._running = True
         self.tts_audio_playing = False
@@ -95,7 +97,8 @@ class AudioManager:
     def setup_audio(self):
         """Set up audio devices and sink"""
         self.audioDevice = QueueAudioDevice()
-        self.audioDevice.open(QIODevice.ReadOnly)
+        # Use OpenModeFlag.ReadOnly instead of ReadOnly
+        self.audioDevice.open(QIODevice.OpenModeFlag.ReadOnly)
 
         audio_format = QAudioFormat()
         audio_format.setSampleRate(24000)
@@ -164,7 +167,8 @@ class AudioManager:
                         "[AudioManager] Restarting audio sink from non-active state."
                     )
                     self.audioDevice.close()
-                    self.audioDevice.open(QIODevice.ReadOnly)
+                    # Use OpenModeFlag.ReadOnly instead of ReadOnly
+                    self.audioDevice.open(QIODevice.OpenModeFlag.ReadOnly)
                     self.audioSink.start(self.audioDevice)
 
                 # Write data to device
@@ -207,9 +211,9 @@ class AudioManager:
         logger.info("[AudioManager] Audio finished playing")
         return True
 
-    async def stop_playback(self):
+    async def stop_audio_playback(self):
         """
-        Stop all audio playback and clear buffers
+        Stop all audio playback and clear buffers (async version)
         """
         logger.info("[AudioManager] Stopping playback and cleaning audio resources")
         current_state = self.audioSink.state()
@@ -245,3 +249,80 @@ class AudioManager:
             self.audioSink.stop()
         self.audioDevice.close()
         logger.info("[AudioManager] Cleanup complete")
+
+    async def play_alarm_sound_async(self):
+        """Play the alarm.raw PCM file using the audio queue (async version)."""
+        alarm_path = os.path.join(os.path.dirname(__file__), '../sounds/alarm.raw')
+        try:
+            with open(alarm_path, 'rb') as f:
+                chunk = f.read()
+                await self.process_audio_data(chunk)
+                await self.process_audio_data(b"")  # Signal end of stream
+            logger.info("[AudioManager] Alarm sound played successfully")
+            return True
+        except Exception as e:
+            logger.error(f"[AudioManager] Failed to play alarm sound: {e}")
+            return False
+            
+    @Slot()
+    def play_alarm_sound(self):
+        """Synchronous wrapper for play_alarm_sound_async that can be called from QML."""
+        logger.info("[AudioManager] QML requested to play alarm sound")
+        
+        # Instead of using asyncio.create_task, directly read and play the file
+        import os
+        alarm_path = os.path.join(os.path.dirname(__file__), '../sounds/alarm.raw')
+        try:
+            # Reset the audio device and sink to ensure it's in a clean state
+            self._reset_audio_device()
+            
+            # Read and play the alarm sound
+            with open(alarm_path, 'rb') as f:
+                chunk = f.read()
+                # Use the synchronous version to write data
+                self.audioDevice.writeData(chunk)
+                logger.info("[AudioManager] Alarm sound data written to audio device")
+        except Exception as e:
+            logger.error(f"[AudioManager] Failed to play alarm sound: {e}")
+            
+    def _reset_audio_device(self):
+        """Reset the audio device and sink to ensure it's in a clean state."""
+        logger.info("[AudioManager] Resetting audio device and sink")
+        
+        try:
+            # Stop the audio sink if it's active
+            if self.audioSink.state() == QAudio.State.ActiveState:
+                self.audioSink.stop()
+                
+            # Clear the buffer
+            self.audioDevice.clear_buffer()
+            
+            # Close and reopen the audio device
+            self.audioDevice.close()
+            self.audioDevice.open(QIODevice.OpenModeFlag.ReadOnly)
+            
+            # Restart the audio sink
+            self.audioSink.start(self.audioDevice)
+            
+            logger.info("[AudioManager] Audio device and sink reset successfully")
+        except Exception as e:
+            logger.error(f"[AudioManager] Failed to reset audio device: {e}")
+        
+    @Slot()
+    def stop_playback(self):
+        """Synchronous wrapper for stop_audio_playback that can be called from QML."""
+        logger.info("[AudioManager] QML requested to stop playback")
+        
+        # Instead of using asyncio.create_task, directly clear the buffer
+        try:
+            # Clear the buffer
+            self.audioDevice.clear_buffer()
+            
+            # Stop the audio sink if it's active
+            if self.audioSink.state() == QAudio.State.ActiveState:
+                self.audioSink.stop()
+                logger.info("[AudioManager] Audio sink stopped")
+                
+            logger.info("[AudioManager] Audio playback stopped")
+        except Exception as e:
+            logger.error(f"[AudioManager] Failed to stop playback: {e}")

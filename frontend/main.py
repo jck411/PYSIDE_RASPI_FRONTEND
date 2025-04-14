@@ -18,8 +18,10 @@ from frontend.error_handler import error_handler_instance, ErrorHandler
 from frontend.photo_controller import PhotoController
 from frontend.logic.calendar_controller import CalendarController
 from frontend.utils.markdown_utils import markdown_utils
-from frontend.logic.alarm_controller import AlarmController
+# Import the new AlarmController v2 instead of the old one
+from frontend.logic.alarm_controller_v2 import AlarmController
 from frontend.logic.time_context_provider import TimeContextProvider
+from frontend.logic.audio_manager import AudioManager
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -124,6 +126,8 @@ def main():
     
     # Create the single TimeContextProvider instance via ChatController
     time_context_provider_instance = chat_controller_instance.time_context_provider
+    # Create the single AudioManager instance
+    audio_manager_instance = AudioManager()
     # ----------------------------------
 
     # --- Register QML Types and Singletons ---
@@ -203,6 +207,16 @@ def main():
         0,
         "TimeContextProvider",  # Name exposed to QML # type: ignore
         time_context_provider_instance,
+    )
+
+    # Register AudioManager as a singleton
+    qmlRegisterSingletonInstance(
+        AudioManager,
+        "MyServices",
+        1,
+        0,
+        "AudioManager",
+        audio_manager_instance,
     )
     # -----------------------------------------
 
