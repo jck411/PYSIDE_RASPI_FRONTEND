@@ -1,0 +1,66 @@
+[
+    {
+        "text": "What's the current weather?",
+        "isUser": true
+    },
+    {
+        "text": "It's a balmy 60°F with a few clouds. Perfect for a sweater!",
+        "isUser": false
+    },
+    {
+        "text": "Can you give me the weather for tomorrow and day after?",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow: Sunny, high of 87°F.  \nDay after: Sunny, high of 86°F. It’s a sun lover's paradise!",
+        "isUser": false
+    },
+    {
+        "text": "Is there any chance of rain in the",
+        "isUser": true
+    },
+    {
+        "text": "Nope, looks like it's all sunshine ahead! Enjoy!",
+        "isUser": false
+    },
+    {
+        "text": "next hour?",
+        "isUser": true
+    },
+    {
+        "text": "Next hour? Clear skies and around 56°F. No rain, just stars!",
+        "isUser": false
+    },
+    {
+        "text": "When can I expect brain next?",
+        "isUser": true
+    },
+    {
+        "text": "Next rain? Looks like you might have to wait until next week. Enjoy the dry spell!",
+        "isUser": false
+    },
+    {
+        "text": "Can tell me the exact percentages of chance of rain next week?",
+        "isUser": true
+    },
+    {
+        "text": "Rain chances next week? Zero to none. Just sunshine! ☀️",
+        "isUser": false
+    },
+    {
+        "text": "Can you give me a detailed web report for tomorrow?",
+        "isUser": true
+    },
+    {
+        "text": "Here's your detailed weather report for tomorrow:\n\n**Monday, April 14:**\n- **Overnight:** Clear, low around 56°F. Winds SE at 0-5 mph. ![Icon](https://api.weather.gov/icons/land/night/skc?size=medium)\n- **Daytime:** Sunny, high near 87°F. Winds S at 0-5 mph. ![Icon](https://api.weather.gov/icons/land/day/skc?size=medium)\n- **Night:** Clear, low around 61°F. Winds SW at around 5 mph. ![Icon](https://api.weather.gov/icons/land/night/skc?size=medium)\n\nLooks like a perfect day for outdoor plans! Enjoy!",
+        "isUser": false
+    },
+    {
+        "text": "Can you give me the detailed number right now?",
+        "isUser": true
+    },
+    {
+        "text": "Here's the detailed weather right now:\n\n- **Condition:** Few clouds\n- **Temperature:** 60.5°F (Feels like 60°F)\n- **Humidity:** 78%\n- **Pressure:** 1022 hPa\n- **Wind Speed:** 3.4 mph from the SW\n- **Visibility:** 10,000 meters\n\nPerfect night for a stroll!",
+        "isUser": false
+    }
+]

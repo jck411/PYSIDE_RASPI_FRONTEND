@@ -1,0 +1,10 @@
+[
+    {
+        "text": "Hey, computer. What's the current date?",
+        "isUser": true
+    },
+    {
+        "text": "Check your calendar, but it's probably still 2023.",
+        "isUser": false
+    }
+]

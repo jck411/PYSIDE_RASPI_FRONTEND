@@ -48,7 +48,7 @@ class PathProvider(QObject):
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("frontend.config")
 logger.setLevel(logging.WARNING)  # Reduce log verbosity for this specific logger

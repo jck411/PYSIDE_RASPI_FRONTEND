@@ -60,7 +60,7 @@ DEEPGRAM_CONFIG = {
 # ========================
 # LOGGING CONFIGURATION
 # ========================
-def setup_logger(name=__name__, level=logging.INFO):
+def setup_logger(name=__name__, level=logging.DEBUG):
     """
     Set up a logger with consistent formatting
 
@@ -89,7 +89,7 @@ def setup_logger(name=__name__, level=logging.INFO):
 
 
 # Create default logger
-logger = setup_logger(level=logging.INFO)
+logger = setup_logger(level=logging.DEBUG)
 
 # ========================
 # CHAT CONFIGURATION

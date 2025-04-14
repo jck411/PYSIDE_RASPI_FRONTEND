@@ -138,8 +138,9 @@ async def fetch_weather(
     lat=DEFAULT_LAT, 
     lon=DEFAULT_LON, 
     data_type="current", 
-    units="imperial", 
-    lang="en"
+    units="imperial",
+    lang="en",
+    detail_level="simple" # New parameter
 ):
     """
     Fetch weather data based on the requested type.
@@ -148,9 +149,10 @@ async def fetch_weather(
     Args:
         lat: Latitude coordinates
         lon: Longitude coordinates
-        data_type: Type of weather data to fetch ("current", "forecast", or "both")
-        units: Units of measurement (metric, imperial, standard)
-        lang: Language for the response
+        data_type: Type of weather data to fetch ("current", "forecast", or "both").
+        units: Units of measurement (metric, imperial, standard).
+        lang: Language for the response.
+        detail_level: Level of detail required ("simple" or "detailed"). Default is "simple".
         
     Returns:
         Weather data from the appropriate API(s)
@@ -191,13 +193,54 @@ async def fetch_weather(
             else:
                 forecast_data = results[task_index]
 
-        if current_data:
-            result["current"] = current_data
-        if forecast_data:
-            result["forecast"] = forecast_data
-    
+        # Process current data based on detail_level
+        if current_data and isinstance(current_data, dict): # Explicit check for Pylance
+            current_processed = {}
+            ow_current = current_data.get("current", {}) # Data is nested under 'current' key from fetch_ow_current
+            if ow_current:
+                current_processed["description"] = ow_current.get("weather", [{}])[0].get("description", "N/A")
+                current_processed["temp"] = ow_current.get("temp", "N/A")
+                current_processed["feels_like"] = ow_current.get("feels_like", "N/A")
+                current_processed["source"] = current_data.get("source", "OpenWeatherMap") # Keep source
+
+                if detail_level == "detailed":
+                    current_processed["humidity"] = ow_current.get("humidity", "N/A")
+                    current_processed["pressure"] = ow_current.get("pressure", "N/A")
+                    current_processed["wind_speed"] = ow_current.get("wind_speed", "N/A")
+                    current_processed["wind_deg"] = ow_current.get("wind_deg", "N/A")
+                    current_processed["visibility"] = ow_current.get("visibility", "N/A")
+                    current_processed["uvi"] = ow_current.get("uvi", "N/A")
+                    # Add sunrise/sunset if needed, converting from timestamp
+                    # sunrise_ts = ow_current.get("sunrise")
+                    # sunset_ts = ow_current.get("sunset")
+
+            result["current"] = current_processed if current_processed else {"error": "Could not process current weather data."}
+
+
+        # Process forecast data based on detail_level
+        if forecast_data and isinstance(forecast_data, dict): # Explicit check for Pylance
+            forecast_processed = {}
+            try:
+                # Prioritize the narrative forecast periods
+                periods = forecast_data.get("forecast", {}).get("properties", {}).get("periods", [])
+                if periods:
+                    num_periods = 4 if detail_level == "simple" else 14 # Simple: ~2 days, Detailed: ~7 days
+                    forecast_processed["periods"] = periods[:num_periods]
+                    forecast_processed["source"] = forecast_data.get("source", "NWS") # Keep source
+                    forecast_processed["generated_at"] = forecast_data.get("forecast", {}).get("properties", {}).get("generatedAt")
+                    forecast_processed["elevation"] = forecast_data.get("forecast", {}).get("properties", {}).get("elevation")
+
+                else:
+                     forecast_processed = {"error": "No forecast periods found in NWS data."}
+
+            except Exception as e:
+                logger.error(f"Error processing NWS forecast data: {e}")
+                forecast_processed = {"error": f"Error processing forecast data: {e}"}
+
+            result["forecast"] = forecast_processed
+
     if not result:
-        return {"error": "Failed to fetch weather data from any source."}
+        return {"error": "Failed to fetch or process weather data from any source."}
     
     return result
 
@@ -214,7 +257,7 @@ def get_schema():
             "strict": True,
             "parameters": {
                 "type": "object",
-                "required": ["lat", "lon", "data_type", "units", "lang"],
+                "required": ["lat", "lon", "data_type", "units", "lang", "detail_level"],
                 "properties": {
                     "lat": {"type": "number", "description": "Latitude coordinate of the location"},
                     "lon": {"type": "number", "description": "Longitude coordinate of the location"},
@@ -230,10 +273,15 @@ def get_schema():
                     },
                     "lang": {
                         "type": "string",
-                        "description": "Language for the response (e.g., en, es, fr)",
+                        "description": "Language for the response (e.g., en, es, fr). Default is 'en'.",
                     },
+                    "detail_level": {
+                        "type": "string",
+                        "description": "Level of detail required: 'simple' for a brief summary, 'detailed' for more information. Default is 'simple'.",
+                        "enum": ["simple", "detailed"],
+                    }
                 },
-                "additionalProperties": False,
+                "additionalProperties": False
             },
         },
     } 

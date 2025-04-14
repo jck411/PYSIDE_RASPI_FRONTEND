@@ -1,0 +1,18 @@
+[
+    {
+        "text": "What's the current time?",
+        "isUser": true
+    },
+    {
+        "text": "It's 12:44 AM. Time for bed, or are you just getting started?",
+        "isUser": false
+    },
+    {
+        "text": "What about the date?",
+        "isUser": true
+    },
+    {
+        "text": "It's October 23, 2023. Mark your calendar!",
+        "isUser": false
+    }
+]

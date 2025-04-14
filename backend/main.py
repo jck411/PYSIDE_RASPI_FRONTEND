@@ -23,7 +23,7 @@ from contextlib import asynccontextmanager
 # Logging Setup (Configure basic logging)
 # ------------------------------------------------------------------------------
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -48,35 +48,40 @@ async def periodic_weather_update(interval_seconds: int = 1800):
     # Fetch OpenWeatherMap data (for current weather)
     ow_data = await fetch_openweather_data()
     
-    if nws_data:
-        # Store NWS data in weather state
-        weather_state.latest_weather_data = nws_data
-        
-        # Integrate OpenWeatherMap current weather data if available
-        if ow_data:
-            # Replace NWS current weather data with OpenWeatherMap data
-            weather_state.latest_weather_data["ow_current"] = ow_data.get("current", {})
-            weather_state.latest_weather_data["ow_minutely"] = ow_data.get("minutely", [])
-            weather_state.latest_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
+    updated_weather_data = None
+    if nws_data and not isinstance(nws_data, Exception):
+        # Start with NWS data
+        updated_weather_data = nws_data.copy() # Make a copy to avoid modifying original if needed elsewhere
+
+        # Integrate OpenWeatherMap current weather data if available and valid
+        if ow_data and not isinstance(ow_data, Exception):
+            updated_weather_data["ow_current"] = ow_data.get("current", {})
+            updated_weather_data["ow_minutely"] = ow_data.get("minutely", [])
+            updated_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
             logger.info("OpenWeatherMap current data integrated successfully.")
-            
-            # Update theme manager with sunrise/sunset times if available (from NWS data)
+        else:
+            # Log warning if OW data failed but NWS succeeded
+            logger.warning("OpenWeatherMap data fetch failed during initial fetch.")
+
+        # Update theme manager if NWS data is valid
+        try:
             from frontend.main import app
             if hasattr(app, "theme_manager") and app.theme_manager:
-                # Get sunrise/sunset times from the data
-                sunrise_sunset = nws_data.get("sunrise_sunset", {})
+                sunrise_sunset = updated_weather_data.get("sunrise_sunset", {})
                 if sunrise_sunset:
                     sunrise = sunrise_sunset.get("sunrise")
                     sunset = sunrise_sunset.get("sunset")
-                    
                     if sunrise and sunset:
-                        # Update theme manager with sunrise/sunset times
                         app.theme_manager.update_sun_times(sunrise, sunset)
                         logger.info("Updated theme manager with sunrise/sunset times.")
-        else:
-            logger.warning("OpenWeatherMap data fetch failed.")
-            
-        logger.info("Initial weather data fetched successfully.")
+        except ImportError:
+             logger.warning("Could not import frontend app for theme manager update.")
+        except Exception as e:
+             logger.error(f"Error updating theme manager: {e}")
+
+        # Assign the combined data to the state
+        weather_state.latest_weather_data = updated_weather_data
+        logger.info("Initial weather data processed successfully.")
     else:
         logger.warning("Initial NWS data fetch failed.")
         # No fallback data - we'll return 503 until real data is available
@@ -88,32 +93,42 @@ async def periodic_weather_update(interval_seconds: int = 1800):
         nws_data = await fetch_weather_data()
         ow_data = await fetch_openweather_data()
         
-        if nws_data:
-            weather_state.latest_weather_data = nws_data
-            
-            # Integrate OpenWeatherMap current weather data if available
-            if ow_data:
-                # Replace NWS current weather data with OpenWeatherMap data
-                weather_state.latest_weather_data["ow_current"] = ow_data.get("current", {})
-                weather_state.latest_weather_data["ow_minutely"] = ow_data.get("minutely", [])
-                weather_state.latest_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
-                logger.info("OpenWeatherMap current data integrated successfully.")
-                
-                # Update theme manager with sunrise/sunset times if available (from NWS data)
+        updated_weather_data_retry = None
+        if nws_data and not isinstance(nws_data, Exception):
+            # Start with NWS data
+            updated_weather_data_retry = nws_data.copy()
+
+            # Integrate OpenWeatherMap current weather data if available and valid
+            if ow_data and not isinstance(ow_data, Exception):
+                updated_weather_data_retry["ow_current"] = ow_data.get("current", {})
+                updated_weather_data_retry["ow_minutely"] = ow_data.get("minutely", [])
+                updated_weather_data_retry["ow_weather_overview"] = ow_data.get("weather_overview", "")
+                logger.info("OpenWeatherMap current data integrated successfully on retry.")
+            else:
+                logger.warning("OpenWeatherMap data fetch failed on retry.")
+
+            # Update theme manager if NWS data is valid
+            try:
                 from frontend.main import app
                 if hasattr(app, "theme_manager") and app.theme_manager:
-                    # Get sunrise/sunset times from the data
-                    sunrise_sunset = nws_data.get("sunrise_sunset", {})
+                    sunrise_sunset = updated_weather_data_retry.get("sunrise_sunset", {})
                     if sunrise_sunset:
                         sunrise = sunrise_sunset.get("sunrise")
                         sunset = sunrise_sunset.get("sunset")
-                        
                         if sunrise and sunset:
-                            # Update theme manager with sunrise/sunset times
                             app.theme_manager.update_sun_times(sunrise, sunset)
-                            logger.info("Updated theme manager with sunrise/sunset times.")
-                
-            logger.info("Second attempt weather data fetched successfully.")
+                            logger.info("Updated theme manager with sunrise/sunset times on retry.")
+            except ImportError:
+                 logger.warning("Could not import frontend app for theme manager update on retry.")
+            except Exception as e:
+                 logger.error(f"Error updating theme manager on retry: {e}")
+
+            # Assign the combined data to the state
+            weather_state.latest_weather_data = updated_weather_data_retry
+            logger.info("Second attempt weather data processed successfully.")
+        else:
+             # Log if NWS failed on retry as well
+             logger.error("NWS data fetch failed on retry.")
 
     # Start periodic updates after the initial fetch
     while True:
@@ -138,34 +153,55 @@ async def periodic_weather_update(interval_seconds: int = 1800):
             ow_data = None
         
         # Update the weather state if NWS data is available
-        if nws_data:
-            weather_state.latest_weather_data = nws_data
-            
-            # Integrate OpenWeatherMap current weather data if available
-            if ow_data:
-                # Replace NWS current weather data with OpenWeatherMap data
-                weather_state.latest_weather_data["ow_current"] = ow_data.get("current", {})
-                weather_state.latest_weather_data["ow_minutely"] = ow_data.get("minutely", [])
-                weather_state.latest_weather_data["ow_weather_overview"] = ow_data.get("weather_overview", "")
-                logger.info("Both NWS and OpenWeatherMap data updated successfully.")
-                
-                # Update theme manager with sunrise/sunset times if available (from NWS data)
-                from frontend.main import app
-                if hasattr(app, "theme_manager") and app.theme_manager:
-                    # Get sunrise/sunset times from the data
-                    sunrise_sunset = nws_data.get("sunrise_sunset", {})
-                    if sunrise_sunset:
-                        sunrise = sunrise_sunset.get("sunrise")
-                        sunset = sunrise_sunset.get("sunset")
-                        
-                        if sunrise and sunset:
-                            # Update theme manager with sunrise/sunset times
-                            app.theme_manager.update_sun_times(sunrise, sunset)
-                            logger.info("Updated theme manager with sunrise/sunset times.")
-            else:
-                logger.warning("Only NWS data updated successfully.")
+        updated_weather_data_periodic = None
+        if nws_data: # Already checked for Exception above
+             if isinstance(nws_data, dict): # Explicit check for Pylance
+                 updated_weather_data_periodic = nws_data.copy()
+             else:
+                 # This case should logically not be reachable due to checks above
+                 logger.error("Periodic: Reached unexpected state where nws_data is not None but not a dict.")
+                 continue # Skip this update cycle
+
+             if ow_data: # Already checked for Exception above
+                 if isinstance(ow_data, dict): # Explicit check for Pylance
+                     updated_weather_data_periodic["ow_current"] = ow_data.get("current", {})
+                     updated_weather_data_periodic["ow_minutely"] = ow_data.get("minutely", [])
+                     updated_weather_data_periodic["ow_weather_overview"] = ow_data.get("weather_overview", "")
+                 # No else needed here, ow_data being None is handled by the outer 'if ow_data:'
+                 logger.info("Periodic: Both NWS and OpenWeatherMap data updated successfully.")
+
+                 # Update theme manager only if both are successful and NWS data is present
+                 try:
+                     from frontend.main import app
+                     if hasattr(app, "theme_manager") and app.theme_manager:
+                         sunrise_sunset = updated_weather_data_periodic.get("sunrise_sunset", {})
+                         if sunrise_sunset:
+                             sunrise = sunrise_sunset.get("sunrise")
+                             sunset = sunrise_sunset.get("sunset")
+                             if sunrise and sunset:
+                                 app.theme_manager.update_sun_times(sunrise, sunset)
+                                 logger.info("Periodic: Updated theme manager with sunrise/sunset times.")
+                 except ImportError:
+                      logger.warning("Periodic: Could not import frontend app for theme manager update.")
+                 except Exception as e:
+                      logger.error(f"Periodic: Error updating theme manager: {e}")
+
+             else:
+                 # NWS succeeded, OW failed
+                 logger.warning("Periodic: Only NWS data updated successfully.")
+
+             # Assign the potentially updated data (even if only NWS)
+             weather_state.latest_weather_data = updated_weather_data_periodic
+
+        elif ow_data:
+             # NWS failed, OW succeeded - Currently we don't store OW data alone
+             logger.warning("Periodic: NWS fetch failed, but OpenWeatherMap succeeded. Discarding OW data for now.")
+             # Optionally, you could store OW data separately if needed
+             # weather_state.latest_ow_data = ow_data # Example
+
         else:
-            logger.warning("Periodic weather update failed.")
+             # Both failed
+             logger.error("Periodic: Both NWS and OpenWeatherMap updates failed.")
 
 
 # ------------------------------------------------------------------------------
@@ -224,15 +260,16 @@ app.add_middleware(
 @app.websocket("/ws/chat")
 async def unified_chat_websocket(websocket: WebSocket):
     await websocket.accept()
-    print("New WebSocket connection established")
+    logger.info("New WebSocket connection established")
 
     try:
         while True:
             data = await websocket.receive_json()
+            logger.debug(f"Received JSON data: {data}")
             action = data.get("action")
 
             if action == "chat":
-                print("\nProcessing new chat message...")
+                logger.info("Processing new chat message...")
                 # Clear event for the new chat.
                 GEN_STOP_EVENT.clear()
 
@@ -256,12 +293,12 @@ async def unified_chat_websocket(websocket: WebSocket):
                     ):
                         if GEN_STOP_EVENT.is_set():
                             break
-                        print(f"Sending content chunk: {content[:50]}...")
+                        logger.debug(f"Sending content chunk: {content[:50]}...")
                         await websocket.send_json(
                             {"content": content, "is_chunk": True}
                         )
                 finally:
-                    print("Chat stream finished, cleaning up...")
+                    logger.info("Chat stream finished, cleaning up...")
                     # Send a final signal to indicate streaming is complete
                     try:
                         if not GEN_STOP_EVENT.is_set():
@@ -276,23 +313,25 @@ async def unified_chat_websocket(websocket: WebSocket):
                                 None,
                             )
                             if last_message:
+                                final_content = last_message.get("content", "")
+                                logger.debug(f"Sending final message: {final_content[:100]}...")
                                 await websocket.send_json(
                                     {
-                                        "content": last_message.get("content", ""),
+                                        "content": final_content,
                                         "is_final": True,
                                     }
                                 )
                     except Exception as e:
-                        print(f"Error sending final message: {e}")
+                        logger.error(f"Error sending final message: {e}")
 
                     await phrase_queue.put(None)
                     await process_streams_task
                     await audio_forward_task
-                    print("Cleanup completed")
+                    logger.info("Cleanup completed")
     except WebSocketDisconnect:
-        pass
+        logger.info("WebSocket disconnected.")
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logger.error(f"WebSocket error: {e}", exc_info=True)
     finally:
         await websocket.close()
 
@@ -306,14 +345,14 @@ async def forward_audio_to_websocket(
     try:
         while True:
             if stop_event.is_set():
-                print("Audio forwarding stopped by stop event")
+                logger.info("Audio forwarding stopped by stop event")
                 await websocket.send_bytes(b"audio:")  # Send empty audio marker
                 break
 
             try:
                 audio_data = await audio_queue.get()
                 if audio_data is None:
-                    print("Received None in audio queue, sending audio end marker")
+                    logger.info("Received None in audio queue, sending audio end marker")
                     await websocket.send_bytes(b"audio:")
                     break
                 # Prepend "audio:" if not already present.
@@ -322,17 +361,18 @@ async def forward_audio_to_websocket(
                     if not audio_data.startswith(b"audio:")
                     else audio_data
                 )
+                logger.debug(f"Sending audio bytes, size: {len(message)}")
                 await websocket.send_bytes(message)
             except Exception as e:
-                print(f"Error forwarding audio to websocket: {e}")
+                logger.error(f"Error forwarding audio to websocket: {e}", exc_info=True)
                 break
     except Exception as e:
-        print(f"Forward audio task error: {e}")
+        logger.error(f"Forward audio task error: {e}", exc_info=True)
     finally:
         try:
             await websocket.send_bytes(b"audio:")
         except Exception as e:
-            print(f"Error sending final empty message: {e}")
+            logger.error(f"Error sending final empty message: {e}", exc_info=True)
 
 
 # ------------------------------------------------------------------------------

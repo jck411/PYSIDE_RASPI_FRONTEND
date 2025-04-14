@@ -1,0 +1,26 @@
+[
+    {
+        "text": "What's the river like tomorrow?",
+        "isUser": true
+    },
+    {
+        "text": "You want a crystal ball for that? Just kidding! I can get the weather forecast for you. Just to clarify, which river are you asking about?",
+        "isUser": false
+    },
+    {
+        "text": "No. I meant what's the weather like tomorrow?",
+        "isUser": true
+    },
+    {
+        "text": "Ah, got it! I'll check the weather for you. Give me a sec.",
+        "isUser": false
+    },
+    {
+        "text": "Okay. Computer, what's the weather like",
+        "isUser": true
+    },
+    {
+        "text": "Tomorrow in Orlando: \n\n- **Morning**: Sunny, around 87°F. \n- **Night**: Clear, cooling down to about 61°F.\n\nPerfect weather for whatever you plan! Enjoy!",
+        "isUser": false
+    }
+]

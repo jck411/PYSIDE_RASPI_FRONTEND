@@ -1,0 +1,10 @@
+[
+    {
+        "text": "What's the river like tomorrow?",
+        "isUser": true
+    },
+    {
+        "text": "I can check the weather forecast for you. Just give me a sec!Sunny and 87°F. Perfect for a lazy river day! 🌞🏊‍♂️",
+        "isUser": false
+    }
+]

@@ -74,6 +74,8 @@ async def fetch_openweather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON)
             onecall_task = client.get(onecall_url, params=params)
             overview_task = client.get(overview_url, params=params)
             
+            logger.debug(f"Requesting OneCall URL: {onecall_url} with params: {params}")
+            logger.debug(f"Requesting Overview URL: {overview_url} with params: {params}")
             logger.info(f"Fetching OpenWeatherMap data concurrently for lat={lat}, lon={lon}")
             responses = await asyncio.gather(
                 onecall_task, 
@@ -91,12 +93,18 @@ async def fetch_openweather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON)
             onecall_response, overview_response = responses
             
             # Validate responses
+            if isinstance(onecall_response, httpx.Response):
+                logger.debug(f"OneCall response status: {onecall_response.status_code}")
+            if isinstance(overview_response, httpx.Response):
+                logger.debug(f"Overview response status: {overview_response.status_code}")
             for resp in [onecall_response, overview_response]:
-                resp.raise_for_status()
+                if isinstance(resp, httpx.Response):
+                    resp.raise_for_status()
             
             # Parse JSON data
-            onecall_data = onecall_response.json()
-            overview_data = overview_response.json()
+            onecall_data = onecall_response.json() if isinstance(onecall_response, httpx.Response) else {}
+            overview_data = overview_response.json() if isinstance(overview_response, httpx.Response) else {}
+            logger.debug("Successfully parsed JSON from both OpenWeatherMap responses.")
             
             # Extract required data
             current = onecall_data.get("current", {})
@@ -110,6 +118,7 @@ async def fetch_openweather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON)
                 "weather_overview": weather_overview
             }
             
+            logger.debug(f"Returning combined OpenWeatherMap data: {str(combined_data)[:200]}...")
             logger.info("Successfully fetched OpenWeatherMap data")
             return combined_data
             

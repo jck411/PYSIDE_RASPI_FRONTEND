@@ -46,6 +46,7 @@ class WebSocketClient(QObject):
                     while self._running:
                         try:
                             raw_msg = await ws.recv()
+                            logger.debug(f"[WebSocketClient] Raw message received type: {type(raw_msg)}, content preview: {str(raw_msg)[:100]}...")
                             await self._process_message(raw_msg)
                         except Exception as e:
                             # Pass user message for significant processing errors
@@ -111,6 +112,7 @@ class WebSocketClient(QObject):
                 )
                 # FIXED: Using synchronous emit for the signal
                 # The ChatController will handle scheduling the actual async work
+                logger.debug(f"[WebSocketClient] Emitting audioReceived signal for chunk size: {len(audio_data)}")
                 self.audioReceived.emit(audio_data)
             else:
                 logger.warning("[WebSocketClient] Unknown binary message format")
@@ -121,6 +123,7 @@ class WebSocketClient(QObject):
             try:
                 data = json.loads(raw_msg)
                 logger.debug(f"[WebSocketClient] Received message: {data}")
+                logger.debug(f"[WebSocketClient] Emitting messageReceived signal with data: {data}")
                 self.messageReceived.emit(data)
             except json.JSONDecodeError as e:
                 # User message for bad JSON data
@@ -144,6 +147,7 @@ class WebSocketClient(QObject):
             return False
 
         try:
+            logger.debug(f"[WebSocketClient] Attempting to send message: {data}")
             await self._ws.send(json.dumps(data))
             return True
         except Exception as e:

@@ -1,0 +1,98 @@
+[
+    {
+        "text": "What's the temperature gonna be during sunrise? Tonight?",
+        "isUser": true
+    },
+    {
+        "text": "During sunrise, expect a cozy 56°F. Tonight, it'll drop to around 61°F. Enjoy the chill!",
+        "isUser": false
+    },
+    {
+        "text": "What time is sunset tomorrow?",
+        "isUser": true
+    },
+    {
+        "text": "Sunset tomorrow is at 6:36 PM. Don't be late for the show!",
+        "isUser": false
+    },
+    {
+        "text": "The temperature gonna be during sunset?",
+        "isUser": true
+    },
+    {
+        "text": "During sunset, expect it to be around 61°F. Perfect for a stroll!",
+        "isUser": false
+    },
+    {
+        "text": "What date are we talking about when we're talking about the sun? Sunset?",
+        "isUser": true
+    },
+    {
+        "text": "We're talking about tomorrow's sunset, which is October 7th. Mark your calendar!",
+        "isUser": false
+    },
+    {
+        "text": "That date is way off. It's not October 7 right now.",
+        "isUser": true
+    },
+    {
+        "text": "Oops! My bad. What date is it, then?",
+        "isUser": false
+    },
+    {
+        "text": "I mean, you should tell me.",
+        "isUser": true
+    },
+    {
+        "text": "It's currently October 6th. My mistake! So, tomorrow’s sunset is on the 7th.",
+        "isUser": false
+    },
+    {
+        "text": "What's the current time?",
+        "isUser": true
+    },
+    {
+        "text": "It's currently 12:37 AM. Time for bed or late-night snacks? Your choice!",
+        "isUser": false
+    },
+    {
+        "text": "What's the weather like tonight?",
+        "isUser": true
+    },
+    {
+        "text": "Tonight, it's a cool 61°F with a few clouds. Perfect for a night out!",
+        "isUser": false
+    },
+    {
+        "text": "What's the date tonight?",
+        "isUser": true
+    },
+    {
+        "text": "Tonight's date is still October 6th. So, enjoy your evening!",
+        "isUser": false
+    },
+    {
+        "text": "When you grab the weather, do you grab the date with it?",
+        "isUser": true
+    },
+    {
+        "text": "Not usually. I just focus on the weather. Dates are like sidekicks—always there but not the main star!",
+        "isUser": false
+    },
+    {
+        "text": "What's the current weather?",
+        "isUser": true
+    },
+    {
+        "text": "Current weather: few clouds, around 61°F. Nice and cool! Perfect for a hoodie!",
+        "isUser": false
+    },
+    {
+        "text": "So what's the current date?",
+        "isUser": true
+    },
+    {
+        "text": "The current date is October 6th. Just hanging out in October!",
+        "isUser": false
+    }
+]
