@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from PySide6.QtCore import QObject, Signal
+from typing import List, Dict, Any, Optional
 
 from frontend.config import logger
 
@@ -21,7 +22,18 @@ class MessageHandler(QObject):
         self._current_response = ""  # Track the current response text
         self._interrupted_response = ""  # Track interrupted response for continuity
         self._last_request_messages = []  # Track messages from last request
+        self._time_context_provider = None  # Not using this directly in messages anymore
         logger.info("[MessageHandler] Initialized")
+
+    def set_time_context_provider(self, provider):
+        """
+        Set the time context provider - no longer used to directly enrich messages.
+        
+        Args:
+            provider: TimeContextProvider instance
+        """
+        self._time_context_provider = provider
+        logger.info("[MessageHandler] Time context provider set (for reference only)")
 
     def process_message(self, data):
         """
@@ -86,8 +98,17 @@ class MessageHandler(QObject):
         Get the message history.
 
         Returns:
-            List of message dictionaries
+            List of message dictionaries in internal format (sender/text)
         """
+        # Make sure we have messages to convert
+        if not self._messages:
+            logger.warning("[MessageHandler] No messages in history")
+            # Return empty list as there's nothing to convert
+            return []
+            
+        # We no longer need to convert message format - the backend expects 
+        # exactly the format we're using internally
+        logger.debug(f"[MessageHandler] Returning {len(self._messages)} messages in internal format")
         return self._messages
 
     def store_last_request_state(self):

@@ -16,9 +16,10 @@ from frontend.theme_manager import ThemeManager
 from frontend.settings_service import SettingsService
 from frontend.error_handler import error_handler_instance, ErrorHandler
 from frontend.photo_controller import PhotoController
-from frontend.logic.calendar_controller import CalendarController # Add import
-from frontend.utils.markdown_utils import markdown_utils  # Add markdown utils import
-from frontend.logic.alarm_controller import AlarmController  # Add alarm controller import
+from frontend.logic.calendar_controller import CalendarController
+from frontend.utils.markdown_utils import markdown_utils
+from frontend.logic.alarm_controller import AlarmController
+from frontend.logic.time_context_provider import TimeContextProvider
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -120,6 +121,9 @@ def main():
     
     # Create the single AlarmController instance
     alarm_controller_instance = AlarmController()
+    
+    # Create the single TimeContextProvider instance via ChatController
+    time_context_provider_instance = chat_controller_instance.time_context_provider
     # ----------------------------------
 
     # --- Register QML Types and Singletons ---
@@ -190,6 +194,16 @@ def main():
         "AlarmController",  # Name exposed to QML # type: ignore
         alarm_controller_instance,
     )
+    
+    # Register TimeContextProvider as a singleton
+    qmlRegisterSingletonInstance(
+        TimeContextProvider,
+        "MyServices",
+        1,
+        0,
+        "TimeContextProvider",  # Name exposed to QML # type: ignore
+        time_context_provider_instance,
+    )
     # -----------------------------------------
 
     # Create QML engine
@@ -249,30 +263,29 @@ def main():
     timer.timeout.connect(process_asyncio_events)
     timer.start()
 
-    # Handle graceful shutdown
+    # Define signal handler for graceful shutdown
     def signal_handler(sig, frame):
-        logger.info("Signal received => shutting down.")
-        app.quit() # type: ignore
+        logger.info(f"Received signal {sig}, initiating graceful shutdown...")
+        app.quit()
 
+    # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
-    # Start the Qt event loop
+    # Start the application event loop
     exit_code = app.exec()
-
-    # Cleanup
-    # chat_controller = None # REMOVE: We have the instance directly
-    # for obj in engine.rootObjects():
-    #     chat_controller = obj.findChild(ChatController)
-    #     if chat_controller:
-    #         chat_controller.cleanup()
-    #         break
-    # Directly cleanup the singleton instance
-    if chat_controller_instance:
-        logger.info("Cleaning up ChatController singleton...")
-        chat_controller_instance.cleanup()
-
-    loop.close()
-    logger.info("Application closed.")
+    
+    # Clean up after the application exits
+    logger.info("Application event loop exited. Cleaning up...")
+    
+    # Scheduled cleanup tasks using asyncio
+    try:
+        # Handle chat controller cleanup
+        loop.run_until_complete(chat_controller_instance.cleanup())
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
+    
+    # Exit the application with the exit code
     sys.exit(exit_code)
 
 

@@ -4,7 +4,7 @@ import asyncio
 import os
 from datetime import datetime
 
-from PySide6.QtCore import QObject, Signal, Slot, Property
+from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
 
 from frontend.config import logger
 from frontend.logic.audio_manager import AudioManager
@@ -14,6 +14,7 @@ from frontend.logic.message_handler import MessageHandler
 from frontend.logic.wake_word_handler import WakeWordHandler
 from frontend.logic.tts_controller import TTSController
 from frontend.logic.resource_manager import ResourceManager
+from frontend.logic.time_context_provider import TimeContextProvider
 
 
 class ChatController(QObject):
@@ -37,6 +38,8 @@ class ChatController(QObject):
     inactivityTimerStopped = Signal()  # Relays timer stop event
     # Signal to notify UI when history is cleared
     historyCleared = Signal()
+    # Signal for time context updates
+    timeContextUpdated = Signal(dict)  # Relays time context updates
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -56,6 +59,12 @@ class ChatController(QObject):
         self.message_handler = MessageHandler()
         self.websocket_client = WebSocketClient()
         self.tts_controller = TTSController(parent)
+        
+        # Initialize time context provider
+        self.time_context_provider = TimeContextProvider()
+        
+        # Connect the time context provider to the message handler
+        self.message_handler.set_time_context_provider(self.time_context_provider)
 
         # Initialize wake word handler
         self.wake_word_handler = WakeWordHandler()
@@ -65,7 +74,6 @@ class ChatController(QObject):
         self._connect_signals()
 
         # Start tasks with a small delay to ensure QML is set up
-        QTimer = __import__("PySide6.QtCore", fromlist=["QTimer"]).QTimer
         timer = QTimer(self)
         timer.setSingleShot(True)
         timer.setInterval(100)  # 100ms delay
@@ -112,10 +120,20 @@ class ChatController(QObject):
         self.audio_manager.audioSink.stateChanged.connect(
             self.audio_manager.handle_audio_state_changed
         )
+        
+        # Time context provider signals
+        self.time_context_provider.timeContextUpdated.connect(self.timeContextUpdated)
 
     def _startTasks(self):
         """Start the background tasks"""
         logger.info("[ChatController] Starting background tasks")
+        
+        # Initialize time context provider
+        self.resource_manager.create_task(
+            "time_context", self._initialize_time_context()
+        )
+        
+        # Start other background tasks
         self.resource_manager.create_task(
             "websocket", self.websocket_client.start_connection_loop()
         )
@@ -126,6 +144,14 @@ class ChatController(QObject):
         # Start wake word detection
         self.wake_word_handler.start_listening()
         logger.info("[ChatController] Wake word detection started")
+    
+    async def _initialize_time_context(self):
+        """Initialize the time context provider"""
+        success = await self.time_context_provider.initialize()
+        if success:
+            logger.info("[ChatController] Time context provider initialized successfully")
+        else:
+            logger.error("[ChatController] Failed to initialize time context provider")
 
     def _handle_connection_change(self, connected):
         """Handle WebSocket connection status changes"""
@@ -376,53 +402,37 @@ class ChatController(QObject):
 
     # --- End STT state getters ---
 
-    def cleanup(self):
-        """
-        Clean up resources on shutdown.
-        """
-        logger.info("[ChatController] Cleaning up...")
-
-        # --- Save history synchronously before stopping components ---
-        logger.info(
-            "[ChatController:cleanup] Attempting to save final conversation history..."
-        )
-        self._save_history_to_file(list(self._chat_history))
-        # -----------------------------------------------------------
-
+    async def cleanup(self):
+        """Clean up all resources."""
+        logger.info("[ChatController] Cleaning up resources...")
+        
+        # Add cleanup for time context provider
+        await self.time_context_provider.cleanup()
+        
+        # Perform all existing cleanup
         self._running = False
-        # Stop wake word handler gracefully
+        
+        # Stop wake word detection
         self.wake_word_handler.stop_listening()
-        logger.info("[ChatController] Wake word handler stopped")
-
-        # Stop WebSocket connection and related tasks
-        if self.websocket_client:
-            self.websocket_client.cleanup()
-            logger.info("[ChatController] WebSocket client cleanup initiated")
-
-        # Stop AudioManager
-        if self.audio_manager:
-            self.audio_manager.cleanup()
-        logger.info("[ChatController] Audio manager cleanup initiated")
-
-        # Stop STT service
-        if self.speech_manager:
-            self.speech_manager.cleanup()
-        logger.info("[ChatController] Speech manager cleaned up")
-
-        # Cancel all remaining tasks managed by ResourceManager
-        self.resource_manager.cancel_all_tasks()
-        logger.info("[ChatController] All resource manager tasks cancelled")
-
-        # Allow event loop to process cancellations
-        async def wait_for_cleanup():
-            await asyncio.sleep(0.1)  # Short delay for tasks to cancel
-            logger.info("[ChatController] Cleanup complete.")
-
-        # Run the final cleanup step in the loop if it's still running
-        if self._loop and self._loop.is_running():
-            self._loop.create_task(wait_for_cleanup())
-        else:
-            logger.warning("[ChatController] Event loop not running during cleanup.")
+        logger.info("[ChatController] Wake word detection stopped")
+        
+        # Stop audio playback
+        await self.audio_manager.stop_playback()
+        
+        # Stop WebSocket connection
+        await self.websocket_client.disconnect()
+        
+        # Cancel all scheduled tasks
+        tasks_cancelled = self.resource_manager.cancel_all_tasks()
+        logger.info(f"[ChatController] Cancelled {tasks_cancelled} scheduled tasks")
+        
+        # Stop audio sink
+        await self.audio_manager.cleanup()
+        
+        # Wait for all tasks to actually complete
+        await self.resource_manager.wait_for_all_tasks()
+        
+        logger.info("[ChatController] All resources cleaned up")
 
     # --- History Management Methods ---
     @Slot(result=list)
