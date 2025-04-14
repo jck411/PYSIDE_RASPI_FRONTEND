@@ -3,7 +3,6 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import MyTheme 1.0
 import MyServices 1.0
-import "dialogs" // <-- Import the dialogs directory
 
 BaseScreen {
     id: alarmScreen
