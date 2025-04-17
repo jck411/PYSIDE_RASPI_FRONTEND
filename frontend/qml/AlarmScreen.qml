@@ -238,6 +238,7 @@ BaseScreen {
     // Main layout
     ColumnLayout {
         anchors.fill: parent
+        anchors.margins: 20 // Add padding to all edges
         spacing: 0
         
         // Alarm List 
@@ -253,23 +254,6 @@ BaseScreen {
             Component.onCompleted: {
                 console.log("Setting model to AlarmController.alarmModel()");
                 model = AlarmController.alarmModel();
-            }
-            
-            // Placeholder for empty list
-            Rectangle {
-                anchors.centerIn: parent
-                width: parent.width * 0.8
-                height: 80
-                color: ThemeManager.background_secondary_color
-                radius: 10
-                visible: alarmListView.count === 0
-                
-                Text {
-                    anchors.centerIn: parent
-                    text: "No alarms set. Tap + to add one."
-                    font.pixelSize: 18
-                    color: ThemeManager.text_secondary_color
-                }
             }
             
             delegate: Rectangle {
@@ -401,16 +385,11 @@ BaseScreen {
                 width: alarmListView.width
                 spacing: 10
                 
-                Rectangle {
+                // Remove Rectangle background, use only MouseArea and RowLayout
+                MouseArea {
                     width: parent.width
                     height: 80
-                    color: ThemeManager.background_secondary_color
-                    radius: 10
-                    
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: startNewAlarm()
-                    }
+                    onClicked: startNewAlarm()
                     
                     RowLayout {
                         anchors.fill: parent
@@ -418,19 +397,16 @@ BaseScreen {
                         anchors.rightMargin: 20
                         spacing: 20
                         
-                        // Add button - using a circle with + symbol as a simple approach
-                        Rectangle {
+                        // Add button - SVG icon only
+                        Item {
                             width: 40
                             height: 40
-                            radius: width / 2
-                            color: ThemeManager.accent_color
-                            
-                            Text {
+                            Image {
                                 anchors.centerIn: parent
-                                text: "+"
-                                color: ThemeManager.accent_text_color
-                                font.pixelSize: 28
-                                font.bold: true
+                                source: "../icons/alarm_add.svg"
+                                width: 32
+                                height: 32
+                                fillMode: Image.PreserveAspectFit
                             }
                         }
                         
@@ -441,29 +417,6 @@ BaseScreen {
                             color: ThemeManager.text_primary_color
                             Layout.fillWidth: true
                         }
-                    }
-                }
-                
-                // Clear All Alarms button
-                Rectangle {
-                    width: parent.width
-                    height: 60
-                    color: ThemeManager.danger_color
-                    radius: 10
-                    
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            confirmClearDialog.open()
-                        }
-                    }
-                    
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Clear All Alarms"
-                        font.pixelSize: 18
-                        color: ThemeManager.accent_text_color
-                        font.bold: true
                     }
                 }
             }
@@ -815,77 +768,5 @@ BaseScreen {
             }
         }
         onClosed: AudioManager.stop_playback()
-    }
-    
-    // Confirmation dialog for clearing all alarms
-    Dialog {
-        id: confirmClearDialog
-        title: "Clear All Alarms"
-        modal: true
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
-        width: Math.min(parent.width * 0.8, 400)
-        
-        contentItem: Item {
-            implicitHeight: 150
-            
-            ColumnLayout {
-                anchors.centerIn: parent
-                spacing: 20
-                
-                Text {
-                    text: "Are you sure you want to delete all alarms?\nThis action cannot be undone."
-                    font.pixelSize: 18
-                    color: ThemeManager.text_primary_color
-                    horizontalAlignment: Text.AlignHCenter
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                }
-                
-                RowLayout {
-                    spacing: 20
-                    Layout.alignment: Qt.AlignHCenter
-                    
-                    Button {
-                        text: "Cancel"
-                        onClicked: confirmClearDialog.close()
-                        
-                        contentItem: Text {
-                            text: parent.text
-                            font: parent.font
-                            color: ThemeManager.text_primary_color
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        
-                        background: Rectangle {
-                            radius: 8
-                            color: ThemeManager.background_secondary_color
-                        }
-                    }
-                    
-                    Button {
-                        text: "Clear All"
-                        onClicked: {
-                            AlarmController.clearAllAlarms()
-                            confirmClearDialog.close()
-                        }
-                        
-                        contentItem: Text {
-                            text: parent.text
-                            font: parent.font
-                            color: ThemeManager.accent_text_color
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        
-                        background: Rectangle {
-                            radius: 8
-                            color: ThemeManager.danger_color
-                        }
-                    }
-                }
-            }
-        }
     }
 }
