@@ -44,6 +44,23 @@ BaseControls {
                 }
             });
         }
+        
+        // Timer button
+        var timerButton = createButton(
+            "../icons/timer.svg", 
+            "Timer", 
+            24
+        );
+        
+        if (timerButton) {
+            timerButton.onClicked.connect(function() {
+                if (mainStackView) {
+                    mainStackView.replace("TimerScreen.qml")
+                } else {
+                    console.error("AlarmControls: mainStackView reference is null!");
+                }
+            });
+        }
     }
     
     // Function to create a standard control button

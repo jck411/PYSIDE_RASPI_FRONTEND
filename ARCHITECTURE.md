@@ -35,6 +35,7 @@ The application includes multiple screens that can be navigated via the tab bar:
 - **CalendarScreen**: Shows calendar events
 - **ClockScreen**: Displays time and date with a digital clock
 - **AlarmScreen**: Dedicated screen for managing alarms
+- **TimerScreen**: Countdown timer functionality
 - **PhotoScreen**: Displays photos and videos in a slideshow
 - **SettingsScreen**: Application settings
 
@@ -459,6 +460,51 @@ The ClockScreen provides time/date display plus an integrated alarm management s
   - Custom days appear as an extension of the repeat options when needed
   - Better use of screen space for a cleaner, more organized interface
   - Consistent spacing and alignment across all form sections
+
+## Timer Screen Implementation
+The TimerScreen provides a countdown timer with intuitive controls:
+
+- **Time Selection Interface**: Uses tumblers to select hours, minutes, and seconds
+  - Hour tumbler with values from 0-23
+  - Minute tumbler with values from 0-59
+  - Second tumbler with values from 0-59
+  - Tumblers follow the same styling as the alarm edit interface
+
+- **Quick Preset Buttons**: Preset time durations for common use cases
+  - 1 minute preset
+  - 5 minute preset
+  - 10 minute preset
+  - 30 minute preset
+  - Clicking a preset immediately sets the tumblers to the corresponding time
+
+- **Timer Controls**:
+  - Start button to begin the countdown
+  - Pause button to temporarily halt the countdown
+  - Resume button to continue after pausing
+  - Reset button to stop and reset the timer
+  - Buttons dynamically show/hide based on the timer's current state
+
+- **Timer Display**: Shows the remaining time in large, easy-to-read format
+  - Display format automatically switches between MM:SS and HH:MM:SS as needed
+  - Updates every second while the timer is running
+
+- **Timer Notification**: When the timer completes, a notification dialog appears
+  - Plays an alarm sound using the same AudioManager as the alarm feature
+  - Notification includes a dismiss button to close the dialog and stop the sound
+
+- **Navigation**: The screen includes the same navigation structure as Clock and Alarm screens
+  - Clock button to navigate to the ClockScreen
+  - Alarm button to navigate to the AlarmScreen
+  - Timer button for the current screen
+
+The timer implementation is purely client-side within QML, using the built-in Timer component for the countdown functionality. This provides a responsive user experience without requiring backend processing.
+
+The UI follows the same design principles as the Clock and Alarm screens, maintaining visual consistency through the use of:
+- Consistent color scheme from ThemeManager
+- Matching font styles and sizes
+- Similar layout structure and component spacing
+- Consistent button styling with accent colors for primary actions
+- Uniform dialog design for notifications
 
 ## UI Updates (May 2025)
 

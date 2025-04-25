@@ -4,14 +4,14 @@ import QtQuick.Layouts 1.15
 import MyServices 1.0
 
 BaseControls {
-    id: clockControls
+    id: timerControls
     
     // Reference to the main StackView for navigation
     property var mainStackView: null
     
-    // Create both Clock and Alarm buttons when component completes
+    // Create navigation buttons when component completes
     Component.onCompleted: {
-        // Clock button (shows current screen but can be used to return from alarm view)
+        // Clock button
         var clockButton = createButton(
             "../icons/clock.svg", 
             "Clock", 
@@ -23,7 +23,7 @@ BaseControls {
                 if (mainStackView) {
                     mainStackView.replace("ClockScreen.qml")
                 } else {
-                    console.error("ClockControls: mainStackView reference is null!");
+                    console.error("TimerControls: mainStackView reference is null!");
                 }
             });
         }
@@ -40,12 +40,12 @@ BaseControls {
                 if (mainStackView) {
                     mainStackView.replace("AlarmScreen.qml")
                 } else {
-                    console.error("ClockControls: mainStackView reference is null!");
+                    console.error("TimerControls: mainStackView reference is null!");
                 }
             });
         }
         
-        // Timer button
+        // Timer button (shows current screen but can be used to return to timer view)
         var timerButton = createButton(
             "../icons/timer.svg", 
             "Timer", 
@@ -57,9 +57,9 @@ BaseControls {
                 if (mainStackView) {
                     mainStackView.replace("TimerScreen.qml")
                 } else {
-                    console.error("ClockControls: mainStackView reference is null!");
+                    console.error("TimerControls: mainStackView reference is null!");
                 }
             });
         }
     }
-}
+} 
