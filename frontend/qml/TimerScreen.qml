@@ -560,6 +560,7 @@ BaseScreen {
         id: timerNotification
         title: "Timer Finished"
         modal: true
+        closePolicy: Popup.NoAutoClose // Prevent closing by clicking outside or pressing Escape
         
         // Center in parent
         x: (parent.width - width) / 2
@@ -568,6 +569,11 @@ BaseScreen {
         // Size
         width: Math.min(parent.width - 40, 400)
         height: 200
+        
+        // Dim the background with a semi-transparent overlay
+        Overlay.modal: Rectangle {
+            color: Qt.rgba(0, 0, 0, 0.6) // Semi-transparent black
+        }
         
         // Apply theme
         palette.window: ThemeManager.dialog_background_color

@@ -710,18 +710,65 @@ BaseScreen {
         id: alarmNotification
         title: "Alarm"
         modal: true
+        closePolicy: Popup.NoAutoClose // Prevent closing by clicking outside or pressing Escape
+        
+        // Center in parent
         x: (parent.width - width) / 2
         y: (parent.height - height) / 2
+        
+        // Size
         width: Math.min(parent.width * 0.8, 400)
+        height: 200
+        
+        // Dim the background with a semi-transparent overlay
+        Overlay.modal: Rectangle {
+            color: Qt.rgba(0, 0, 0, 0.6) // Semi-transparent black
+        }
         
         property string alarmTitle: "Alarm"
         
-        contentItem: Item {
-            implicitHeight: 150
+        // Apply theme
+        palette.window: ThemeManager.dialog_background_color
+        palette.windowText: ThemeManager.text_primary_color
+        palette.button: ThemeManager.button_color
+        palette.buttonText: ThemeManager.button_text_color
+        
+        background: Rectangle {
+            color: ThemeManager.dialog_background_color
+            radius: 10
+            border.color: ThemeManager.border_color
+            border.width: 1
+        }
+        
+        header: Rectangle {
+            color: ThemeManager.dialog_header_color
+            height: 50
+            radius: 10
             
-            ColumnLayout {
+            // Only make the top corners rounded
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: parent.height / 2
+                color: parent.color
+            }
+            
+            Label {
+                text: alarmNotification.title
+                color: ThemeManager.text_primary_color
+                font.pixelSize: 18
+                font.bold: true
                 anchors.centerIn: parent
+            }
+        }
+        
+        contentItem: Item {
+            ColumnLayout {
+                anchors.fill: parent
                 spacing: 20
+                
+                Item { Layout.fillHeight: true }
                 
                 Text {
                     text: alarmNotification.alarmTitle
@@ -730,6 +777,7 @@ BaseScreen {
                     color: ThemeManager.text_primary_color
                     horizontalAlignment: Text.AlignHCenter
                     Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
                 }
                 
                 Text {
@@ -741,32 +789,39 @@ BaseScreen {
                     color: ThemeManager.text_secondary_color
                     horizontalAlignment: Text.AlignHCenter
                     Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
                 }
                 
-                RowLayout {
-                    spacing: 20
-                    Layout.alignment: Qt.AlignHCenter
-                    
-                    Button {
-                        text: "Dismiss"
-                        onClicked: alarmNotification.close()
-                        
-                        contentItem: Text {
-                            text: parent.text
-                            font: parent.font
-                            color: ThemeManager.accent_text_color
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        
-                        background: Rectangle {
-                            radius: 8
-                            color: ThemeManager.accent_color
-                        }
-                    }
-                }
+                Item { Layout.fillHeight: true }
             }
         }
+        
+        footer: RowLayout {
+            spacing: 10
+            Layout.fillWidth: true
+            
+            Button {
+                text: "Dismiss"
+                Layout.preferredWidth: 120
+                Layout.alignment: Qt.AlignHCenter
+                
+                contentItem: Text {
+                    text: parent.text
+                    font: parent.font
+                    color: ThemeManager.accent_text_color
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                
+                background: Rectangle {
+                    radius: 8
+                    color: ThemeManager.accent_color
+                }
+                
+                onClicked: alarmNotification.close()
+            }
+        }
+        
         onClosed: AudioManager.stop_playback()
     }
 }

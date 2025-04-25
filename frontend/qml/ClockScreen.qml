@@ -106,6 +106,7 @@ BaseScreen {
             
             title: "Alarm"
             modal: true
+            closePolicy: Popup.NoAutoClose // Prevent closing by clicking outside or pressing Escape
             
             // Center in parent
             x: (parent.width - width) / 2
@@ -114,6 +115,11 @@ BaseScreen {
             // Size
             width: Math.min(parent.width - 40, 400)
             height: 250
+            
+            // Dim the background with a semi-transparent overlay
+            Overlay.modal: Rectangle {
+                color: Qt.rgba(0, 0, 0, 0.6) // Semi-transparent black
+            }
             
             // Dialog properties
             property string alarmId: ""
@@ -200,7 +206,21 @@ BaseScreen {
                 
                 Button {
                     text: "Snooze (5 min)"
-                    Layout.fillWidth: true
+                    Layout.preferredWidth: 150
+                    Layout.alignment: Qt.AlignHCenter
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        font: parent.font
+                        color: ThemeManager.accent_text_color
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    
+                    background: Rectangle {
+                        radius: 8
+                        color: ThemeManager.accent_color
+                    }
                     
                     onClicked: {
                         snoozed()
@@ -210,7 +230,21 @@ BaseScreen {
                 
                 Button {
                     text: "Dismiss"
-                    Layout.fillWidth: true
+                    Layout.preferredWidth: 120
+                    Layout.alignment: Qt.AlignHCenter
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        font: parent.font
+                        color: ThemeManager.accent_text_color
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    
+                    background: Rectangle {
+                        radius: 8
+                        color: ThemeManager.accent_color
+                    }
                     
                     onClicked: {
                         dismissed()
