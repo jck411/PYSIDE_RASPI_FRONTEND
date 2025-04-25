@@ -11,13 +11,34 @@ BaseControls {
     
     // Initialize controls when component is completed
     Component.onCompleted: {
-        // Clock button to navigate to clock screen
-        var clockButton = createButton("../icons/clock.svg", "Show Clock", 24);
+        // Clock button 
+        var clockButton = createButton(
+            "../icons/clock.svg", 
+            "Clock", 
+            24
+        );
+        
         if (clockButton) {
             clockButton.onClicked.connect(function() {
-                // Navigate to the ClockScreen directly
                 if (mainStackView) {
                     mainStackView.replace("ClockScreen.qml")
+                } else {
+                    console.error("AlarmControls: mainStackView reference is null!");
+                }
+            });
+        }
+        
+        // Alarm button (shows current screen but can be used to refresh alarm view)
+        var alarmButton = createButton(
+            "../icons/alarms_active.svg", 
+            "Alarms", 
+            24
+        );
+        
+        if (alarmButton) {
+            alarmButton.onClicked.connect(function() {
+                if (mainStackView) {
+                    mainStackView.replace("AlarmScreen.qml")
                 } else {
                     console.error("AlarmControls: mainStackView reference is null!");
                 }

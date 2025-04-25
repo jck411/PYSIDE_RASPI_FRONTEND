@@ -1,13 +1,5 @@
 [
   {
-    "id": "d6033a61-9a43-4d4f-af81-ab43573b85fb",
-    "hour": 20,
-    "minute": 30,
-    "label": "Alarm",
-    "days_of_week": [],
-    "is_enabled": true
-  },
-  {
     "id": "6b605e12-31f1-4c3f-897e-8b180e9cbb1a",
     "hour": 20,
     "minute": 31,

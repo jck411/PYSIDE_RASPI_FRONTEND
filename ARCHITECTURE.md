@@ -410,9 +410,14 @@ When implementing the refactoring:
 ## Clock Screen Implementation
 The ClockScreen provides time/date display plus an integrated alarm management system:
 
-- **Dual-View Interface**: The ClockScreen has two main views, toggled via the controls:
-  - Primary Clock View: Large, prominent time/date display
-  - Alarm Management View: List of alarms with management controls
+- **Dual-View Interface**: The ClockScreen has two main screens, accessed via dedicated navigation buttons:
+  - ClockScreen: Large, prominent time/date display
+  - AlarmScreen: List of alarms with management controls
+
+- **Navigation Controls**: Both screens have a consistent set of navigation buttons:
+  - Clock button: Navigates to the ClockScreen
+  - Alarm button: Navigates to the AlarmScreen
+  - Both controls appear in the same position across both screens for consistent navigation
 
 - **Alarm Management**: Users can create, edit, disable, and delete alarms
   - One-time alarms for specific times
@@ -433,7 +438,7 @@ The ClockScreen provides time/date display plus an integrated alarm management s
   - Time selection interface using tumbler controls for intuitive time picking
   - Alarm setup dialog with various recurrence options
   - Notification dialog with snooze functionality
-  - Controls for toggling between clock and alarm views
+  - Dedicated navigation buttons for moving between clock and alarm screens
   - Floating action button for adding new alarms, positioned in the bottom-right of the alarm list
   - Modern UI with theme-aware styling
 
