@@ -38,7 +38,10 @@ BaseScreen {
                 // Show notification dialog
                 openNotificationDialog(alarmId, alarmName)
                 
-                // TODO: Play sound or implement other notification mechanisms
+                // Play alarm sound
+                if (typeof AudioManager !== 'undefined' && typeof AudioManager.play_alarm_sound === 'function') {
+                    AudioManager.play_alarm_sound()
+                }
             }
         }
         
@@ -113,22 +116,17 @@ BaseScreen {
             y: (parent.height - height) / 2
             
             // Size
-            width: Math.min(parent.width - 40, 400)
-            height: 250
+            width: Math.min(parent.width * 0.85, 420)
+            height: 270
             
             // Dim the background with a semi-transparent overlay
             Overlay.modal: Rectangle {
-                color: Qt.rgba(0, 0, 0, 0.6) // Semi-transparent black
+                color: Qt.rgba(0, 0, 0, 0.7)
             }
             
             // Dialog properties
             property string alarmId: ""
             property string alarmName: "Alarm"
-            property var alarmTime: new Date()
-            
-            // Dialog signals
-            signal dismissed()
-            signal snoozed()
             
             // Apply theme
             palette.window: ThemeManager.dialog_background_color
@@ -138,15 +136,15 @@ BaseScreen {
             
             background: Rectangle {
                 color: ThemeManager.dialog_background_color
-                radius: 10
+                radius: 12
                 border.color: ThemeManager.border_color
                 border.width: 1
             }
             
             header: Rectangle {
                 color: ThemeManager.dialog_header_color
-                height: 50
-                radius: 10
+                height: 55
+                radius: 12
                 
                 // Only make the top corners rounded
                 Rectangle {
@@ -160,7 +158,7 @@ BaseScreen {
                 Label {
                     text: notificationDialog.title
                     color: ThemeManager.text_primary_color
-                    font.pixelSize: 18
+                    font.pixelSize: 20
                     font.bold: true
                     anchors.centerIn: parent
                 }
@@ -169,7 +167,8 @@ BaseScreen {
             // Content area
             ColumnLayout {
                 anchors.fill: parent
-                spacing: 20
+                anchors.margins: 16
+                spacing: 24
                 
                 Item { Layout.fillHeight: true }
                 
@@ -179,7 +178,7 @@ BaseScreen {
                         const now = new Date()
                         return now.toLocaleTimeString(Qt.locale(), "hh:mm:ss AP")
                     }
-                    font.pixelSize: 28
+                    font.pixelSize: 32
                     font.bold: true
                     color: ThemeManager.text_primary_color
                     Layout.alignment: Qt.AlignHCenter
@@ -188,7 +187,7 @@ BaseScreen {
                 // Alarm name
                 Text {
                     text: alarmName
-                    font.pixelSize: 20
+                    font.pixelSize: 22
                     color: ThemeManager.text_primary_color
                     horizontalAlignment: Text.AlignHCenter
                     Layout.fillWidth: true
@@ -200,75 +199,83 @@ BaseScreen {
             }
             
             // Dialog buttons
-            footer: RowLayout {
-                spacing: 10
-                Layout.fillWidth: true
+            footer: Rectangle {
+                height: 80
+                color: "transparent"
                 
-                Button {
-                    text: "Snooze (5 min)"
-                    Layout.preferredWidth: 150
-                    Layout.alignment: Qt.AlignHCenter
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 15
                     
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        color: ThemeManager.accent_text_color
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                    Button {
+                        text: "Snooze (10 min)"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 46
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 16
+                            font.bold: true
+                            color: ThemeManager.accent_text_color
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            radius: 10
+                            color: ThemeManager.accent_color
+                        }
+                        
+                        onClicked: {
+                            // Create a new one-time alarm for 10 minutes from now
+                            const alarmData = AlarmController.getAlarm(alarmId)
+                            if (alarmData) {
+                                const now = new Date()
+                                var snoozeHour = now.getHours()
+                                var snoozeMinute = now.getMinutes() + 10
+                                
+                                // Handle minute overflow
+                                if (snoozeMinute >= 60) {
+                                    snoozeMinute = snoozeMinute - 60
+                                    snoozeHour = (snoozeHour + 1) % 24
+                                }
+                                
+                                AlarmController.addAlarm(
+                                    alarmData.name + " (Snoozed)",
+                                    snoozeHour,
+                                    snoozeMinute,
+                                    true,
+                                    ["ONCE"]
+                                )
+                            }
+                            close()
+                        }
                     }
                     
-                    background: Rectangle {
-                        radius: 8
-                        color: ThemeManager.accent_color
+                    Button {
+                        text: "Dismiss"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 46
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 16
+                            font.bold: true
+                            color: ThemeManager.accent_text_color
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            radius: 10
+                            color: ThemeManager.accent_color
+                        }
+                        
+                        onClicked: {
+                            close()
+                        }
                     }
-                    
-                    onClicked: {
-                        snoozed()
-                        close()
-                    }
-                }
-                
-                Button {
-                    text: "Dismiss"
-                    Layout.preferredWidth: 120
-                    Layout.alignment: Qt.AlignHCenter
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        color: ThemeManager.accent_text_color
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    background: Rectangle {
-                        radius: 8
-                        color: ThemeManager.accent_color
-                    }
-                    
-                    onClicked: {
-                        dismissed()
-                        close()
-                    }
-                }
-            }
-            
-            // Handle signals
-            onSnoozed: {
-                // Create a new one-time alarm for 5 minutes from now
-                const alarmData = AlarmController.getAlarm(alarmId)
-                if (alarmData) {
-                    const now = new Date()
-                    const snoozeHour = now.getHours()
-                    const snoozeMinute = now.getMinutes() + 5
-                    
-                    AlarmController.addAlarm(
-                        alarmData.name + " (Snoozed)",
-                        snoozeHour,
-                        snoozeMinute,
-                        true,
-                        ["ONCE"]
-                    )
                 }
             }
             
@@ -278,9 +285,15 @@ BaseScreen {
                 repeat: true
                 running: notificationDialog.visible
                 onTriggered: {
-                    // Force update of the time text by toggling a property
-                    notificationDialog.alarmTime = new Date()
+                    // Force update of the time display
+                    notificationDialog.update()
                 }
+            }
+            
+            // Function to force update
+            function update() {
+                // This is a dummy function to force a redraw of the time display
+                visible = visible
             }
         }
     }
@@ -291,6 +304,13 @@ BaseScreen {
     function openNotificationDialog(alarmId, alarmName) {
         if (!notificationDialog) {
             notificationDialog = notificationDialogComponent.createObject(Overlay.overlay)
+            
+            // Connect to when the dialog is closed
+            notificationDialog.closed.connect(function() {
+                if (typeof AudioManager !== 'undefined' && typeof AudioManager.stop_playback === 'function') {
+                    AudioManager.stop_playback()
+                }
+            })
         }
         
         notificationDialog.alarmId = alarmId

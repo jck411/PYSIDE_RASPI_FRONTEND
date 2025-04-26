@@ -566,13 +566,13 @@ BaseScreen {
         x: (parent.width - width) / 2
         y: (parent.height - height) / 2
         
-        // Size
-        width: Math.min(parent.width - 40, 400)
-        height: 200
+        // Size - slightly larger for better proportions
+        width: Math.min(parent.width * 0.85, 420)
+        height: 220
         
         // Dim the background with a semi-transparent overlay
         Overlay.modal: Rectangle {
-            color: Qt.rgba(0, 0, 0, 0.6) // Semi-transparent black
+            color: Qt.rgba(0, 0, 0, 0.7) // Slightly darker for better contrast
         }
         
         // Apply theme
@@ -583,15 +583,15 @@ BaseScreen {
         
         background: Rectangle {
             color: ThemeManager.dialog_background_color
-            radius: 10
+            radius: 12 // Slightly larger radius
             border.color: ThemeManager.border_color
             border.width: 1
         }
         
         header: Rectangle {
             color: ThemeManager.dialog_header_color
-            height: 50
-            radius: 10
+            height: 55 // Slightly taller header
+            radius: 12
             
             // Only make the top corners rounded
             Rectangle {
@@ -605,7 +605,7 @@ BaseScreen {
             Label {
                 text: timerNotification.title
                 color: ThemeManager.text_primary_color
-                font.pixelSize: 18
+                font.pixelSize: 20 // Slightly larger title
                 font.bold: true
                 anchors.centerIn: parent
             }
@@ -615,13 +615,14 @@ BaseScreen {
         contentItem: Item {
             ColumnLayout {
                 anchors.fill: parent
-                spacing: 20
+                anchors.margins: 16 // Add margin to content
+                spacing: 24 // Increased spacing
                 
                 Item { Layout.fillHeight: true }
                 
                 Text {
                     text: "Time's up!"
-                    font.pixelSize: 28
+                    font.pixelSize: 32 // Larger more prominent text
                     font.bold: true
                     color: ThemeManager.text_primary_color
                     Layout.alignment: Qt.AlignHCenter
@@ -632,32 +633,41 @@ BaseScreen {
         }
         
         // Dialog buttons
-        footer: RowLayout {
-            spacing: 10
-            Layout.fillWidth: true
+        footer: Rectangle {
+            height: 70 // Taller footer for better touch targets
+            color: "transparent"
             
-            Button {
-                text: "Dismiss"
-                Layout.fillWidth: true
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 12 // Add margin
+                spacing: 15
                 
-                contentItem: Text {
-                    text: parent.text
-                    font: parent.font
-                    color: ThemeManager.accent_text_color
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                
-                background: Rectangle {
-                    radius: 8
-                    color: ThemeManager.accent_color
-                }
-                
-                onClicked: {
-                    timerNotification.close()
-                    // Stop audio if AudioManager is available
-                    if (typeof AudioManager !== 'undefined' && typeof AudioManager.stop_playback === 'function') {
-                        AudioManager.stop_playback()
+                Button {
+                    text: "Dismiss"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 46 // Taller button
+                    Layout.alignment: Qt.AlignHCenter
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        font.pixelSize: 16 // Larger text
+                        font.bold: true
+                        color: ThemeManager.accent_text_color
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    
+                    background: Rectangle {
+                        radius: 10 // Slightly larger radius
+                        color: ThemeManager.accent_color
+                    }
+                    
+                    onClicked: {
+                        timerNotification.close()
+                        // Stop audio if AudioManager is available
+                        if (typeof AudioManager !== 'undefined' && typeof AudioManager.stop_playback === 'function') {
+                            AudioManager.stop_playback()
+                        }
                     }
                 }
             }

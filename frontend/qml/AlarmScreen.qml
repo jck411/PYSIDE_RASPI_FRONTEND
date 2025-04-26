@@ -221,6 +221,7 @@ BaseScreen {
     Connections {
         target: AlarmController
         function onAlarmTriggered(alarmId, alarmLabel) {
+            alarmNotification.alarmId = alarmId
             alarmNotification.alarmTitle = alarmLabel || "Alarm"
             AudioManager.play_alarm_sound()
             alarmNotification.open()
@@ -717,12 +718,12 @@ BaseScreen {
         y: (parent.height - height) / 2
         
         // Size
-        width: Math.min(parent.width * 0.8, 400)
-        height: 200
+        width: Math.min(parent.width * 0.85, 420)
+        height: 220
         
         // Dim the background with a semi-transparent overlay
         Overlay.modal: Rectangle {
-            color: Qt.rgba(0, 0, 0, 0.6) // Semi-transparent black
+            color: Qt.rgba(0, 0, 0, 0.7)
         }
         
         property string alarmTitle: "Alarm"
@@ -735,15 +736,15 @@ BaseScreen {
         
         background: Rectangle {
             color: ThemeManager.dialog_background_color
-            radius: 10
+            radius: 12
             border.color: ThemeManager.border_color
             border.width: 1
         }
         
         header: Rectangle {
             color: ThemeManager.dialog_header_color
-            height: 50
-            radius: 10
+            height: 55
+            radius: 12
             
             // Only make the top corners rounded
             Rectangle {
@@ -757,7 +758,7 @@ BaseScreen {
             Label {
                 text: alarmNotification.title
                 color: ThemeManager.text_primary_color
-                font.pixelSize: 18
+                font.pixelSize: 20
                 font.bold: true
                 anchors.centerIn: parent
             }
@@ -766,13 +767,14 @@ BaseScreen {
         contentItem: Item {
             ColumnLayout {
                 anchors.fill: parent
-                spacing: 20
+                anchors.margins: 16
+                spacing: 24
                 
                 Item { Layout.fillHeight: true }
                 
                 Text {
                     text: alarmNotification.alarmTitle
-                    font.pixelSize: 24
+                    font.pixelSize: 32
                     font.bold: true
                     color: ThemeManager.text_primary_color
                     horizontalAlignment: Text.AlignHCenter
@@ -785,7 +787,7 @@ BaseScreen {
                         var now = new Date();
                         return now.toLocaleTimeString(Qt.locale(), "hh:mm");
                     }
-                    font.pixelSize: 20
+                    font.pixelSize: 22
                     color: ThemeManager.text_secondary_color
                     horizontalAlignment: Text.AlignHCenter
                     Layout.fillWidth: true
@@ -796,32 +798,86 @@ BaseScreen {
             }
         }
         
-        footer: RowLayout {
-            spacing: 10
-            Layout.fillWidth: true
+        footer: Rectangle {
+            height: 80
+            color: "transparent"
             
-            Button {
-                text: "Dismiss"
-                Layout.preferredWidth: 120
-                Layout.alignment: Qt.AlignHCenter
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 15
                 
-                contentItem: Text {
-                    text: parent.text
-                    font: parent.font
-                    color: ThemeManager.accent_text_color
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                Button {
+                    text: "Snooze (10 min)"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 46
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: ThemeManager.accent_text_color
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    
+                    background: Rectangle {
+                        radius: 10
+                        color: ThemeManager.accent_color
+                    }
+                    
+                    onClicked: {
+                        // Create a new one-time alarm for 10 minutes from now
+                        var now = new Date();
+                        var snoozeHour = now.getHours();
+                        var snoozeMinute = now.getMinutes() + 10;
+                        
+                        // Handle minute overflow
+                        if (snoozeMinute >= 60) {
+                            snoozeMinute = snoozeMinute - 60;
+                            snoozeHour = (snoozeHour + 1) % 24;
+                        }
+                        
+                        AlarmController.addAlarm(
+                            alarmNotification.alarmTitle + " (Snoozed)",
+                            snoozeHour,
+                            snoozeMinute,
+                            true,
+                            ["ONCE"]
+                        );
+                        
+                        alarmNotification.close();
+                    }
                 }
                 
-                background: Rectangle {
-                    radius: 8
-                    color: ThemeManager.accent_color
+                Button {
+                    text: "Dismiss"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 46
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: ThemeManager.accent_text_color
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    
+                    background: Rectangle {
+                        radius: 10
+                        color: ThemeManager.accent_color
+                    }
+                    
+                    onClicked: alarmNotification.close()
                 }
-                
-                onClicked: alarmNotification.close()
             }
         }
         
-        onClosed: AudioManager.stop_playback()
+        onClosed: {
+            if (typeof AudioManager !== 'undefined' && typeof AudioManager.stop_playback === 'function') {
+                AudioManager.stop_playback();
+            }
+        }
     }
 }
