@@ -1,9 +1,10 @@
-module components
+module Components
 
 BaseCalendarView 1.0 BaseCalendarView.qml
+MonthCalendarView 1.0 MonthCalendarView.qml
+WeekCalendarView 1.0 WeekCalendarView.qml
 DayCell 1.0 DayCell.qml
+WeekdayHeader 1.0 WeekdayHeader.qml
 CalendarEvent 1.0 CalendarEvent.qml
 MultiDayEvent 1.0 MultiDayEvent.qml
-WeekdayHeader 1.0 WeekdayHeader.qml
-MonthCalendarView 1.0 MonthCalendarView.qml
-WeekCalendarView 1.0 WeekCalendarView.qml 
+NotificationDialog 1.0 NotificationDialog.qml 

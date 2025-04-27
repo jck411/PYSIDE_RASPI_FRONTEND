@@ -22,6 +22,8 @@ from frontend.utils.markdown_utils import markdown_utils
 from frontend.logic.alarm_controller_v2 import AlarmController
 from frontend.logic.time_context_provider import TimeContextProvider
 from frontend.logic.audio_manager import AudioManager
+# Import the new TimerController
+from frontend.logic.timer_controller import TimerController
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -128,6 +130,8 @@ def main():
     time_context_provider_instance = chat_controller_instance.time_context_provider
     # Create the single AudioManager instance
     audio_manager_instance = AudioManager()
+    # Create the single TimerController instance
+    timer_controller_instance = TimerController()
     # ----------------------------------
 
     # --- Register QML Types and Singletons ---
@@ -217,6 +221,16 @@ def main():
         0,
         "AudioManager",
         audio_manager_instance,
+    )
+
+    # Register TimerController instance as a singleton
+    qmlRegisterSingletonInstance(
+        TimerController,
+        "MyServices",
+        1,
+        0,
+        "TimerController",  # Name exposed to QML
+        timer_controller_instance,
     )
     # -----------------------------------------
 

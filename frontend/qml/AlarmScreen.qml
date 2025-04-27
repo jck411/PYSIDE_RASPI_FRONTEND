@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import MyTheme 1.0
 import MyServices 1.0
+import "components"
 
 BaseScreen {
     id: alarmScreen
@@ -222,7 +223,7 @@ BaseScreen {
         target: AlarmController
         function onAlarmTriggered(alarmId, alarmLabel) {
             alarmNotification.alarmId = alarmId
-            alarmNotification.alarmTitle = alarmLabel || "Alarm"
+            alarmNotification.alarmName = alarmLabel || "Alarm"
             AudioManager.play_alarm_sound()
             alarmNotification.open()
         }
@@ -706,177 +707,79 @@ BaseScreen {
         }
     }
     
-    // Alarm notification dialog
-    Dialog {
+    // Use the shared NotificationDialog component
+    NotificationDialog {
         id: alarmNotification
         title: "Alarm"
-        modal: true
-        closePolicy: Popup.NoAutoClose // Prevent closing by clicking outside or pressing Escape
         
-        // Center in parent
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
+        // Dynamic text properties
+        property string alarmId: ""
+        property string alarmName: ""
         
-        // Size
-        width: Math.min(parent.width * 0.85, 420)
-        height: 220
-        
-        // Dim the background with a semi-transparent overlay
-        Overlay.modal: Rectangle {
-            color: Qt.rgba(0, 0, 0, 0.7)
+        // Timer to update the displayed time
+        Timer {
+            id: notificationTimer
+            interval: 1000
+            running: alarmNotification.visible
+            repeat: true
+            onTriggered: {
+                let now = new Date()
+                let hours = now.getHours()
+                let minutes = now.getMinutes()
+                let ampm = hours >= 12 ? "PM" : "AM"
+                
+                // Convert to 12-hour format
+                hours = hours % 12
+                hours = hours ? hours : 12 // the hour '0' should be '12'
+                
+                // Format with leading zeros
+                let minutesStr = minutes < 10 ? '0' + minutes : minutes
+                
+                // Update the display
+                alarmNotification.mainText = hours + ":" + minutesStr + " " + ampm
+                alarmNotification.subText = alarmNotification.alarmName
+            }
         }
         
-        property string alarmTitle: "Alarm"
+        // Configure buttons
+        primaryButtonText: "Dismiss"
+        hasSecondaryButton: true
+        secondaryButtonText: "Snooze (10 min)"
         
-        // Apply theme
-        palette.window: ThemeManager.dialog_background_color
-        palette.windowText: ThemeManager.text_primary_color
-        palette.button: ThemeManager.button_color
-        palette.buttonText: ThemeManager.button_text_color
-        
-        background: Rectangle {
-            color: ThemeManager.dialog_background_color
-            radius: 12
-            border.color: ThemeManager.border_color
-            border.width: 1
+        // Define the actions directly rather than connecting to signals
+        primaryAction: function() {
+            // Just close the dialog - audio stopping is handled in onClosed
+            close()
         }
         
-        header: Rectangle {
-            color: ThemeManager.dialog_header_color
-            height: 55
-            radius: 12
+        secondaryAction: function() {
+            // Create a new one-time alarm for 10 minutes from now
+            var now = new Date()
+            var snoozeHour = now.getHours()
+            var snoozeMinute = now.getMinutes() + 10
             
-            // Only make the top corners rounded
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: parent.height / 2
-                color: parent.color
+            // Handle minute overflow
+            if (snoozeMinute >= 60) {
+                snoozeMinute = snoozeMinute - 60
+                snoozeHour = (snoozeHour + 1) % 24
             }
             
-            Label {
-                text: alarmNotification.title
-                color: ThemeManager.text_primary_color
-                font.pixelSize: 20
-                font.bold: true
-                anchors.centerIn: parent
-            }
-        }
-        
-        contentItem: Item {
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 16
-                spacing: 24
-                
-                Item { Layout.fillHeight: true }
-                
-                Text {
-                    text: alarmNotification.alarmTitle
-                    font.pixelSize: 32
-                    font.bold: true
-                    color: ThemeManager.text_primary_color
-                    horizontalAlignment: Text.AlignHCenter
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignHCenter
-                }
-                
-                Text {
-                    text: {
-                        var now = new Date();
-                        return now.toLocaleTimeString(Qt.locale(), "hh:mm");
-                    }
-                    font.pixelSize: 22
-                    color: ThemeManager.text_secondary_color
-                    horizontalAlignment: Text.AlignHCenter
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignHCenter
-                }
-                
-                Item { Layout.fillHeight: true }
-            }
-        }
-        
-        footer: Rectangle {
-            height: 80
-            color: "transparent"
+            AlarmController.addAlarm(
+                alarmNotification.alarmName + " (Snoozed)",
+                snoozeHour,
+                snoozeMinute,
+                true,
+                ["ONCE"]
+            )
             
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 12
-                spacing: 15
-                
-                Button {
-                    text: "Snooze (10 min)"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 46
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        font.pixelSize: 16
-                        font.bold: true
-                        color: ThemeManager.accent_text_color
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    background: Rectangle {
-                        radius: 10
-                        color: ThemeManager.accent_color
-                    }
-                    
-                    onClicked: {
-                        // Create a new one-time alarm for 10 minutes from now
-                        var now = new Date();
-                        var snoozeHour = now.getHours();
-                        var snoozeMinute = now.getMinutes() + 10;
-                        
-                        // Handle minute overflow
-                        if (snoozeMinute >= 60) {
-                            snoozeMinute = snoozeMinute - 60;
-                            snoozeHour = (snoozeHour + 1) % 24;
-                        }
-                        
-                        AlarmController.addAlarm(
-                            alarmNotification.alarmTitle + " (Snoozed)",
-                            snoozeHour,
-                            snoozeMinute,
-                            true,
-                            ["ONCE"]
-                        );
-                        
-                        alarmNotification.close();
-                    }
-                }
-                
-                Button {
-                    text: "Dismiss"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 46
-                    
-                    contentItem: Text {
-                        text: parent.text
-                        font.pixelSize: 16
-                        font.bold: true
-                        color: ThemeManager.accent_text_color
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    
-                    background: Rectangle {
-                        radius: 10
-                        color: ThemeManager.accent_color
-                    }
-                    
-                    onClicked: alarmNotification.close()
-                }
-            }
+            // Close dialog - audio stopping is handled in onClosed
+            close()
         }
         
+        // Cleanup on close - this is the ONLY place we stop audio
         onClosed: {
             if (typeof AudioManager !== 'undefined' && typeof AudioManager.stop_playback === 'function') {
-                AudioManager.stop_playback();
+                AudioManager.stop_playback()
             }
         }
     }
