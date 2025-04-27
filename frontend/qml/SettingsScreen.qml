@@ -20,6 +20,8 @@ Item {
     // Properties for sound settings
     property string alarmSound: "alarm.raw"
     property string timerSound: "timer.raw"
+    property bool alarmRepeatEnabled: false
+    property bool timerRepeatEnabled: false
     property var availableSounds: ["alarm.raw", "timer.raw"]
     
     Component.onCompleted: {
@@ -33,7 +35,10 @@ Item {
             // Get sound settings with defaults
             alarmSound = SettingsService.getStringSetting('alarm.ALARM_CONFIG.sound_file', "alarm.raw")
             timerSound = SettingsService.getStringSetting('timer.TIMER_CONFIG.sound_file', "timer.raw")
+            alarmRepeatEnabled = Boolean(SettingsService.getSetting('alarm.ALARM_CONFIG.repeat_sound', false))
+            timerRepeatEnabled = Boolean(SettingsService.getSetting('timer.TIMER_CONFIG.repeat_sound', false))
             console.log("Loaded sound settings - Alarm:", alarmSound, "Timer:", timerSound)
+            console.log("Repeat settings - Alarm:", alarmRepeatEnabled, "Timer:", timerRepeatEnabled)
             
             // Load available sounds from the system
             var soundsList = AudioManager.getAvailableSounds()
@@ -383,15 +388,66 @@ Item {
                                 }
                                 
                                 Button {
-                                    text: "Test"
+                                    id: alarmTestButton
+                                    property bool playing: false
+                                    text: playing ? "Stop" : "Test"
                                     Layout.preferredWidth: 80
                                     
                                     onClicked: {
-                                        if (typeof AudioManager !== 'undefined' && typeof AudioManager.playSound === 'function') {
-                                            AudioManager.playSound(alarmSoundComboBox.currentText)
+                                        if (playing) {
+                                            // Stop playing
+                                            if (typeof AudioManager !== 'undefined' && typeof AudioManager.stop_playback === 'function') {
+                                                AudioManager.stop_playback()
+                                            }
+                                            playing = false
                                         } else {
-                                            // Fallback to regular alarm sound
-                                            AudioManager.play_alarm_sound()
+                                            // Start playing
+                                            if (typeof AudioManager !== 'undefined' && typeof AudioManager.playSound === 'function') {
+                                                AudioManager.playSound(alarmSoundComboBox.currentText)
+                                            } else {
+                                                // Fallback to regular alarm sound
+                                                AudioManager.play_alarm_sound()
+                                            }
+                                            playing = true
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Add Repeat Alarm Sound option
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 150 // Align with input field
+                                spacing: 16
+                                
+                                Text {
+                                    text: "Repeat Sound:"
+                                    color: ThemeManager.text_primary_color
+                                    Layout.preferredWidth: 120
+                                    elide: Text.ElideRight
+                                    
+                                    ToolTip.visible: repeatAlarmMouseArea.containsMouse
+                                    ToolTip.text: "Play alarm sound on repeat until dismissed"
+                                    
+                                    MouseArea {
+                                        id: repeatAlarmMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                    }
+                                }
+                                
+                                Switch {
+                                    id: repeatAlarmSwitch
+                                    checked: alarmRepeatEnabled
+                                    
+                                    onToggled: {
+                                        var success = SettingsService.setSetting('alarm.ALARM_CONFIG.repeat_sound', checked)
+                                        if (success) {
+                                            alarmRepeatEnabled = checked
+                                            console.log("Alarm repeat sound setting changed to:", checked)
+                                        } else {
+                                            console.error("Failed to update alarm repeat sound setting")
+                                            repeatAlarmSwitch.checked = Qt.binding(function() { return alarmRepeatEnabled; })
                                         }
                                     }
                                 }
@@ -442,15 +498,66 @@ Item {
                                 }
                                 
                                 Button {
-                                    text: "Test"
+                                    id: timerTestButton
+                                    property bool playing: false
+                                    text: playing ? "Stop" : "Test"
                                     Layout.preferredWidth: 80
                                     
                                     onClicked: {
-                                        if (typeof AudioManager !== 'undefined' && typeof AudioManager.playSound === 'function') {
-                                            AudioManager.playSound(timerSoundComboBox.currentText)
+                                        if (playing) {
+                                            // Stop playing
+                                            if (typeof AudioManager !== 'undefined' && typeof AudioManager.stop_playback === 'function') {
+                                                AudioManager.stop_playback()
+                                            }
+                                            playing = false
                                         } else {
-                                            // Fallback to regular alarm sound
-                                            AudioManager.play_alarm_sound()
+                                            // Start playing
+                                            if (typeof AudioManager !== 'undefined' && typeof AudioManager.playSound === 'function') {
+                                                AudioManager.playSound(timerSoundComboBox.currentText)
+                                            } else {
+                                                // Fallback to regular alarm sound
+                                                AudioManager.play_alarm_sound()
+                                            }
+                                            playing = true
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Add Repeat Timer Sound option
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 150 // Align with input field
+                                spacing: 16
+                                
+                                Text {
+                                    text: "Repeat Sound:"
+                                    color: ThemeManager.text_primary_color
+                                    Layout.preferredWidth: 120
+                                    elide: Text.ElideRight
+                                    
+                                    ToolTip.visible: repeatTimerMouseArea.containsMouse
+                                    ToolTip.text: "Play timer sound on repeat until dismissed"
+                                    
+                                    MouseArea {
+                                        id: repeatTimerMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                    }
+                                }
+                                
+                                Switch {
+                                    id: repeatTimerSwitch
+                                    checked: timerRepeatEnabled
+                                    
+                                    onToggled: {
+                                        var success = SettingsService.setSetting('timer.TIMER_CONFIG.repeat_sound', checked)
+                                        if (success) {
+                                            timerRepeatEnabled = checked
+                                            console.log("Timer repeat sound setting changed to:", checked)
+                                        } else {
+                                            console.error("Failed to update timer repeat sound setting")
+                                            repeatTimerSwitch.checked = Qt.binding(function() { return timerRepeatEnabled; })
                                         }
                                     }
                                 }

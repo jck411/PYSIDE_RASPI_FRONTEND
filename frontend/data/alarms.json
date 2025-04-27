@@ -1,1 +1,58 @@
-[]
+[
+  {
+    "id": "e642b661-934d-4f17-bb78-f3f6a3ca951e",
+    "hour": 4,
+    "minute": 36,
+    "label": "Alarm",
+    "days_of_week": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_enabled": true
+  },
+  {
+    "id": "9ce55d1c-6652-41ef-b365-af3f8f279208",
+    "hour": 4,
+    "minute": 39,
+    "label": "Alarm",
+    "days_of_week": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_enabled": true
+  },
+  {
+    "id": "d67100d6-be85-4166-be10-5521581fc881",
+    "hour": 5,
+    "minute": 20,
+    "label": "Alarm",
+    "days_of_week": [],
+    "is_enabled": true
+  },
+  {
+    "id": "035cc076-0c78-4af7-9137-863b07dce205",
+    "hour": 5,
+    "minute": 23,
+    "label": "Alarm",
+    "days_of_week": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_enabled": true
+  }
+]

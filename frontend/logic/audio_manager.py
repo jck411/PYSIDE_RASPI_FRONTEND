@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import asyncio
 import os
+import threading
+import time
 
-from PySide6.QtCore import QMutex, QMutexLocker, QIODevice, QObject, Slot
+from PySide6.QtCore import QMutex, QMutexLocker, QIODevice, QObject, Slot, QTimer, Signal
 from PySide6.QtMultimedia import QAudioFormat, QAudioSink, QMediaDevices, QAudio
 
 from frontend.config import logger
@@ -92,6 +94,8 @@ class AudioManager(QObject):
         self._audio_queue = asyncio.Queue()
         self._running = True
         self.tts_audio_playing = False
+        self._repeat_timer = None
+        self._current_sound_data = None
         self.setup_audio()
 
     def setup_audio(self):
@@ -114,6 +118,7 @@ class AudioManager(QObject):
         self.audioSink = QAudioSink(device, audio_format)
         self.audioSink.setVolume(1.0)
         self.audioSink.start(self.audioDevice)
+        
         logger.info("[AudioManager] Audio sink started with audio device")
 
     def handle_audio_state_changed(self, state):
@@ -280,6 +285,26 @@ class AudioManager(QObject):
     def playSound(self, sound_filename):
         """Play a specific sound file from the sounds directory."""
         try:
+            # Stop any ongoing playback
+            self._stop_repeat_playback()
+            
+            # Determine if we should repeat based on the sound type
+            should_repeat = False
+            
+            # Get the settings service
+            from frontend.settings_service import SettingsService
+            settings_service = SettingsService()
+            
+            # Check if this is an alarm sound
+            if sound_filename == settings_service.getStringSetting("alarm.ALARM_CONFIG.sound_file", "alarm.raw"):
+                should_repeat = settings_service.getSetting("alarm.ALARM_CONFIG.repeat_sound", False)
+                logger.info(f"[AudioManager] Alarm sound repeat setting: {should_repeat}")
+            
+            # Check if this is a timer sound
+            elif sound_filename == settings_service.getStringSetting("timer.TIMER_CONFIG.sound_file", "timer.raw"):
+                should_repeat = settings_service.getSetting("timer.TIMER_CONFIG.repeat_sound", False)
+                logger.info(f"[AudioManager] Timer sound repeat setting: {should_repeat}")
+            
             # Build the path to the sound file
             import os
             sound_path = os.path.join(os.path.dirname(__file__), f'../sounds/{sound_filename}')
@@ -292,41 +317,93 @@ class AudioManager(QObject):
                 
             logger.info(f"[AudioManager] Playing sound file: {sound_path}")
             
-            # Reset the audio device and sink to ensure it's in a clean state
-            self._reset_audio_device()
-            
-            # Read and play the sound file
+            # Load the sound data
             with open(sound_path, 'rb') as f:
-                chunk = f.read()
-                # Use the synchronous version to write data
-                self.audioDevice.writeData(chunk)
-                logger.info(f"[AudioManager] Sound data from {sound_filename} written to audio device")
+                sound_data = f.read()
+            
+            # Play the sound once
+            self._play_sound_data(sound_data)
+            
+            # If repeat is enabled, set up the loop
+            if should_repeat:
+                self._setup_repeat(sound_data)
                 
         except Exception as e:
             logger.error(f"[AudioManager] Failed to play sound '{sound_filename}': {e}")
-            
-    @Slot(result='QVariantList')
-    def getAvailableSounds(self):
-        """Return a list of available sound files in the sounds directory."""
+    
+    def _play_sound_data(self, sound_data):
+        """Play the given sound data once"""
         try:
-            import os
-            sounds_dir = os.path.join(os.path.dirname(__file__), '../sounds')
-            sound_files = []
+            # Reset the audio device
+            self._reset_audio_device()
             
-            # List all files in the sounds directory
-            for file in os.listdir(sounds_dir):
-                # Only include .raw files which can be played directly
-                if file.endswith('.raw'):
-                    sound_files.append(file)
-                    
-            logger.info(f"[AudioManager] Found {len(sound_files)} available sound files: {sound_files}")
-            return sound_files
-            
+            # Play the sound
+            self.audioDevice.writeData(sound_data)
+            logger.debug(f"[AudioManager] Played sound data ({len(sound_data)} bytes)")
         except Exception as e:
-            logger.error(f"[AudioManager] Failed to get available sounds: {e}")
-            # Return default sounds if we can't read the directory
-            return ["alarm.raw", "timer.raw"]
+            logger.error(f"[AudioManager] Error playing sound data: {e}")
+    
+    def _setup_repeat(self, sound_data):
+        """Set up simple timer-based repeat"""
+        # Store the sound data
+        self._current_sound_data = sound_data
+        
+        # Calculate approximate duration (24000Hz, 16-bit mono)
+        duration_ms = (len(sound_data) / (24000 * 2)) * 1000  # Convert to milliseconds
+        
+        # Add a small buffer (250ms) to ensure the sound completes before repeating
+        repeat_interval = int(duration_ms + 250)
+        
+        logger.info(f"[AudioManager] Setting up sound repeat with interval {repeat_interval}ms")
+        
+        # Create a timer that will trigger the repeat
+        self._repeat_timer = QTimer(self)
+        self._repeat_timer.timeout.connect(self._repeat_sound)
+        self._repeat_timer.start(repeat_interval)
+    
+    def _repeat_sound(self):
+        """Repeat the sound when the timer triggers"""
+        if self._current_sound_data:
+            logger.debug("[AudioManager] Repeating sound")
+            self._play_sound_data(self._current_sound_data)
+    
+    def _stop_repeat_playback(self):
+        """Stop repeating sound playback"""
+        if self._repeat_timer:
+            logger.info("[AudioManager] Stopping repeat timer")
+            self._repeat_timer.stop()
+            self._repeat_timer = None
+        
+        self._current_sound_data = None
+        
+        # Also stop any current playback
+        self.audioDevice.clear_buffer()
+        if self.audioSink.state() == QAudio.State.ActiveState:
+            self.audioSink.stop()
+            self.audioSink.start(self.audioDevice)
+    
+    @Slot()
+    def stop_playback(self):
+        """Synchronous wrapper for stop_audio_playback that can be called from QML."""
+        logger.info("[AudioManager] QML requested to stop playback")
+        
+        # Stop repeat playback
+        self._stop_repeat_playback()
+        
+        # Instead of using asyncio.create_task, directly clear the buffer
+        try:
+            # Clear the buffer
+            self.audioDevice.clear_buffer()
             
+            # Stop the audio sink if it's active
+            if self.audioSink.state() == QAudio.State.ActiveState:
+                self.audioSink.stop()
+                logger.info("[AudioManager] Audio sink stopped")
+                
+            logger.info("[AudioManager] Audio playback stopped")
+        except Exception as e:
+            logger.error(f"[AudioManager] Failed to stop playback: {e}")
+
     def _reset_audio_device(self):
         """Reset the audio device and sink to ensure it's in a clean state."""
         logger.info("[AudioManager] Resetting audio device and sink")
@@ -350,21 +427,24 @@ class AudioManager(QObject):
         except Exception as e:
             logger.error(f"[AudioManager] Failed to reset audio device: {e}")
         
-    @Slot()
-    def stop_playback(self):
-        """Synchronous wrapper for stop_audio_playback that can be called from QML."""
-        logger.info("[AudioManager] QML requested to stop playback")
-        
-        # Instead of using asyncio.create_task, directly clear the buffer
+    @Slot(result='QVariantList')
+    def getAvailableSounds(self):
+        """Return a list of available sound files in the sounds directory."""
         try:
-            # Clear the buffer
-            self.audioDevice.clear_buffer()
+            import os
+            sounds_dir = os.path.join(os.path.dirname(__file__), '../sounds')
+            sound_files = []
             
-            # Stop the audio sink if it's active
-            if self.audioSink.state() == QAudio.State.ActiveState:
-                self.audioSink.stop()
-                logger.info("[AudioManager] Audio sink stopped")
-                
-            logger.info("[AudioManager] Audio playback stopped")
+            # List all files in the sounds directory
+            for file in os.listdir(sounds_dir):
+                # Only include .raw files which can be played directly
+                if file.endswith('.raw'):
+                    sound_files.append(file)
+                    
+            logger.info(f"[AudioManager] Found {len(sound_files)} available sound files: {sound_files}")
+            return sound_files
+            
         except Exception as e:
-            logger.error(f"[AudioManager] Failed to stop playback: {e}")
+            logger.error(f"[AudioManager] Failed to get available sounds: {e}")
+            # Return default sounds if we can't read the directory
+            return ["alarm.raw", "timer.raw"]
