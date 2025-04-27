@@ -7,7 +7,7 @@ application settings, abstracting the underlying ConfigManager.
 """
 
 from PySide6.QtCore import QObject, Signal, Slot, Property
-from typing import Optional
+from typing import Optional, Any
 
 from frontend.config_manager import ConfigManager
 from frontend.config import logger
@@ -102,6 +102,53 @@ class SettingsService(QObject):
                 )
         else:
             logger.warning(f"Failed to set setting '{path}'.")
+
+        return success
+        
+    @Slot(str, str, result=str)
+    def getStringSetting(self, path: str, default: str = "") -> str:
+        """
+        Get a string configuration setting value.
+
+        Args:
+            path: The configuration path (e.g., 'alarm.ALARM_CONFIG.sound_file').
+            default: The default string value to return if the path is not found.
+
+        Returns:
+            The string configuration value or the default.
+        """
+        value = self._config_manager.get_config(path, default)
+        # Ensure we return a string
+        return str(value) if value is not None else default
+        
+    @Slot(str, str, result=bool)
+    def setStringSetting(self, path: str, value: str) -> bool:
+        """
+        Set a string configuration setting value.
+
+        Emits the `settingChanged` signal if the value is successfully set.
+
+        Args:
+            path: The configuration path (e.g., 'alarm.ALARM_CONFIG.sound_file').
+            value: The new string value to set.
+
+        Returns:
+            True if the setting was successfully saved, False otherwise.
+        """
+        logger.debug(f"Attempting to set string setting '{path}' to: {value}")
+        success = self._config_manager.set_config(path, value)
+        if success:
+            logger.info(f"String setting '{path}' updated successfully.")
+            try:
+                # Emit signal after successful change
+                self.settingChanged.emit(path, value)
+            except Exception as e:
+                # Log if signal emission fails, but don't block the set operation
+                logger.error(
+                    f"Error emitting settingChanged signal for path '{path}': {e}"
+                )
+        else:
+            logger.warning(f"Failed to set string setting '{path}'.")
 
         return success
 

@@ -25,11 +25,23 @@ BaseScreen {
             // Use the name from the signal
             timerNotification.mainText = timerName + " finished!"
             
-            // Play alarm sound before showing notification
-            if (typeof AudioManager !== 'undefined' && typeof AudioManager.play_alarm_sound === 'function') {
-                AudioManager.play_alarm_sound()
+            // Play configured timer sound before showing notification
+            if (typeof AudioManager !== 'undefined') {
+                if (typeof AudioManager.playSound === 'function') {
+                    // Get the configured sound file from settings if available
+                    var timerSound = "timer.raw"
+                    if (typeof SettingsService !== 'undefined' && 
+                        typeof SettingsService.getStringSetting === 'function') {
+                        timerSound = SettingsService.getStringSetting('timer.TIMER_CONFIG.sound_file', "timer.raw")
+                    }
+                    
+                    AudioManager.playSound(timerSound)
+                } else {
+                    // Fallback to regular alarm sound method
+                    AudioManager.play_alarm_sound()
+                }
             } else {
-                console.warn("AudioManager not available or play_alarm_sound not found.")
+                console.warn("AudioManager not available for sound playback.")
             }
             
             // Open notification after setting up the sound

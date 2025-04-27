@@ -269,21 +269,63 @@ class AudioManager(QObject):
         """Synchronous wrapper for play_alarm_sound_async that can be called from QML."""
         logger.info("[AudioManager] QML requested to play alarm sound")
         
-        # Instead of using asyncio.create_task, directly read and play the file
-        import os
-        alarm_path = os.path.join(os.path.dirname(__file__), '../sounds/alarm.raw')
+        # Get configured alarm sound from settings if available
+        from frontend.settings_service import SettingsService
+        settings_service = SettingsService()
+        sound_file = settings_service.getStringSetting("alarm.ALARM_CONFIG.sound_file", "alarm.raw")
+        
+        self.playSound(sound_file)
+        
+    @Slot(str)
+    def playSound(self, sound_filename):
+        """Play a specific sound file from the sounds directory."""
         try:
+            # Build the path to the sound file
+            import os
+            sound_path = os.path.join(os.path.dirname(__file__), f'../sounds/{sound_filename}')
+            
+            # Check if file exists
+            if not os.path.exists(sound_path):
+                logger.error(f"[AudioManager] Sound file not found: {sound_path}")
+                # Fall back to default alarm sound
+                sound_path = os.path.join(os.path.dirname(__file__), '../sounds/alarm.raw')
+                
+            logger.info(f"[AudioManager] Playing sound file: {sound_path}")
+            
             # Reset the audio device and sink to ensure it's in a clean state
             self._reset_audio_device()
             
-            # Read and play the alarm sound
-            with open(alarm_path, 'rb') as f:
+            # Read and play the sound file
+            with open(sound_path, 'rb') as f:
                 chunk = f.read()
                 # Use the synchronous version to write data
                 self.audioDevice.writeData(chunk)
-                logger.info("[AudioManager] Alarm sound data written to audio device")
+                logger.info(f"[AudioManager] Sound data from {sound_filename} written to audio device")
+                
         except Exception as e:
-            logger.error(f"[AudioManager] Failed to play alarm sound: {e}")
+            logger.error(f"[AudioManager] Failed to play sound '{sound_filename}': {e}")
+            
+    @Slot(result='QVariantList')
+    def getAvailableSounds(self):
+        """Return a list of available sound files in the sounds directory."""
+        try:
+            import os
+            sounds_dir = os.path.join(os.path.dirname(__file__), '../sounds')
+            sound_files = []
+            
+            # List all files in the sounds directory
+            for file in os.listdir(sounds_dir):
+                # Only include .raw files which can be played directly
+                if file.endswith('.raw'):
+                    sound_files.append(file)
+                    
+            logger.info(f"[AudioManager] Found {len(sound_files)} available sound files: {sound_files}")
+            return sound_files
+            
+        except Exception as e:
+            logger.error(f"[AudioManager] Failed to get available sounds: {e}")
+            # Return default sounds if we can't read the directory
+            return ["alarm.raw", "timer.raw"]
             
     def _reset_audio_device(self):
         """Reset the audio device and sink to ensure it's in a clean state."""

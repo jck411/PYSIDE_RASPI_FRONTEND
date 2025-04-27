@@ -84,6 +84,14 @@ The application provides both time display and alarm management functionality:
   - Enhanced error handling and validation for alarm management operations
   - Improved debugging for alarm deletion with detailed logging
 
+- **Sound Notification Settings**: Configurable sound notifications for alarms and timers
+  - Each feature (alarm/timer) can have its own distinct notification sound
+  - Sounds can be selected from available .raw files in the sounds directory
+  - Settings are persisted using the SettingsService
+  - Includes test functionality to preview sounds before saving
+  - Automatically detects available sound files in the sounds directory
+  - Settings UI is integrated into the SettingsScreen with other application settings
+
 ### Services
 Services provide functionality to QML components:
 
@@ -94,6 +102,16 @@ Services provide functionality to QML components:
   - Persists theme preferences, including auto theme mode
   - Automatically checks day/night status periodically when auto mode is enabled
 - **SettingsService**: Manages application settings
+  - Provides a unified interface for accessing and modifying application settings
+  - Supports both boolean and string setting types
+  - Emits signals when settings are changed for reactive UI updates
+  - Used for alarm and timer sound settings, UI preferences, and STT configuration
+- **AudioManager**: Handles audio playback and processing
+  - Supports configurable notification sounds for different features
+  - Can play different sounds for alarms and timers based on user settings
+  - Dynamically discovers available sound files in the sounds directory
+  - Provides methods for testing sound selections in the UI
+  - Handles sound file loading, validation, and fallback to defaults when needed
 - **ErrorHandler**: Centralized error handling
 - **ChatService**: Handles chat interactions
 - **PhotoController**: Manages photo and video slideshow functionality

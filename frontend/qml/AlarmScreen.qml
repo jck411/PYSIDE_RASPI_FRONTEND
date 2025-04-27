@@ -224,7 +224,24 @@ BaseScreen {
         function onAlarmTriggered(alarmId, alarmLabel) {
             alarmNotification.alarmId = alarmId
             alarmNotification.alarmName = alarmLabel || "Alarm"
-            AudioManager.play_alarm_sound()
+            
+            // Use PlaySound instead of play_alarm_sound to respect the setting
+            if (typeof AudioManager !== 'undefined') {
+                if (typeof AudioManager.playSound === 'function') {
+                    // Get the configured sound file from settings if available
+                    var alarmSound = "alarm.raw"
+                    if (typeof SettingsService !== 'undefined' && 
+                        typeof SettingsService.getStringSetting === 'function') {
+                        alarmSound = SettingsService.getStringSetting('alarm.ALARM_CONFIG.sound_file', "alarm.raw")
+                    }
+                    
+                    AudioManager.playSound(alarmSound)
+                } else {
+                    // Fallback to regular alarm sound method
+                    AudioManager.play_alarm_sound()
+                }
+            }
+            
             alarmNotification.open()
         }
         

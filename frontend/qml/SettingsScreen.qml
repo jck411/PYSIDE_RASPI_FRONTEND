@@ -17,6 +17,11 @@ Item {
     // Store the current value for Show Input Box
     property bool showInputBoxEnabled: true
     
+    // Properties for sound settings
+    property string alarmSound: "alarm.raw"
+    property string timerSound: "timer.raw"
+    property var availableSounds: ["alarm.raw", "timer.raw"]
+    
     Component.onCompleted: {
         // Get initial values from the SettingsService
         try {
@@ -24,9 +29,32 @@ Item {
             console.log("Auto Send setting initial value:", autoSendEnabled)
             showInputBoxEnabled = Boolean(SettingsService.getSetting('chat.CHAT_CONFIG.show_input_box', true))
             console.log("Show Input Box setting initial value:", showInputBoxEnabled)
+            
+            // Get sound settings with defaults
+            alarmSound = SettingsService.getStringSetting('alarm.ALARM_CONFIG.sound_file', "alarm.raw")
+            timerSound = SettingsService.getStringSetting('timer.TIMER_CONFIG.sound_file', "timer.raw")
+            console.log("Loaded sound settings - Alarm:", alarmSound, "Timer:", timerSound)
+            
+            // Load available sounds from the system
+            var soundsList = AudioManager.getAvailableSounds()
+            if (soundsList && soundsList.length > 0) {
+                availableSounds = soundsList
+                console.log("Available sounds:", JSON.stringify(availableSounds))
+            }
         } catch (e) {
             console.error("Error getting initial values from SettingsService:", e)
         }
+    }
+    
+    // Function to save a sound setting
+    function saveSoundSetting(path, value) {
+        var success = SettingsService.setStringSetting(path, value)
+        if (success) {
+            console.log("Sound setting saved:", path, value)
+        } else {
+            console.error("Failed to save sound setting:", path, value)
+        }
+        return success
     }
     
     Rectangle {
@@ -273,6 +301,158 @@ Item {
                                     // Toggle auto theme mode
                                     var result = ThemeManager.toggle_auto_theme_mode()
                                     console.log("Auto theme mode toggled to:", result)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Sound Settings Header
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 50
+                    color: ThemeManager.input_background_color
+                    radius: 8
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Sound Settings"
+                        font.pixelSize: 20
+                        font.bold: true
+                        color: ThemeManager.text_primary_color
+                    }
+                }
+                
+                // Sound Settings Category
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: soundSettingsColumn.implicitHeight + 32
+                    Layout.preferredHeight: implicitHeight
+                    color: ThemeManager.input_background_color
+                    radius: 8
+                    
+                    ColumnLayout {
+                        id: soundSettingsColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 16
+                        spacing: 16
+                        
+                        // Alarm Sound Setting
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            
+                            RowLayout {
+                                Layout.fillWidth: true
+                                
+                                Text {
+                                    text: "Alarm Sound:"
+                                    color: ThemeManager.text_primary_color
+                                    Layout.preferredWidth: 150
+                                    elide: Text.ElideRight
+                                    
+                                    ToolTip.visible: alarmSoundMouseArea.containsMouse
+                                    ToolTip.text: "Select the notification sound for alarms"
+                                    
+                                    MouseArea {
+                                        id: alarmSoundMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                    }
+                                }
+                                
+                                ComboBox {
+                                    id: alarmSoundComboBox
+                                    model: availableSounds
+                                    Layout.fillWidth: true
+                                    currentIndex: availableSounds.indexOf(alarmSound)
+                                    
+                                    onActivated: {
+                                        var selectedSound = model[currentIndex]
+                                        if (selectedSound !== alarmSound) {
+                                            if (saveSoundSetting('alarm.ALARM_CONFIG.sound_file', selectedSound)) {
+                                                alarmSound = selectedSound
+                                            } else {
+                                                // Revert if save failed
+                                                currentIndex = availableSounds.indexOf(alarmSound)
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Button {
+                                    text: "Test"
+                                    Layout.preferredWidth: 80
+                                    
+                                    onClicked: {
+                                        if (typeof AudioManager !== 'undefined' && typeof AudioManager.playSound === 'function') {
+                                            AudioManager.playSound(alarmSoundComboBox.currentText)
+                                        } else {
+                                            // Fallback to regular alarm sound
+                                            AudioManager.play_alarm_sound()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Timer Sound Setting
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            
+                            RowLayout {
+                                Layout.fillWidth: true
+                                
+                                Text {
+                                    text: "Timer Sound:"
+                                    color: ThemeManager.text_primary_color
+                                    Layout.preferredWidth: 150
+                                    elide: Text.ElideRight
+                                    
+                                    ToolTip.visible: timerSoundMouseArea.containsMouse
+                                    ToolTip.text: "Select the notification sound for timers"
+                                    
+                                    MouseArea {
+                                        id: timerSoundMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                    }
+                                }
+                                
+                                ComboBox {
+                                    id: timerSoundComboBox
+                                    model: availableSounds
+                                    Layout.fillWidth: true
+                                    currentIndex: availableSounds.indexOf(timerSound)
+                                    
+                                    onActivated: {
+                                        var selectedSound = model[currentIndex]
+                                        if (selectedSound !== timerSound) {
+                                            if (saveSoundSetting('timer.TIMER_CONFIG.sound_file', selectedSound)) {
+                                                timerSound = selectedSound
+                                            } else {
+                                                // Revert if save failed
+                                                currentIndex = availableSounds.indexOf(timerSound)
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Button {
+                                    text: "Test"
+                                    Layout.preferredWidth: 80
+                                    
+                                    onClicked: {
+                                        if (typeof AudioManager !== 'undefined' && typeof AudioManager.playSound === 'function') {
+                                            AudioManager.playSound(timerSoundComboBox.currentText)
+                                        } else {
+                                            // Fallback to regular alarm sound
+                                            AudioManager.play_alarm_sound()
+                                        }
+                                    }
                                 }
                             }
                         }
