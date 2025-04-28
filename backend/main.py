@@ -19,6 +19,9 @@ import backend.weather.state as weather_state  # Use alias to avoid name collisi
 
 from contextlib import asynccontextmanager
 
+# Near the top of the file, import the navigation handler
+from backend.websocket.navigation_handler import navigation_handler
+
 # ------------------------------------------------------------------------------
 # Logging Setup (Configure basic logging)
 # ------------------------------------------------------------------------------
@@ -261,6 +264,9 @@ app.add_middleware(
 async def unified_chat_websocket(websocket: WebSocket):
     await websocket.accept()
     logger.info("New WebSocket connection established")
+    
+    # Register websocket with navigation handler
+    navigation_handler.register_connection(websocket)
 
     try:
         while True:
@@ -333,6 +339,8 @@ async def unified_chat_websocket(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
     finally:
+        # Unregister websocket from navigation handler
+        navigation_handler.unregister_connection(websocket)
         await websocket.close()
 
 

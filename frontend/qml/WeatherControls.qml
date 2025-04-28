@@ -2,12 +2,16 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import MyTheme 1.0
+import MyServices 1.0
 
 BaseControls {
     id: weatherControls
     
     // Reference to the parent screen
     property var screen: null
+    
+    // Reference to the main stack view - will be set by MainWindow
+    property var mainStackView: null
     
     // Navigation buttons for weather screens
     Button {
@@ -37,7 +41,10 @@ BaseControls {
         
         onClicked: {
             if (screen) {
-                screen.currentView = "current"
+                screen.currentView = "current";
+            } else if (mainStackView) {
+                // If screen isn't set, use navigation controller to navigate
+                NavigationController.navigateWithParams("WeatherScreen.qml", {"viewType": "current"});
             }
         }
     }
@@ -69,7 +76,10 @@ BaseControls {
         
         onClicked: {
             if (screen) {
-                screen.currentView = "hourly"
+                screen.currentView = "hourly";
+            } else if (mainStackView) {
+                // If screen isn't set, use navigation controller to navigate
+                NavigationController.navigateWithParams("WeatherScreen.qml", {"viewType": "hourly"});
             }
         }
     }
@@ -101,7 +111,10 @@ BaseControls {
         
         onClicked: {
             if (screen) {
-                screen.currentView = "forecast"
+                screen.currentView = "forecast";
+            } else if (mainStackView) {
+                // If screen isn't set, use navigation controller to navigate
+                NavigationController.navigateWithParams("WeatherScreen.qml", {"viewType": "sevenday"});
             }
         }
     }

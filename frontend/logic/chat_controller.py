@@ -42,6 +42,9 @@ class ChatController(QObject):
     timeContextUpdated = Signal(dict)  # Relays time context updates
 
     def __init__(self, parent=None):
+        """
+        Initialize the chat controller.
+        """
         super().__init__(parent)
         self._running = True
         self._connected = False
@@ -69,6 +72,9 @@ class ChatController(QObject):
         # Initialize wake word handler
         self.wake_word_handler = WakeWordHandler()
         self.wake_word_handler.set_tts_callback(self._enable_tts_on_wake_word)
+
+        # Navigation controller reference - will be set in main.py
+        self.navigation_controller = None
 
         # Connect signals
         self._connect_signals()
@@ -161,6 +167,7 @@ class ChatController(QObject):
     def _handle_websocket_message(self, data):
         """Process incoming WebSocket messages"""
         msg_type = data.get("type")
+        action = data.get("action")
 
         if msg_type == "stt":
             stt_text = data.get("stt_text", "")
@@ -174,6 +181,21 @@ class ChatController(QObject):
                 f"[ChatController] Updating STT state: listening = {is_listening}"
             )
             self.sttStateChanged.emit(is_listening)
+        elif action == "navigate":
+            # Handle navigation request from backend
+            screen = data.get("screen", "")
+            params = data.get("params", {})
+            
+            if screen and hasattr(self, 'navigation_controller') and self.navigation_controller:
+                logger.info(f"[ChatController] Received navigation request to: {screen}")
+                if params:
+                    # Convert params to JSON string for the QML-friendly slot
+                    params_json = json.dumps(params)
+                    self.navigation_controller.handleBackendNavigationRequest(screen, params_json)
+                else:
+                    self.navigation_controller.handleBackendNavigationRequest(screen)
+            else:
+                logger.warning(f"[ChatController] Cannot process navigation request: {data}")
         else:
             # Try to process as a message - MessageHandler will emit signals handled elsewhere
             self.message_handler.process_message(data)
@@ -216,6 +238,19 @@ class ChatController(QObject):
         text = text.strip()
         if not text or not self.websocket_client.is_connected():
             return
+
+        # First, check if this is a navigation command
+        # If we have a navigation controller registered, try to process as navigation
+        if hasattr(self, 'navigation_controller') and self.navigation_controller:
+            if self.navigation_controller.processNavigationCommand(text):
+                # This was a navigation command, add it to history but don't send to LLM
+                self._add_user_message_to_history(text)
+                
+                # Add a simple response confirming the navigation
+                response = f"Navigating to requested screen."
+                self.message_handler.add_message("assistant", response)
+                self._add_assistant_message_to_history(response)
+                return
 
         # Check if we have an interrupted response that needs to be continued
         has_interrupted = self.message_handler.has_interrupted_response()

@@ -24,6 +24,8 @@ from frontend.logic.time_context_provider import TimeContextProvider
 from frontend.logic.audio_manager import AudioManager
 # Import the new TimerController
 from frontend.logic.timer_controller import TimerController
+# Import the new NavigationController
+from frontend.logic.navigation_controller import NavigationController
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -128,10 +130,19 @@ def main():
     
     # Create the single TimeContextProvider instance via ChatController
     time_context_provider_instance = chat_controller_instance.time_context_provider
+    
     # Create the single AudioManager instance
     audio_manager_instance = AudioManager()
+    
     # Create the single TimerController instance
     timer_controller_instance = TimerController()
+    
+    # Create the single NavigationController instance
+    navigation_controller_instance = NavigationController()
+    
+    # Connect NavigationController to ChatController for processing navigation commands
+    chat_controller_instance.navigation_controller = navigation_controller_instance
+    
     # ----------------------------------
 
     # --- Register QML Types and Singletons ---
@@ -231,6 +242,16 @@ def main():
         0,
         "TimerController",  # Name exposed to QML
         timer_controller_instance,
+    )
+
+    # Register NavigationController instance as a singleton
+    qmlRegisterSingletonInstance(
+        NavigationController,
+        "MyServices",
+        1,
+        0,
+        "NavigationController",  # Name exposed to QML
+        navigation_controller_instance,
     )
     # -----------------------------------------
 

@@ -18,11 +18,70 @@ BaseScreen {
     property string statusMessage: "Loading weather..."
     property string currentView: "current"  // Track the current view
     property var selectedForecastPeriod: null
+    property var _navigationParams: null // Add missing property for navigation parameters
     
     // --- Configuration Properties ---
     property string lottieIconsBase: PathProvider.getAbsolutePath("frontend/icons/weather/lottie") + "/"
     property string lottiePlayerPath: PathProvider.getAbsolutePath("frontend/assets/js/lottie.min.js")
     property string pngIconsBase: "file://" + PathProvider.getAbsolutePath("frontend/icons/weather/PNG") + "/"
+    
+    // Handle navigation parameters for different weather views
+    function handleNavigationParams(params) {
+        console.log("WeatherScreen: Handling navigation params:", JSON.stringify(params));
+        if (params && params.viewType) {
+            if (params.viewType === "hourly") {
+                currentView = "hourly";
+                console.log("Navigated to hourly weather view");
+            } else if (params.viewType === "sevenday") {
+                currentView = "forecast";
+                console.log("Navigated to 7-day forecast view");
+            } else if (params.viewType === "current") {
+                currentView = "current";
+                console.log("Navigated to current weather view");
+            } else {
+                console.log("Unknown viewType parameter:", params.viewType);
+            }
+        } else {
+            console.log("No viewType parameter found in navigation params");
+        }
+    }
+    
+    // Handle Component.onCompleted to process any navigation parameters and fetch data
+    Component.onCompleted: {
+        console.log("WeatherScreen: Component.onCompleted running...") 
+        console.log("Weather screen paths:");
+        console.log("- Lottie icons base:", lottieIconsBase);
+        console.log("- Lottie player path:", lottiePlayerPath);
+        console.log("- PNG icons base:", pngIconsBase);
+        
+        // Check if there are any navigation parameters passed when creating this screen
+        if (_navigationParams) {
+            console.log("WeatherScreen: Found _navigationParams:", JSON.stringify(_navigationParams));
+            handleNavigationParams(_navigationParams);
+        } else {
+            console.log("WeatherScreen: No _navigationParams property found, using default view");
+        }
+        
+        // Set initial status message
+        statusMessage = "Requesting weather data from National Weather Service..."
+        
+        // First stop any running timers to make sure we don't have duplicates
+        if (weatherTimer.running) {
+            console.log("Stopping existing weatherTimer before restart");
+            weatherTimer.stop();
+        }
+        if (retryTimer.running) {
+            console.log("Stopping existing retryTimer before fetch");
+            retryTimer.stop();
+        }
+        
+        // Fetch weather data
+        fetchWeather();
+        
+        // Start the weather timer for periodic updates
+        console.log("Starting weatherTimer for periodic updates");
+        weatherTimer.start();
+    }
     
     // Start the animation timer when status message changes
     onStatusMessageChanged: {
@@ -59,6 +118,10 @@ BaseScreen {
             SettingsService.httpBaseUrl + "/api/weather";
         
         var xhr = new XMLHttpRequest();
+        
+        // Add timeout handling
+        xhr.timeout = 15000; // 15 seconds timeout
+        
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 200) {
@@ -73,7 +136,12 @@ BaseScreen {
                             return;
                         }
                         
-                        console.log("FULL WEATHER RESPONSE:", JSON.stringify(response));
+                        // Check if response is valid with required data
+                        if (!response) {
+                            throw new Error("Empty response received");
+                        }
+                        
+                        console.log("Weather response received successfully");
                         
                         // Process the forecast periods
                         if (response && response.forecast && response.forecast.properties && response.forecast.properties.periods) {
@@ -89,7 +157,7 @@ BaseScreen {
                             // Check if precipitation probability exists in hourly data
                             if (response.forecast_hourly.properties.periods.length > 0) {
                                 var firstPeriod = response.forecast_hourly.properties.periods[0];
-                                console.log("First hourly period:", JSON.stringify(firstPeriod));
+                                console.log("First hourly period properties available");
                                 if (firstPeriod.probabilityOfPrecipitation) {
                                     console.log("Precipitation probability exists in data");
                                 } else {
@@ -106,14 +174,21 @@ BaseScreen {
                         
                         // Cancel retry timer if it's running
                         if (retryTimer.running) {
+                            console.log("Stopping retryTimer after successful fetch");
                             retryTimer.stop();
                         }
                         
                     } catch (e) {
                         console.error("Error parsing weather data (WeatherScreen):", e);
-                        statusMessage = "Error parsing weather data.";
+                        statusMessage = "Error parsing weather data: " + e.message;
                         currentWeatherData = null;
                         forecastPeriods = null;
+                        
+                        // Start retry timer if it's not already running
+                        if (!retryTimer.running) {
+                            console.log("Starting retryTimer due to parse error");
+                            retryTimer.start();
+                        }
                     }
                 } else {
                     console.error("Error fetching weather data (WeatherScreen). Status:", xhr.status);
@@ -122,6 +197,13 @@ BaseScreen {
                         statusMessage = "Weather data is not available yet. Waiting for National Weather Service data..."; 
                         // Start short retry timer if it's not already running
                         if (!retryTimer.running) {
+                            console.log("Starting retryTimer due to 503 status");
+                            retryTimer.start();
+                        }
+                    } else {
+                        // For other errors, also start retry timer
+                        if (!retryTimer.running) {
+                            console.log("Starting retryTimer due to HTTP error: " + xhr.status);
                             retryTimer.start();
                         }
                     }
@@ -130,6 +212,33 @@ BaseScreen {
                 }
             }
         }
+        
+        // Add specific error handlers
+        xhr.ontimeout = function() {
+            console.error("Weather request timed out");
+            statusMessage = "Weather data request timed out. Retrying...";
+            currentWeatherData = null;
+            forecastPeriods = null;
+            
+            // Start retry timer if it's not already running
+            if (!retryTimer.running) {
+                console.log("Starting retryTimer due to timeout");
+                retryTimer.start();
+            }
+        };
+        
+        xhr.onerror = function() {
+            console.error("Network error occurred while fetching weather data");
+            statusMessage = "Network error occurred. Retrying...";
+            currentWeatherData = null;
+            forecastPeriods = null;
+            
+            // Start retry timer if it's not already running
+            if (!retryTimer.running) {
+                console.log("Starting retryTimer due to network error");
+                retryTimer.start();
+            }
+        };
         
         if (forceRefresh) {
             // Use POST for refresh
@@ -140,7 +249,18 @@ BaseScreen {
             xhr.open("GET", endpoint);
         }
         
-        xhr.send();
+        try {
+            xhr.send();
+        } catch (e) {
+            console.error("Error sending weather request:", e);
+            statusMessage = "Error sending weather request: " + e.message;
+            
+            // Start retry timer if it's not already running
+            if (!retryTimer.running) {
+                console.log("Starting retryTimer due to send error");
+                retryTimer.start();
+            }
+        }
     }
     
     // Create a forecast-compatible object for current weather
@@ -425,21 +545,6 @@ BaseScreen {
         }
     }
     
-    // Fetch data when the component is ready
-    Component.onCompleted: {
-        console.log("WeatherScreen: Component.onCompleted running...") 
-        console.log("Weather screen paths:");
-        console.log("- Lottie icons base:", lottieIconsBase);
-        console.log("- Lottie player path:", lottiePlayerPath);
-        console.log("- PNG icons base:", pngIconsBase);
-        
-        // Set initial status message
-        statusMessage = "Requesting weather data from National Weather Service..."
-        
-        fetchWeather();
-        weatherTimer.start();
-    }
-
     // Timer to refresh weather data periodically
     Timer {
         id: weatherTimer
@@ -1245,6 +1350,17 @@ BaseScreen {
         if (forecastPeriods && forecastPeriods.length > periodIndex) {
             selectedForecastPeriod = forecastPeriods[periodIndex];
             detailedForecastDialog.open();
+        }
+    }
+    
+    // Ensure timers are stopped when the component is destroyed
+    Component.onDestruction: {
+        console.log("WeatherScreen: Component.onDestruction - cleaning up timers");
+        if (weatherTimer.running) {
+            weatherTimer.stop();
+        }
+        if (retryTimer.running) {
+            retryTimer.stop();
         }
     }
 }

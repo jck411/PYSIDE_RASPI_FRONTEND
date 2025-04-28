@@ -5,7 +5,7 @@ import QtQuick.Window 2.15
 // import QtQuick.Controls.Material 2.15 // No longer needed
 // import MyScreens 1.0 // REMOVED - Module no longer defined/needed here
 import MyTheme 1.0  // Import our ThemeManager
-import MyServices 1.0 // Need this for SettingsService
+import MyServices 1.0 // Need this for SettingsService, NavigationController
 // import MyServices 1.0 // No longer needed for ErrorHandler, check if SettingsService is used directly here
 import "." // Import the current directory to find TouchFriendlyButton.qml
 // Removing the navigation utility import since we're using direct navigation
@@ -236,4 +236,26 @@ Window {
             PhotoController.set_dark_mode(ThemeManager.is_dark_mode)
         }
     }
+
+    // --- Connection to NavigationController ---
+    Connections {
+        target: NavigationController
+        
+        function onNavigationRequested(screenName) {
+            console.log("Navigation requested to: " + screenName)
+            stackView.replace(screenName)
+        }
+        
+        function onNavigationWithParamsRequested(screenName, params) {
+            console.log("Navigation with params requested to: " + screenName + " with params: " + JSON.stringify(params))
+            
+            // Create a properties object with the navigation parameters
+            var properties = { _navigationParams: params }
+            
+            // Replace the current item with the new screen, passing the parameters
+            stackView.replace(screenName, properties)
+        }
+    }
+    
+    // --- End Navigation Connection ---
 }
