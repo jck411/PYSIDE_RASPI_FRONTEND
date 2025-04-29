@@ -97,3 +97,29 @@ logger = setup_logger(level=logging.DEBUG)
 CHAT_CONFIG: Dict[str, Any] = {
     "show_input_box": True,  # Whether to show the text input field on the chat screen
 }
+
+# ========================
+# APPLICATION INSTANCE
+# ========================
+# Global reference to the application instance, will be set in main.py
+_app_instance = None
+
+def set_app_instance(app_instance):
+    """
+    Set the global application instance reference.
+    
+    Args:
+        app_instance: The main application instance
+    """
+    global _app_instance
+    _app_instance = app_instance
+    logger.debug("Application instance reference stored")
+
+def get_app_instance():
+    """
+    Get the global application instance reference.
+    
+    Returns:
+        The main application instance or None if not set
+    """
+    return _app_instance

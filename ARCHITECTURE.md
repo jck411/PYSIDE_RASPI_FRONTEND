@@ -75,6 +75,34 @@ The application provides both time display and alarm management functionality:
   - Offers options to dismiss or snooze the alarm
   - Snoozing an alarm creates a new one-time alarm for 5 minutes later
 
+- **Timer Functionality**: Manages countdown timers with a flexible interface
+  - **TimerScreen**: Dedicated UI for creating and managing timers
+    - Shows active timer with hours, minutes, seconds countdown
+    - Includes tumbler controls for setting time values
+    - Supports timer naming for identification
+    - Provides controls for pause, resume, and cancel operations
+  - **TimerController**: Core class that manages timer state and operations
+    - Handles countdown logic with a QTimer for accurate timing
+    - Emits signals for timer completion and state changes
+    - Provides methods for starting, pausing, stopping, and extending timers
+    - Implements a persistent timer state across application sessions
+    - **Function Call API**: Provides a schema-based API for LLM integration
+      - Supports direct timer creation via `create_timer()` method
+      - Accepts parameters for name, hours, minutes, seconds, and auto-start option
+      - Returns structured response with success status and message
+      - Can be called from any part of the application without UI navigation
+      - Integrates with chat interface for natural language timer creation
+  - **Sound Notifications**: Plays configurable alert sounds when timer completes
+    - Uses application's AudioManager for consistent sound handling
+    - Supports customizable sound selection via settings
+  - **Integration with Chat**: Allows timer creation through natural language
+    - Parses timer commands like "set timer for 5 minutes"
+    - Processes function call requests with structured timer parameters
+    - Voice commands are integrated directly via the TimerCommandProcessor
+    - Supports various command formats like "set timer to 15 minutes" or "set timer for 10 minutes"
+    - Responds to timer commands with natural language responses
+    - Prevents navigation-only behavior by processing timer commands before navigation commands
+
 - **AlarmController**: Manages alarm data and functionality
   - Located in `frontend/logic/alarm_controller.py`
   - Provides methods for adding, updating, and deleting alarms

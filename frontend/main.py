@@ -24,8 +24,12 @@ from frontend.logic.time_context_provider import TimeContextProvider
 from frontend.logic.audio_manager import AudioManager
 # Import the new TimerController
 from frontend.logic.timer_controller import TimerController
+# Import the TimerCommandProcessor
+from frontend.logic.timer_command_processor import TimerCommandProcessor
 # Import the new NavigationController
 from frontend.logic.navigation_controller import NavigationController
+# Import config functions
+from frontend.config import set_app_instance
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -140,8 +144,23 @@ def main():
     # Create the single NavigationController instance
     navigation_controller_instance = NavigationController()
     
+    # Create the TimerCommandProcessor and connect it to the TimerController
+    timer_command_processor_instance = TimerCommandProcessor(timer_controller_instance)
+    
     # Connect NavigationController to ChatController for processing navigation commands
     chat_controller_instance.navigation_controller = navigation_controller_instance
+    
+    # Connect TimerCommandProcessor to ChatController for processing timer commands
+    chat_controller_instance.timer_command_processor = timer_command_processor_instance
+    
+    # Store instance references on the app object for direct access
+    app.timer_controller_instance = timer_controller_instance
+    app.chat_controller_instance = chat_controller_instance
+    app.navigation_controller_instance = navigation_controller_instance
+    app.timer_command_processor_instance = timer_command_processor_instance
+    
+    # Register app instance in config for global access
+    set_app_instance(app)
     
     # ----------------------------------
 

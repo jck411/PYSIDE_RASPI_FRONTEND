@@ -2,7 +2,7 @@
 from PySide6.QtCore import QObject, Signal
 from typing import List, Dict, Any, Optional
 
-from frontend.config import logger
+from frontend.config import logger, get_app_instance
 
 
 class MessageHandler(QObject):
@@ -160,6 +160,52 @@ class MessageHandler(QObject):
             String containing the interrupted response
         """
         return self._interrupted_response
+
+    def process_timer_command(self, params):
+        """
+        Process a timer command from the LLM with the specified parameters.
+        
+        Args:
+            params: Dictionary containing timer parameters:
+                - name: Name of the timer (optional, defaults to "Timer")
+                - hours: Hours component (optional, defaults to 0)
+                - minutes: Minutes component (optional, defaults to 0)
+                - seconds: Seconds component (optional, defaults to 0)
+                - start_immediately: Whether to start timer immediately (optional, defaults to True)
+        
+        Returns:
+            dict: Result of the timer operation
+        """
+        # Extract parameters with defaults
+        name = params.get("name", "Timer")
+        hours = int(params.get("hours", 0))
+        minutes = int(params.get("minutes", 0))
+        seconds = int(params.get("seconds", 0))
+        start_immediately = bool(params.get("start_immediately", True))
+        
+        try:
+            # Get reference to the TimerController
+            app = get_app_instance()
+            if app and hasattr(app, 'timer_controller_instance'):
+                timer_controller = app.timer_controller_instance
+                
+                # Create the timer
+                result = timer_controller.create_timer(
+                    name=name,
+                    hours=hours,
+                    minutes=minutes,
+                    seconds=seconds,
+                    start_immediately=start_immediately
+                )
+                
+                logger.info(f"[MessageHandler] Timer command processed: {result['message']}")
+                return result
+            else:
+                logger.error("[MessageHandler] Could not access TimerController")
+                return {"success": False, "message": "Could not access timer service"}
+        except Exception as e:
+            logger.error(f"[MessageHandler] Error processing timer command: {e}")
+            return {"success": False, "message": f"Error creating timer: {str(e)}"}
 
     def clear_history(self):
         """

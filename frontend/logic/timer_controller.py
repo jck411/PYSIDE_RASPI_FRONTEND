@@ -172,6 +172,67 @@ class TimerController(QObject):
              #    self.start_timer() # Let's try this behavior
                  # Or maybe require manual start after extending a finished timer?
 
+    @Slot(str, int, int, int, bool, result=dict)
+    def create_timer(self, name: str = "Timer", hours: int = 0, minutes: int = 0, seconds: int = 0, start_immediately: bool = True):
+        """
+        Creates a timer with the specified parameters and optionally starts it.
+        
+        Args:
+            name: The name of the timer
+            hours: Hours component of the timer duration
+            minutes: Minutes component of the timer duration 
+            seconds: Seconds component of the timer duration
+            start_immediately: Whether to start the timer immediately after setting it
+        
+        Returns:
+            dict: Status of the operation with keys:
+                - success: boolean indicating if operation was successful
+                - message: descriptive message about the result
+                - timer_id: identifier of the created timer (if successful)
+        """
+        # Validate inputs
+        if hours < 0 or minutes < 0 or seconds < 0:
+            logging.warning(f"Invalid timer duration: {hours}h {minutes}m {seconds}s")
+            return {"success": False, "message": "Timer duration cannot contain negative values"}
+        
+        total_seconds = hours * 3600 + minutes * 60 + seconds
+        if total_seconds <= 0:
+            logging.warning("Cannot create timer with zero duration")
+            return {"success": False, "message": "Timer duration must be greater than zero"}
+        
+        # Set the timer
+        self.set_timer(hours, minutes, seconds, name)
+        
+        # Start if requested
+        if start_immediately:
+            self.start_timer()
+            status_msg = f"Timer '{name}' set and started for {self.format_duration(total_seconds)}"
+        else:
+            status_msg = f"Timer '{name}' set for {self.format_duration(total_seconds)} (not started)"
+        
+        logging.info(status_msg)
+        return {
+            "success": True,
+            "message": status_msg,
+            "timer_id": name  # Using name as identifier for now
+        }
+
+    def format_duration(self, total_seconds: int) -> str:
+        """Helper method to format seconds into a human-readable duration string."""
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        
+        parts = []
+        if hours > 0:
+            parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+        if minutes > 0:
+            parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+        if seconds > 0:
+            parts.append(f"{seconds} second{'s' if seconds != 1 else ''}")
+        
+        return " and ".join(parts)
+
     # --- Private Methods ---
 
     def _tick(self):

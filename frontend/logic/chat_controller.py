@@ -75,6 +75,9 @@ class ChatController(QObject):
 
         # Navigation controller reference - will be set in main.py
         self.navigation_controller = None
+        
+        # Timer command processor reference - will be set in main.py
+        self._timer_command_processor = None
 
         # Connect signals
         self._connect_signals()
@@ -129,6 +132,24 @@ class ChatController(QObject):
         
         # Time context provider signals
         self.time_context_provider.timeContextUpdated.connect(self.timeContextUpdated)
+        
+        # Add method to connect timer command processor when it's set
+        self._connect_timer_command_processor()
+
+    def _connect_timer_command_processor(self):
+        """Connect timer command processor signals if available"""
+        if hasattr(self, '_timer_command_processor') and self._timer_command_processor:
+            # Connect the timerStateQueried signal to handle timer responses
+            self._timer_command_processor.timerStateQueried.connect(self._handle_timer_response)
+            logger.info("[ChatController] Connected TimerCommandProcessor signals")
+    
+    def _handle_timer_response(self, response_text):
+        """Handle timer command responses"""
+        if response_text:
+            # Add to message history as assistant response
+            self.message_handler.add_message("assistant", response_text)
+            self._add_assistant_message_to_history(response_text)
+            logger.info(f"[ChatController] Added timer response: {response_text}")
 
     def _startTasks(self):
         """Start the background tasks"""
@@ -196,6 +217,19 @@ class ChatController(QObject):
                     self.navigation_controller.handleBackendNavigationRequest(screen)
             else:
                 logger.warning(f"[ChatController] Cannot process navigation request: {data}")
+        elif action == "set_timer":
+            # Handle timer setting request
+            timer_params = data.get("params", {})
+            result = self.message_handler.process_timer_command(timer_params)
+            
+            # Send acknowledgment back
+            if result["success"]:
+                self.message_handler.add_message("assistant", result["message"])
+                self._add_assistant_message_to_history(result["message"])
+            else:
+                error_msg = f"Could not set timer: {result['message']}"
+                self.message_handler.add_message("assistant", error_msg)
+                self._add_assistant_message_to_history(error_msg)
         else:
             # Try to process as a message - MessageHandler will emit signals handled elsewhere
             self.message_handler.process_message(data)
@@ -230,6 +264,19 @@ class ChatController(QObject):
             # Notify server that playback is complete
             await self.websocket_client.send_playback_complete()
 
+    @property
+    def timer_command_processor(self):
+        """Get the timer command processor"""
+        return self._timer_command_processor
+    
+    @timer_command_processor.setter
+    def timer_command_processor(self, processor):
+        """Set the timer command processor and connect signals"""
+        self._timer_command_processor = processor
+        if processor:
+            self._connect_timer_command_processor()
+            logger.info("[ChatController] Timer command processor set")
+
     @Slot(str)
     def sendMessage(self, text):
         """
@@ -239,7 +286,18 @@ class ChatController(QObject):
         if not text or not self.websocket_client.is_connected():
             return
 
-        # First, check if this is a navigation command
+        # First, check if this is a timer command
+        # If we have a timer command processor registered, try to process as timer command
+        if hasattr(self, '_timer_command_processor') and self._timer_command_processor:
+            # Try to process as a timer command
+            if self._timer_command_processor.processCommand(text):
+                # This was a timer command, add it to history but don't send to LLM
+                self._add_user_message_to_history(text)
+                
+                # The timer command processor will emit its own response through its signals
+                return
+
+        # Then, check if this is a navigation command
         # If we have a navigation controller registered, try to process as navigation
         if hasattr(self, 'navigation_controller') and self.navigation_controller:
             if self.navigation_controller.processNavigationCommand(text):
