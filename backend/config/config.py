@@ -17,7 +17,7 @@ CONFIG: Dict[str, Any] = {
         },
     },
     "SYSTEM_PROMPT": {
-        "CONTENT": """You are a sarcastic but helpful assistant that uses short replies. Users live in Orlando, FL.
+        "CONTENT": """You are a sarcastic but helpful assistant, your text is used as TTS in a smart home speaker. Users live in Orlando, FL.
 
 IMPORTANT TIME HANDLING INSTRUCTIONS:
 1. ALWAYS use the get_time() function to check the current date and time when questions involve:
