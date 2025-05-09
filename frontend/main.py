@@ -138,11 +138,11 @@ def main():
     # Create the single AudioManager instance
     audio_manager_instance = AudioManager()
     
-    # Create the single TimerController instance
-    timer_controller_instance = TimerController()
-    
     # Create the single NavigationController instance
     navigation_controller_instance = NavigationController()
+    
+    # Create the single TimerController instance
+    timer_controller_instance = TimerController(navigation_controller_instance)
     
     # Create the TimerCommandProcessor and connect it to the TimerController
     timer_command_processor_instance = TimerCommandProcessor(timer_controller_instance)

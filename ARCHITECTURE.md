@@ -86,6 +86,7 @@ The application provides both time display and alarm management functionality:
     - Emits signals for timer completion and state changes
     - Provides methods for starting, pausing, stopping, and extending timers
     - Implements a persistent timer state across application sessions
+    - Automatically navigates to the TimerScreen when a timer is started, resumed, paused, stopped, or extended.
     - **Function Call API**: Provides a schema-based API for LLM integration
       - Supports direct timer creation via `create_timer()` method
       - Accepts parameters for name, hours, minutes, seconds, and auto-start option

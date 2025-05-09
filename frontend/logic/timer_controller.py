@@ -4,6 +4,7 @@ import logging
 import os
 import json
 from datetime import datetime, timedelta
+from frontend.logic.navigation_controller import NavigationController
 
 # Constants for file paths
 CONFIG_DIR_NAME = "SmartScreenConfig"
@@ -26,11 +27,12 @@ class TimerController(QObject):
     timer_finished = Signal(str) # Emit timer name on finish
     timer_state_changed = Signal() # Generic signal for running/paused state changes
 
-    def __init__(self, parent=None):
+    def __init__(self, navigation_controller, parent=None):
         super().__init__(parent)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.setInterval(1000) # Tick every second
+        self._navigation_controller = navigation_controller
 
         self._name = "Timer" # Default name
         self._duration = 0 # Total duration in seconds
@@ -117,6 +119,12 @@ class TimerController(QObject):
 
         self.timer_state_changed.emit()
         self.timer_updated.emit() # Update time display immediately
+        
+        # Navigate to timer screen
+        if self._navigation_controller:
+            self._navigation_controller.navigationRequested.emit("TimerScreen.qml")
+        else:
+            logging.warning("[TimerController] NavigationController not available, cannot navigate.")
 
     @Slot()
     def pause_timer(self):
@@ -131,6 +139,12 @@ class TimerController(QObject):
         logging.info(f"Timer paused: Name='{self._name}', Remaining={self._remaining_seconds}s")
         self.timer_state_changed.emit()
 
+        # Navigate to timer screen
+        if self._navigation_controller:
+            self._navigation_controller.navigationRequested.emit("TimerScreen.qml")
+        else:
+            logging.warning("[TimerController] NavigationController not available, cannot navigate.")
+
     @Slot()
     def stop_timer(self):
         """Stops the timer and resets its state."""
@@ -143,6 +157,11 @@ class TimerController(QObject):
         logging.info(f"Timer stopped: Name='{self._name}'")
         if was_active:
             self.timer_state_changed.emit()
+            # Navigate to timer screen only if a timer was active
+            if self._navigation_controller:
+                self._navigation_controller.navigationRequested.emit("TimerScreen.qml")
+            else:
+                logging.warning("[TimerController] NavigationController not available, cannot navigate.")
         # Always emit updated signal to ensure display clears or resets
         self.timer_updated.emit()
 
@@ -161,6 +180,12 @@ class TimerController(QObject):
         logging.info(f"Timer extended: Name='{self._name}', Added={seconds}s, New Remaining={self._remaining_seconds}s")
 
         self.timer_updated.emit()
+
+        # Navigate to timer screen
+        if self._navigation_controller:
+            self._navigation_controller.navigationRequested.emit("TimerScreen.qml")
+        else:
+            logging.warning("[TimerController] NavigationController not available, cannot navigate.")
 
         # If timer had finished (remaining was 0) and we extend, restart it?
         # Let's make it automatically resume if it was paused and becomes > 0

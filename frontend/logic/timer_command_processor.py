@@ -31,24 +31,44 @@ class TimerCommandProcessor(QObject):
     def _initialize_command_patterns(self):
         """Initialize command patterns for recognizing timer commands"""
         
-        # Timer control commands
+        unit_regex = r"(h(?:ours?)?|hr|hrs|m(?:inutes?)?|min|mins|s(?:econds?)?|sec|secs)"
+        # Flexible timer identifier: matches "timer", "countdown", "countdown timer", "stopwatch", "stopwatch timer"
+        timer_identifier_regex = r"(?:(?:countdown|stopwatch)(?:\s+timer)?|(?:countdown\s+)?timer)"
+        action_verb_regex = r"(?:start|begin|set)"
+        optional_article_regex = r"(?:\s+(?:a|the))?"
+        optional_for_to_regex = r"(?:\s+for|\s+to)?"
+        required_for_named_regex = r"(?:\s+(?:for|called|named))"
+        optional_conjunction_regex = r"(?:\s+(?:and|with))?"
+        direct_command_keyword_regex = r"(?:countdown|stopwatch)"
+
         self._timer_control_patterns = [
-            # Start timer (with optional duration)
-            (r"(?:start|begin|set)(?:\s+(?:a|the))?\s+(?:countdown\s+)?timer(?:\s+for)?\s+(\d+)\s+(hours?|minutes?|seconds?)", self._start_timer_with_duration),
-            (r"(?:start|begin|set)(?:\s+(?:a|the))?\s+(?:countdown\s+)?timer(?:\s+to)?\s+(\d+)\s+(hours?|minutes?|seconds?)", self._start_timer_with_duration),
-            (r"(?:start|begin|set)(?:\s+(?:a|the))?\s+(?:countdown\s+)?timer(?:\s+for)?\s+(\d+)\s+(hours?|minutes?|seconds?)(?:\s+(?:and|with))?\s+(\d+)\s+(minutes?|seconds?)", self._start_timer_with_multiple_units),
-            (r"(?:start|begin|set)(?:\s+(?:a|the))?\s+(?:countdown\s+)?timer(?:\s+(?:for|called|named))?\s+(.+?)(?:\s+for)?\s+(\d+)\s+(hours?|minutes?|seconds?)", self._start_timer_with_name_and_duration),
-            (r"(?:start|begin|set)(?:\s+(?:the|a))?\s+(?:countdown\s+)?timer", self._start_timer_default),
+            # --- Patterns starting with action verbs like "start", "set", "begin" ---
+            # Verb + Timer ID + Name + Duration: e.g., "set timer T_NAME for X unit"
+            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}{required_for_named_regex}\s+(.+?)(?:\s+for)?\s+(\d+)\s+{unit_regex}", self._start_timer_with_name_and_duration),
+            # Verb + Timer ID + Multiple Units: e.g., "set timer for X unit and Y unit"
+            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}(?:\s+for)?\s+(\d+)\s+{unit_regex}{optional_conjunction_regex}\s+(\d+)\s+{unit_regex}", self._start_timer_with_multiple_units),
+            # Verb + Timer ID + Duration: e.g., "set timer for X unit"
+            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}{optional_for_to_regex}\s+(\d+)\s+{unit_regex}", self._start_timer_with_duration),
+            # Verb + Timer ID (default): e.g., "start timer"
+            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}", self._start_timer_default),
+
+            # --- Patterns starting directly with "countdown" or "stopwatch" ---
+            # Direct Keyword + Name + Duration: e.g., "countdown T_NAME for X unit"
+            (rf"{direct_command_keyword_regex}{required_for_named_regex}\s+(.+?)(?:\s+for)?\s+(\d+)\s+{unit_regex}", self._start_timer_with_name_and_duration),
+            # Direct Keyword + Multiple Units: e.g., "countdown X unit and Y unit"
+            (rf"{direct_command_keyword_regex}\s+(\d+)\s+{unit_regex}{optional_conjunction_regex}\s+(\d+)\s+{unit_regex}", self._start_timer_with_multiple_units),
+            # Direct Keyword + Duration: e.g., "countdown X unit"
+            (rf"{direct_command_keyword_regex}\s+(\d+)\s+{unit_regex}", self._start_timer_with_duration),
+            # Direct Keyword (default): e.g., "countdown"
+            (rf"{direct_command_keyword_regex}", self._start_timer_default),
             
-            # Pause/Resume commands
-            (r"(?:pause|stop|halt|freeze)(?:\s+(?:the|my))?\s+(?:countdown\s+)?timer", self._pause_timer),
-            (r"(?:resume|continue|restart|unpause)(?:\s+(?:the|my))?\s+(?:countdown\s+)?timer", self._resume_timer),
+            # --- Existing Pause/Resume/Cancel commands (typically use "timer" explicitly but could be reviewed if needed) ---
+            (rf"(?:pause|stop|halt|freeze)(?:\s+(?:the|my))?\s+{timer_identifier_regex}", self._pause_timer),
+            (rf"(?:resume|continue|restart|unpause)(?:\s+(?:the|my))?\s+{timer_identifier_regex}", self._resume_timer),
+            (rf"(?:cancel|reset|clear|end)(?:\s+(?:the|my))?\s+{timer_identifier_regex}", self._stop_timer),
             
-            # Cancel/Reset commands
-            (r"(?:cancel|reset|clear|end)(?:\s+(?:the|my))?\s+(?:countdown\s+)?timer", self._stop_timer),
-            
-            # Add time commands
-            (r"(?:add|give|extend)(?:\s+(?:the|my))?\s+timer(?:\s+by)?\s+(\d+)\s+(hours?|minutes?|seconds?)", self._extend_timer),
+            # --- Add time command ---
+            (rf"(?:add|give|extend)(?:\s+(?:the|my))?\s+{timer_identifier_regex}(?:\s+by)?\s+(\d+)\s+{unit_regex}", self._extend_timer),
         ]
         
         # Timer query commands
@@ -111,18 +131,36 @@ class TimerCommandProcessor(QObject):
     
     # === Timer control command handlers ===
     
+    def _normalize_unit(self, unit_val_raw):
+        """Normalize a unit string to 'hour', 'minute', or 'second'."""
+        unit_val = unit_val_raw.lower()
+        if unit_val in ["hour", "hours", "hr", "hrs", "h"]:
+            return "hour"
+        elif unit_val in ["minute", "minutes", "min", "mins", "m"]:
+            return "minute"
+        elif unit_val in ["second", "seconds", "sec", "secs", "s"]:
+            return "second"
+        else:
+            logger.warning(f"Unrecognized time unit: {unit_val_raw}")
+            return None
+
     def _start_timer_with_duration(self, matches):
         """Handle command to start timer with a simple duration"""
         duration = int(matches.group(1))
-        unit = matches.group(2).lower().rstrip('s')  # Remove trailing 's' if present
+        unit_val_raw = matches.group(2)
         
+        normalized_unit = self._normalize_unit(unit_val_raw)
+        if not normalized_unit:
+            self.timerStateQueried.emit(f"Sorry, I didn't understand the time unit '{unit_val_raw}'.")
+            return True
+            
         hours, minutes, seconds = 0, 0, 0
         
-        if unit == "hour":
+        if normalized_unit == "hour":
             hours = duration
-        elif unit == "minute":
+        elif normalized_unit == "minute":
             minutes = duration
-        elif unit == "second":
+        elif normalized_unit == "second":
             seconds = duration
         
         logger.info(f"[TimerCommandProcessor] Starting timer for {hours}h {minutes}m {seconds}s")
@@ -137,29 +175,41 @@ class TimerCommandProcessor(QObject):
         
         time_str = self._format_duration_string(hours, minutes, seconds)
         self.timerStateQueried.emit(f"Timer started for {time_str}.")
+        
         return True
     
     def _start_timer_with_multiple_units(self, matches):
         """Handle command to start timer with multiple time units (e.g., 1 hour 30 minutes)"""
         first_duration = int(matches.group(1))
-        first_unit = matches.group(2).lower().rstrip('s')
+        first_unit_raw = matches.group(2)
         second_duration = int(matches.group(3))
-        second_unit = matches.group(4).lower().rstrip('s')
-        
+        second_unit_raw = matches.group(4)
+
+        norm_first_unit = self._normalize_unit(first_unit_raw)
+        norm_second_unit = self._normalize_unit(second_unit_raw)
+
+        if not norm_first_unit or not norm_second_unit:
+            err_unit = first_unit_raw if not norm_first_unit else second_unit_raw
+            self.timerStateQueried.emit(f"Sorry, I didn't understand the time unit '{err_unit}'.")
+            return True
+
         hours, minutes, seconds = 0, 0, 0
         
         # Process first unit
-        if first_unit == "hour":
+        if norm_first_unit == "hour":
             hours = first_duration
-        elif first_unit == "minute":
+        elif norm_first_unit == "minute":
             minutes = first_duration
-        elif first_unit == "second":
+        elif norm_first_unit == "second":
             seconds = first_duration
         
         # Process second unit
-        if second_unit == "minute":
+        if norm_second_unit == "hour": # Should not typically happen for second unit if first is not hour, but handle defensively
+            if hours == 0: hours = second_duration # Or add if mixed like "1 minute 1 hour" - current regex implies order
+            else: logger.warning("Second unit as hour after first unit as hour is unusual.") # Or error
+        elif norm_second_unit == "minute":
             minutes = second_duration
-        elif second_unit == "second":
+        elif norm_second_unit == "second":
             seconds = second_duration
         
         logger.info(f"[TimerCommandProcessor] Starting timer for {hours}h {minutes}m {seconds}s")
@@ -170,21 +220,27 @@ class TimerCommandProcessor(QObject):
         
         time_str = self._format_duration_string(hours, minutes, seconds)
         self.timerStateQueried.emit(f"Timer started for {time_str}.")
+        
         return True
     
     def _start_timer_with_name_and_duration(self, matches):
         """Handle command to start timer with name and duration"""
         name = matches.group(1).strip()
         duration = int(matches.group(2))
-        unit = matches.group(3).lower().rstrip('s')
-        
+        unit_val_raw = matches.group(3)
+
+        normalized_unit = self._normalize_unit(unit_val_raw)
+        if not normalized_unit:
+            self.timerStateQueried.emit(f"Sorry, I didn't understand the time unit '{unit_val_raw}'.")
+            return True
+            
         hours, minutes, seconds = 0, 0, 0
         
-        if unit == "hour":
+        if normalized_unit == "hour":
             hours = duration
-        elif unit == "minute":
+        elif normalized_unit == "minute":
             minutes = duration
-        elif unit == "second":
+        elif normalized_unit == "second":
             seconds = duration
         
         logger.info(f"[TimerCommandProcessor] Starting timer '{name}' for {hours}h {minutes}m {seconds}s")
@@ -199,6 +255,7 @@ class TimerCommandProcessor(QObject):
         
         time_str = self._format_duration_string(hours, minutes, seconds)
         self.timerStateQueried.emit(f"Timer '{name}' started for {time_str}.")
+        
         return True
     
     def _start_timer_default(self, matches):
@@ -263,26 +320,31 @@ class TimerCommandProcessor(QObject):
     def _extend_timer(self, matches):
         """Handle command to extend the timer"""
         duration = int(matches.group(1))
-        unit = matches.group(2).lower().rstrip('s')
-        
+        unit_val_raw = matches.group(2)
+
+        normalized_unit = self._normalize_unit(unit_val_raw)
+        if not normalized_unit:
+            self.timerStateQueried.emit(f"Sorry, I didn't understand the time unit '{unit_val_raw}'.")
+            return True
+            
         seconds_to_add = 0
         
-        if unit == "hour":
+        if normalized_unit == "hour":
             seconds_to_add = duration * 3600
-        elif unit == "minute":
+        elif normalized_unit == "minute":
             seconds_to_add = duration * 60
-        elif unit == "second":
+        elif normalized_unit == "second":
             seconds_to_add = duration
         
         if self._timer_controller.is_running or self._timer_controller.is_paused:
             self._timer_controller.extend_timer(seconds_to_add)
             
             time_str = ""
-            if unit == "hour":
+            if normalized_unit == "hour":
                 time_str = f"{duration} hour{'s' if duration > 1 else ''}"
-            elif unit == "minute":
+            elif normalized_unit == "minute":
                 time_str = f"{duration} minute{'s' if duration > 1 else ''}"
-            elif unit == "second":
+            elif normalized_unit == "second":
                 time_str = f"{duration} second{'s' if duration > 1 else ''}"
                 
             remaining = self._timer_controller.remaining_time_str
