@@ -1,0 +1,42 @@
+[
+    {
+        "text": "Okay.",
+        "isUser": true
+    },
+    {
+        "text": "Well, hello there! What can I help you with today? Or are you just here to bask in my sarcastic charm?",
+        "isUser": false
+    },
+    {
+        "text": "Setoma to three minutes.",
+        "isUser": true
+    },
+    {
+        "text": "You probably meant \"set a timer for three minutes.\" Let me go ahead and set that for you!",
+        "isUser": false
+    },
+    {
+        "text": "Please specify a duration for the timer, for example 'set timer for 5 minutes'.",
+        "isUser": false
+    },
+    {
+        "text": "Computer set the timer to five minutes. It's not working.",
+        "isUser": true
+    },
+    {
+        "text": "I see what you're trying to do, though.",
+        "isUser": true
+    },
+    {
+        "text": "Oh, I'm just here to make your life easier, one miscommunication at a time! Want to give that timer another shot?",
+        "isUser": false
+    },
+    {
+        "text": "Please specify a duration for the timer, for example 'set timer for 5 minutes'.",
+        "isUser": false
+    },
+    {
+        "text": "Is it from the Set timer to thirty seconds.",
+        "isUser": true
+    }
+]

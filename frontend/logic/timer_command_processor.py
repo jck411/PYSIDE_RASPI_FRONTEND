@@ -32,7 +32,6 @@ class TimerCommandProcessor(QObject):
         """Initialize command patterns for recognizing timer commands"""
         
         unit_regex = r"(h(?:ours?)?|hr|hrs|m(?:inutes?)?|min|mins|s(?:econds?)?|sec|secs)"
-        # Flexible timer identifier: matches "timer", "countdown", "countdown timer", "stopwatch", "stopwatch timer"
         timer_identifier_regex = r"(?:(?:countdown|stopwatch)(?:\s+timer)?|(?:countdown\s+)?timer)"
         action_verb_regex = r"(?:start|begin|set)"
         optional_article_regex = r"(?:\s+(?:a|the))?"
@@ -41,24 +40,30 @@ class TimerCommandProcessor(QObject):
         optional_conjunction_regex = r"(?:\s+(?:and|with))?"
         direct_command_keyword_regex = r"(?:countdown|stopwatch)"
 
+        # Regex for duration: matches digits or common spelled-out numbers
+        # For simplicity, covering one to twenty, and tens up to sixty.
+        # More complex phrases like "one hundred" or "twenty five" would require a more advanced parser.
+        duration_words = "one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty"
+        duration_regex = rf"(\d+|{duration_words})"
+
         self._timer_control_patterns = [
             # --- Patterns starting with action verbs like "start", "set", "begin" ---
             # Verb + Timer ID + Name + Duration: e.g., "set timer T_NAME for X unit"
-            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}{required_for_named_regex}\s+(.+?)(?:\s+for)?\s+(\d+)\s+{unit_regex}", self._start_timer_with_name_and_duration),
+            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}{required_for_named_regex}\s+(.+?)(?:\s+for)?\s+{duration_regex}\s+{unit_regex}", self._start_timer_with_name_and_duration),
             # Verb + Timer ID + Multiple Units: e.g., "set timer for X unit and Y unit"
-            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}(?:\s+for)?\s+(\d+)\s+{unit_regex}{optional_conjunction_regex}\s+(\d+)\s+{unit_regex}", self._start_timer_with_multiple_units),
+            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}(?:\s+for)?\s+{duration_regex}\s+{unit_regex}{optional_conjunction_regex}\s+{duration_regex}\s+{unit_regex}", self._start_timer_with_multiple_units),
             # Verb + Timer ID + Duration: e.g., "set timer for X unit"
-            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}{optional_for_to_regex}\s+(\d+)\s+{unit_regex}", self._start_timer_with_duration),
+            (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}{optional_for_to_regex}\s+{duration_regex}\s+{unit_regex}", self._start_timer_with_duration),
             # Verb + Timer ID (default): e.g., "start timer"
             (rf"{action_verb_regex}{optional_article_regex}\s+{timer_identifier_regex}", self._start_timer_default),
 
             # --- Patterns starting directly with "countdown" or "stopwatch" ---
             # Direct Keyword + Name + Duration: e.g., "countdown T_NAME for X unit"
-            (rf"{direct_command_keyword_regex}{required_for_named_regex}\s+(.+?)(?:\s+for)?\s+(\d+)\s+{unit_regex}", self._start_timer_with_name_and_duration),
+            (rf"{direct_command_keyword_regex}{required_for_named_regex}\s+(.+?)(?:\s+for)?\s+{duration_regex}\s+{unit_regex}", self._start_timer_with_name_and_duration),
             # Direct Keyword + Multiple Units: e.g., "countdown X unit and Y unit"
-            (rf"{direct_command_keyword_regex}\s+(\d+)\s+{unit_regex}{optional_conjunction_regex}\s+(\d+)\s+{unit_regex}", self._start_timer_with_multiple_units),
+            (rf"{direct_command_keyword_regex}\s+{duration_regex}\s+{unit_regex}{optional_conjunction_regex}\s+{duration_regex}\s+{unit_regex}", self._start_timer_with_multiple_units),
             # Direct Keyword + Duration: e.g., "countdown X unit"
-            (rf"{direct_command_keyword_regex}\s+(\d+)\s+{unit_regex}", self._start_timer_with_duration),
+            (rf"{direct_command_keyword_regex}\s+{duration_regex}\s+{unit_regex}", self._start_timer_with_duration),
             # Direct Keyword (default): e.g., "countdown"
             (rf"{direct_command_keyword_regex}", self._start_timer_default),
             
@@ -68,7 +73,7 @@ class TimerCommandProcessor(QObject):
             (rf"(?:cancel|reset|clear|end)(?:\s+(?:the|my))?\s+{timer_identifier_regex}", self._stop_timer),
             
             # --- Add time command ---
-            (rf"(?:add|give|extend)(?:\s+(?:the|my))?\s+{timer_identifier_regex}(?:\s+by)?\s+(\d+)\s+{unit_regex}", self._extend_timer),
+            (rf"(?:add|give|extend)(?:\s+(?:the|my))?\s+{timer_identifier_regex}(?:\s+by)?\s+{duration_regex}\s+{unit_regex}", self._extend_timer),
         ]
         
         # Timer query commands
@@ -144,11 +149,35 @@ class TimerCommandProcessor(QObject):
             logger.warning(f"Unrecognized time unit: {unit_val_raw}")
             return None
 
+    def _parse_duration(self, duration_str_raw):
+        """Convert a duration string (digit or word) to an integer."""
+        if not duration_str_raw: return None
+        duration_str = duration_str_raw.lower()
+        word_to_num = {
+            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+            "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+            "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
+            "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20,
+            "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60
+        }
+        if duration_str in word_to_num:
+            return word_to_num[duration_str]
+        try:
+            return int(duration_str)
+        except ValueError:
+            logger.warning(f"Could not parse duration: '{duration_str_raw}'")
+            return None
+
     def _start_timer_with_duration(self, matches):
         """Handle command to start timer with a simple duration"""
-        duration = int(matches.group(1))
+        duration_str = matches.group(1)
         unit_val_raw = matches.group(2)
         
+        duration = self._parse_duration(duration_str)
+        if duration is None:
+            self.timerStateQueried.emit(f"Sorry, I didn't understand the duration '{duration_str}'.")
+            return True
+            
         normalized_unit = self._normalize_unit(unit_val_raw)
         if not normalized_unit:
             self.timerStateQueried.emit(f"Sorry, I didn't understand the time unit '{unit_val_raw}'.")
@@ -180,10 +209,18 @@ class TimerCommandProcessor(QObject):
     
     def _start_timer_with_multiple_units(self, matches):
         """Handle command to start timer with multiple time units (e.g., 1 hour 30 minutes)"""
-        first_duration = int(matches.group(1))
+        first_duration_str = matches.group(1)
         first_unit_raw = matches.group(2)
-        second_duration = int(matches.group(3))
+        second_duration_str = matches.group(3)
         second_unit_raw = matches.group(4)
+
+        first_duration = self._parse_duration(first_duration_str)
+        second_duration = self._parse_duration(second_duration_str)
+
+        if first_duration is None or second_duration is None:
+            err_dur = first_duration_str if first_duration is None else second_duration_str
+            self.timerStateQueried.emit(f"Sorry, I didn't understand the duration '{err_dur}'.")
+            return True
 
         norm_first_unit = self._normalize_unit(first_unit_raw)
         norm_second_unit = self._normalize_unit(second_unit_raw)
@@ -226,8 +263,13 @@ class TimerCommandProcessor(QObject):
     def _start_timer_with_name_and_duration(self, matches):
         """Handle command to start timer with name and duration"""
         name = matches.group(1).strip()
-        duration = int(matches.group(2))
+        duration_str = matches.group(2)
         unit_val_raw = matches.group(3)
+
+        duration = self._parse_duration(duration_str)
+        if duration is None:
+            self.timerStateQueried.emit(f"Sorry, I didn't understand the duration '{duration_str}'.")
+            return True
 
         normalized_unit = self._normalize_unit(unit_val_raw)
         if not normalized_unit:
@@ -319,8 +361,13 @@ class TimerCommandProcessor(QObject):
     
     def _extend_timer(self, matches):
         """Handle command to extend the timer"""
-        duration = int(matches.group(1))
+        duration_str = matches.group(1)
         unit_val_raw = matches.group(2)
+
+        duration = self._parse_duration(duration_str)
+        if duration is None:
+            self.timerStateQueried.emit(f"Sorry, I didn't understand the duration '{duration_str}'.")
+            return True
 
         normalized_unit = self._normalize_unit(unit_val_raw)
         if not normalized_unit:
