@@ -1,5 +1,57 @@
 # Smart Screen Application Architecture
 
+This is a PySide6-based smart screen interface for desktop and Raspberry Pi with screens for weather, chat, calendar, clock, alarms, timer, and photos. It features a conversational interface, real-time weather data, and smooth transitions between views.
+
+## Core Architecture
+
+- [Overview and Structure](docs/architecture/1-overview.md)  
+  *PySide6-based application with modular frontend/backend separation. Uses StackView for navigation between screens, with consistent control patterns across screens.*
+
+- [Key Components](docs/architecture/2-key-components.md)  
+  *Main screens include Chat, Weather, Calendar, Clock, Alarm, Timer, Photos, and Settings. Core services provide theming, settings management, audio playback, and error handling. Supports modern visual effects like blur and gradient overlays.*
+
+## Screen Implementations
+
+- [Weather Screen](docs/architecture/screens/weather.md)  
+  *Shows weather using Lottie animations and PNG icons. Features 72-hour view, hourly graph (with temperature/precipitation), and 7-day forecast. Data from NWS and OpenWeatherMap APIs with background timer improvements.*
+
+- [Photo Screen](docs/architecture/screens/photo.md)  
+  *Slideshow with crossfade transitions and blurred backgrounds. Supports both images and videos using a dual-image architecture for smooth transitions. Special handling ensures videos play to completion.*
+
+- [Calendar Screen](docs/architecture/screens/calendar.md)  
+  *Provides month, week, and day views with seamless transitions. Current implementation needs refactoring for better vertical expansion and scrolling of day cells with many events.*
+
+- [Clock and Alarm Screen](docs/architecture/screens/clock-alarm.md)  
+  *Digital clock with date display and integrated alarm management system. Supports one-time and recurring alarms with configurable notification sounds. Recent UI improvements for better alarm creation.*
+
+- [Timer Screen](docs/architecture/screens/timer.md)  
+  *Countdown timer with tumbler interface for time selection. Features preset buttons, pause/resume controls, and customizable sound notifications. Integrates with chat for natural language timer creation.*
+
+## Development Guidelines
+
+- [Code Maintenance](docs/architecture/development/code-maintenance.md)  
+  *Guidelines for keeping code clean and organized. Removes unused files, maintains Python package structure, and enforces 200-300 line limit for files. Uses modular tool functions system for easy extension.*
+
+- [UI Updates](docs/architecture/development/ui-updates.md)  
+  *Recent UI improvements including alarm screen enhancements, calendar controls additions, and navigation icon reordering. Follows QML design principles focusing on simplicity and minimal properties.*
+
+- [Known Issues](docs/architecture/development/known-issues.md)  
+  *Documented runtime issues including audio configuration problems on Raspberry Pi, shutdown errors with PhotoController, and fixes for time parsing in the alarm system.*
+
+## Utilities and Services
+
+- [Navigation System](docs/architecture/services/navigation.md)  
+  *Natural language navigation via chat commands. Supports conversational commands like "show weather" and navigation to sub-screens. Uses multi-tiered matching for precise command recognition.*
+
+- [Time Context Management](docs/architecture/services/time-context.md)  
+  *Provides accurate time awareness for LLM interactions. Updates time information based on location coordinates and configurable intervals. Returns comprehensive time info including date, day of week, and time of day.*
+
+- [Natural Language Commands](docs/architecture/services/natural-language.md)  
+  *Command processors for timer and alarm functionality that intercept chat input. Uses regex patterns to match commands and extract parameters. Recent improvements for AM/PM time handling.*
+
+- [Utility Services](docs/architecture/services/utilities.md)  
+  *Common utilities including MarkdownUtils for text formatting, AudioManager for sound playback, PathProvider for consistent resource paths, ThemeManager for light/dark theme switching, and SettingsService for application preferences.*
+
 ## Overview
 This application is a PySide6-based smart screen interface designed to run on desktop computers and Raspberry Pi devices. It provides various screens including weather, chat, calendar, and more.
 
