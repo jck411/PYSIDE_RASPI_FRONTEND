@@ -15,6 +15,7 @@ from frontend.logic.wake_word_handler import WakeWordHandler
 from frontend.logic.tts_controller import TTSController
 from frontend.logic.resource_manager import ResourceManager
 from frontend.logic.time_context_provider import TimeContextProvider
+from frontend.logic.alarm_command_processor import AlarmCommandProcessor
 
 
 class ChatController(QObject):
@@ -72,6 +73,10 @@ class ChatController(QObject):
         # Initialize wake word handler
         self.wake_word_handler = WakeWordHandler()
         self.wake_word_handler.set_tts_callback(self._enable_tts_on_wake_word)
+
+        # Don't initialize alarm command processor here - it will be set from main.py
+        # with proper alarm_controller
+        self._alarm_command_processor = None
 
         # Navigation controller reference - will be set in main.py
         self.navigation_controller = None
@@ -135,6 +140,9 @@ class ChatController(QObject):
         
         # Add method to connect timer command processor when it's set
         self._connect_timer_command_processor()
+        
+        # Add method to connect alarm command processor when it's set
+        self._connect_alarm_command_processor()
 
     def _connect_timer_command_processor(self):
         """Connect timer command processor signals if available"""
@@ -143,6 +151,13 @@ class ChatController(QObject):
             self._timer_command_processor.timerStateQueried.connect(self._handle_timer_response)
             logger.info("[ChatController] Connected TimerCommandProcessor signals")
     
+    def _connect_alarm_command_processor(self):
+        """Connect alarm command processor signals if available"""
+        if hasattr(self, '_alarm_command_processor') and self._alarm_command_processor:
+            # Connect the alarmStateQueried signal to handle alarm responses
+            self._alarm_command_processor.alarmStateQueried.connect(self._handle_alarm_response)
+            logger.info("[ChatController] Connected AlarmCommandProcessor signals")
+    
     def _handle_timer_response(self, response_text):
         """Handle timer command responses"""
         if response_text:
@@ -150,6 +165,14 @@ class ChatController(QObject):
             self.message_handler.add_message("assistant", response_text)
             self._add_assistant_message_to_history(response_text)
             logger.info(f"[ChatController] Added timer response: {response_text}")
+    
+    def _handle_alarm_response(self, response_text):
+        """Handle alarm command responses"""
+        if response_text:
+            # Add to message history as assistant response
+            self.message_handler.add_message("assistant", response_text)
+            self._add_assistant_message_to_history(response_text)
+            logger.info(f"[ChatController] Added alarm response: {response_text}")
 
     def _startTasks(self):
         """Start the background tasks"""
@@ -230,6 +253,19 @@ class ChatController(QObject):
                 error_msg = f"Could not set timer: {result['message']}"
                 self.message_handler.add_message("assistant", error_msg)
                 self._add_assistant_message_to_history(error_msg)
+        elif action == "set_alarm":
+            # Handle alarm setting request
+            alarm_params = data.get("params", {})
+            result = self.message_handler.process_alarm_command(alarm_params)
+            
+            # Send acknowledgment back
+            if result["success"]:
+                self.message_handler.add_message("assistant", result["message"])
+                self._add_assistant_message_to_history(result["message"])
+            else:
+                error_msg = f"Could not set alarm: {result['message']}"
+                self.message_handler.add_message("assistant", error_msg)
+                self._add_assistant_message_to_history(error_msg)
         else:
             # Try to process as a message - MessageHandler will emit signals handled elsewhere
             self.message_handler.process_message(data)
@@ -277,6 +313,19 @@ class ChatController(QObject):
             self._connect_timer_command_processor()
             logger.info("[ChatController] Timer command processor set")
 
+    @property
+    def alarm_command_processor(self):
+        """Get the alarm command processor"""
+        return self._alarm_command_processor
+    
+    @alarm_command_processor.setter
+    def alarm_command_processor(self, processor):
+        """Set the alarm command processor and connect signals"""
+        self._alarm_command_processor = processor
+        if processor:
+            self._connect_alarm_command_processor()
+            logger.info("[ChatController] Alarm command processor set")
+
     @Slot(str)
     def sendMessage(self, text):
         """
@@ -295,6 +344,17 @@ class ChatController(QObject):
                 self._add_user_message_to_history(text)
                 
                 # The timer command processor will emit its own response through its signals
+                return
+        
+        # Next, check if this is an alarm command
+        # If we have an alarm command processor registered, try to process as alarm command
+        if self._alarm_command_processor is not None:
+            # Try to process as an alarm command
+            if self._alarm_command_processor.processCommand(text):
+                # This was an alarm command, add it to history but don't send to LLM
+                self._add_user_message_to_history(text)
+                
+                # The alarm command processor will emit its own response through its signals
                 return
 
         # Then, check if this is a navigation command

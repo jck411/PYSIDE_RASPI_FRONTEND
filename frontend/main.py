@@ -26,6 +26,8 @@ from frontend.logic.audio_manager import AudioManager
 from frontend.logic.timer_controller import TimerController
 # Import the TimerCommandProcessor
 from frontend.logic.timer_command_processor import TimerCommandProcessor
+# Import the new AlarmCommandProcessor
+from frontend.logic.alarm_command_processor import AlarmCommandProcessor
 # Import the new NavigationController
 from frontend.logic.navigation_controller import NavigationController
 # Import config functions
@@ -147,17 +149,27 @@ def main():
     # Create the TimerCommandProcessor and connect it to the TimerController
     timer_command_processor_instance = TimerCommandProcessor(timer_controller_instance)
     
+    # Create the AlarmCommandProcessor and connect it to the AlarmController
+    alarm_command_processor_instance = AlarmCommandProcessor(alarm_controller_instance)
+    
+    # Set the navigation controller for AlarmCommandProcessor
+    alarm_command_processor_instance.set_navigation_controller(navigation_controller_instance)
+    
     # Connect NavigationController to ChatController for processing navigation commands
     chat_controller_instance.navigation_controller = navigation_controller_instance
     
     # Connect TimerCommandProcessor to ChatController for processing timer commands
     chat_controller_instance.timer_command_processor = timer_command_processor_instance
     
+    # Connect AlarmCommandProcessor to ChatController for processing alarm commands
+    chat_controller_instance.alarm_command_processor = alarm_command_processor_instance
+    
     # Store instance references on the app object for direct access
     app.timer_controller_instance = timer_controller_instance
     app.chat_controller_instance = chat_controller_instance
     app.navigation_controller_instance = navigation_controller_instance
     app.timer_command_processor_instance = timer_command_processor_instance
+    app.alarm_command_processor_instance = alarm_command_processor_instance
     
     # Register app instance in config for global access
     set_app_instance(app)

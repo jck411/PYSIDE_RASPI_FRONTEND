@@ -878,3 +878,33 @@ The application includes a natural language navigation system that allows users 
   - Screens check for _navigationParams during Component.onCompleted
   - Parameters control initial view state, like which sub-view to show
   - Common pattern enables consistent handling across all screens
+
+## Natural Language Command Processors
+
+### TimerCommandProcessor
+
+The `TimerCommandProcessor` class handles natural language commands for the timer functionality. It uses regular expressions to match user input patterns like "set timer for 5 minutes" or "how much time is left on the timer". When a command is recognized, it calls the appropriate methods on the `TimerController` to perform the requested action, and then emits a signal with a response message that gets added to the chat history.
+
+### AlarmCommandProcessor
+
+The `AlarmCommandProcessor` class provides natural language processing for alarm functionality. Similar to the `TimerCommandProcessor`, it uses regex patterns to match user input like "set alarm for 7am" or "list all alarms". When a command is recognized, it calls the appropriate methods on the `AlarmController` to perform the requested action, and emits a signal with a response message that gets added to the chat history.
+
+Key features of the `AlarmCommandProcessor`:
+- Setting alarms with specific times (12-hour or 24-hour format)
+- Setting recurring alarms (daily, weekdays, weekends, or specific days)
+- Naming alarms
+- Listing all alarms
+- Enabling/disabling alarms
+- Deleting alarms
+
+The `AlarmCommandProcessor` requires an instance of `AlarmController` to be passed to its constructor, as it delegates all alarm operations to this controller. The main application creates and connects these components in `main.py`:
+
+```python
+# Create the AlarmCommandProcessor and connect it to the AlarmController
+alarm_command_processor_instance = AlarmCommandProcessor(alarm_controller_instance)
+
+# Connect AlarmCommandProcessor to ChatController for processing alarm commands
+chat_controller_instance.alarm_command_processor = alarm_command_processor_instance
+```
+
+This architecture allows the command processor to focus on language parsing while delegating actual alarm management to the controller.
