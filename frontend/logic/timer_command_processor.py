@@ -70,7 +70,7 @@ class TimerCommandProcessor(QObject):
             # --- Existing Pause/Resume/Cancel commands (typically use "timer" explicitly but could be reviewed if needed) ---
             (rf"(?:pause|stop|halt|freeze)(?:\s+(?:the|my))?\s+{timer_identifier_regex}", self._pause_timer),
             (rf"(?:resume|continue|restart|unpause)(?:\s+(?:the|my))?\s+{timer_identifier_regex}", self._resume_timer),
-            (rf"(?:cancel|reset|clear|end)(?:\s+(?:the|my))?\s+{timer_identifier_regex}", self._stop_timer),
+            (rf"(?:cancel|reset|clear|end)(?:\s+(?:the|my))?(?:\s+{timer_identifier_regex})?", self._stop_timer),
             
             # --- Add time command ---
             (rf"(?:add|give|extend)(?:\s+(?:the|my))?\s+{timer_identifier_regex}(?:\s+by)?\s+{duration_regex}\s+{unit_regex}", self._extend_timer),
