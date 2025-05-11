@@ -1,29 +1,9 @@
 [
   {
-    "id": "943a80f4-b9b8-4dc0-903d-13d956a97e43",
-    "hour": 8,
+    "id": "6f5ed142-f580-48d4-b497-21c5cfdebadb",
+    "hour": 6,
     "minute": 0,
-    "label": "Alarm 08:00",
-    "days_of_week": [
-      6
-    ],
-    "is_enabled": true
-  },
-  {
-    "id": "c6af9661-1c15-4e6d-a068-76b161099dfc",
-    "hour": 9,
-    "minute": 0,
-    "label": "Alarm 09:00",
-    "days_of_week": [
-      6
-    ],
-    "is_enabled": true
-  },
-  {
-    "id": "39b85e54-0d1b-4a7f-b916-764ad621d54f",
-    "hour": 20,
-    "minute": 0,
-    "label": "Alarm 20:00",
+    "label": "Alarm 06:00",
     "days_of_week": [
       6
     ],
