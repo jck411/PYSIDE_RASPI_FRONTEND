@@ -123,9 +123,12 @@ class AlarmController(QObject):
         
         try:
             # Convert recurrence to days_of_week format
+            logger.debug(f"Converting recurrence to days_of_week format: {recurrence}")
             days_of_week = self._convert_recurrence_to_days(recurrence)
+            logger.debug(f"Converted days_of_week: {days_of_week}")
             
             # Add the alarm using the manager
+            logger.debug(f"Calling alarm_manager.add_alarm with hour={hour}, minute={minute}, label='{name}', days_of_week={days_of_week}, is_enabled={enabled}")
             alarm_id = self._alarm_manager.add_alarm(
                 hour=hour,
                 minute=minute,
@@ -134,11 +137,12 @@ class AlarmController(QObject):
                 is_enabled=enabled
             )
             
+            logger.info(f"Successfully added alarm with ID: {alarm_id}")
             # Model will be updated via the alarmsChanged signal
             return alarm_id
             
         except Exception as e:
-            logger.error(f"Error adding alarm: {e}")
+            logger.error(f"Error adding alarm: {e}", exc_info=True)
             return ""
     
     @Slot(str, str, int, int, bool, list)

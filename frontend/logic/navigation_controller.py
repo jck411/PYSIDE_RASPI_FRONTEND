@@ -21,6 +21,10 @@ class NavigationController(QObject):
         super().__init__(parent)
         self._initialize_navigation_maps()
         logger.info("[NavigationController] Initialized")
+        
+        # Connect to our own signals for logging
+        self.navigationRequested.connect(self._log_navigation)
+        self.navigationWithParamsRequested.connect(self._log_navigation_with_params)
     
     def _initialize_navigation_maps(self):
         """Initialize the mapping dictionaries for navigation commands"""
@@ -286,3 +290,11 @@ class NavigationController(QObject):
             # No match found
             logger.warning(f"[NavigationController] No screen found for backend request: {screen_name}")
             return False 
+    
+    def _log_navigation(self, screen_name):
+        """Log navigation requests for debugging"""
+        logger.debug(f"[NavigationController] Navigation signal emitted for screen: {screen_name}")
+    
+    def _log_navigation_with_params(self, screen_name, params):
+        """Log navigation with params requests for debugging"""
+        logger.debug(f"[NavigationController] Navigation with params signal emitted for screen: {screen_name}, params: {params}") 

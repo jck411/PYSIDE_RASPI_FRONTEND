@@ -80,18 +80,25 @@ class AlarmManager(QObject):
         Returns:
             ID of the new alarm
         """
+        logger.debug(f"AlarmManager.add_alarm called with hour={hour}, minute={minute}, label='{label}', days_of_week={days_of_week}, is_enabled={is_enabled}")
+        
         # Validate inputs
         if not (0 <= hour <= 23):
+            logger.error(f"Hour must be between 0 and 23, got {hour}")
             raise ValueError(f"Hour must be between 0 and 23, got {hour}")
         if not (0 <= minute <= 59):
+            logger.error(f"Minute must be between 0 and 59, got {minute}")
             raise ValueError(f"Minute must be between 0 and 59, got {minute}")
         
         # Convert days_of_week to a set for consistent handling
         if isinstance(days_of_week, list):
             days_of_week = set(days_of_week)
+            logger.debug(f"Converted days_of_week list to set: {days_of_week}")
         
         # Create new alarm
         alarm_id = str(uuid.uuid4())
+        logger.debug(f"Generated new alarm ID: {alarm_id}")
+        
         alarm = {
             'id': alarm_id,
             'hour': hour,
@@ -101,15 +108,28 @@ class AlarmManager(QObject):
             'is_enabled': is_enabled
         }
         
+        logger.debug(f"Created alarm object: {alarm}")
+        
         # Add to list and save
         self._alarms.append(alarm)
-        self._save_alarms()
+        logger.debug(f"Added alarm to internal list, now have {len(self._alarms)} alarms")
+        
+        try:
+            self._save_alarms()
+            logger.debug(f"Successfully saved alarms to file")
+        except Exception as e:
+            logger.error(f"Error saving alarms: {e}", exc_info=True)
         
         # Schedule the alarm if enabled
         if is_enabled:
-            self._schedule_alarm(alarm)
+            try:
+                self._schedule_alarm(alarm)
+                logger.debug(f"Successfully scheduled alarm")
+            except Exception as e:
+                logger.error(f"Error scheduling alarm: {e}", exc_info=True)
         
         # Emit signal
+        logger.debug(f"Emitting alarmsChanged signal")
         self.alarmsChanged.emit()
         
         logger.info(f"Added alarm: {label} at {hour:02d}:{minute:02d}, days: {days_of_week}")

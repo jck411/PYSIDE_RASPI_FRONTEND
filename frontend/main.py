@@ -61,10 +61,27 @@ class PathProvider(QObject):
 
 # Configure logging
 logging.basicConfig(
-    level=logging.WARNING, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("frontend.config")
-logger.setLevel(logging.WARNING)  # Maintain WARNING level for this specific logger
+logger.setLevel(logging.DEBUG)  # Set to DEBUG for more information
+
+# Add a console handler to ensure logs are visible
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+console_handler.setLevel(logging.DEBUG)
+root_logger = logging.getLogger()
+root_logger.addHandler(console_handler)
+
+# Set up specific loggers for our key components
+alarm_logger = logging.getLogger("frontend.logic.alarm_command_processor")
+alarm_logger.setLevel(logging.DEBUG)
+controller_logger = logging.getLogger("frontend.logic.alarm_controller_v2")
+controller_logger.setLevel(logging.DEBUG)
+manager_logger = logging.getLogger("utils.alarm_manager_v2")
+manager_logger.setLevel(logging.DEBUG)
+navigation_logger = logging.getLogger("frontend.logic.navigation_controller")
+navigation_logger.setLevel(logging.DEBUG)
 
 
 def main():
