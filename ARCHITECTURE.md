@@ -915,6 +915,11 @@ Key features of the `AlarmCommandProcessor`:
   - Consolidated the conversion logic to apply after successful parsing
   - Added more explicit logging for each step of the time parsing process
   - Fixed issues where "6 PM" was incorrectly interpreted as 0600 (6:00 AM) instead of 1800 (6:00 PM)
+  - **Fixed PM Time Handling in Recurrence Patterns**: Resolved issues where "8 PM daily" was setting the alarm to 8 AM
+    - Added PM detection on the full command string before extracting recurrence patterns
+    - Preserved PM indicators across all command parsing methods
+    - Made PM detection consistent across all alarm command types (one-time, day-specific, and recurring alarms)
+    - Added thorough logging to track PM detection and conversions for easier debugging
 
 #### Alarm Command Processor Improvements (August 2025)
 - **Enhanced Alarm Creation and Navigation**: Fixed issues where setting alarms only navigated to the alarm screen without creating the alarm.

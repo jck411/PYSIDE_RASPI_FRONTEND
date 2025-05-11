@@ -293,6 +293,20 @@ class AlarmCommandProcessor(QObject):
     
     def _set_alarm_with_time_and_days(self, matches):
         """Handle command to set alarm with time and specific days"""
+        # Get the full command for PM/AM detection
+        full_command = matches.group(0) if matches and hasattr(matches, 'group') else ""
+        
+        # Check for PM indicators in the full command BEFORE extracting components
+        is_pm = False
+        # General p.m. format detection
+        if re.search(r'p\.m\.', full_command.lower()):
+            is_pm = True
+            logger.debug(f"[AlarmCommandProcessor] PM indicator found (p.m. format) in full command: '{full_command}'")
+        # Regular PM detection for standard cases
+        elif any(pm_indicator in full_command.lower() for pm_indicator in ["pm", "p.m", "p m"]):
+            is_pm = True
+            logger.debug(f"[AlarmCommandProcessor] PM indicator found in full command: '{full_command}'")
+        
         time_str = " ".join([g for g in matches.groups() if g]).strip()
         
         # Extract the days from the match groups
@@ -310,6 +324,16 @@ class AlarmCommandProcessor(QObject):
             self.alarmStateQueried.emit(f"Sorry, I couldn't understand the time '{time_str}'.")
             return True
         
+        # Apply PM/AM conversion if needed - after time parsing
+        if is_pm:
+            # Handle 12 PM (noon) - should stay as 12
+            if hour != 12:
+                original_hour = hour
+                hour += 12
+                logger.debug(f"[AlarmCommandProcessor] CRITICAL: Converted PM time from {original_hour} to 24h format: hour={hour}")
+        
+        logger.debug(f"[AlarmCommandProcessor] Final parsed time for day-specific alarm: hour={hour}, minute={minute}, is_pm={is_pm}")
+        
         # Parse the days
         days = self._parse_days(days_str)
         if not days:
@@ -322,19 +346,20 @@ class AlarmCommandProcessor(QObject):
         
         if alarm_id:
             time_fmt = f"{hour:02d}:{minute:02d}"
+            
             day_names = []
             day_map = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             for day in sorted(days):
                 if 0 <= day <= 6:
                     day_names.append(day_map[day])
+            days_text = ", ".join(day_names)
             
-            days_str = ", ".join(day_names)
-            self.alarmStateQueried.emit(f"Alarm set for {time_fmt} on {days_str}.")
+            self.alarmStateQueried.emit(f"Alarm set for {time_fmt} on {days_text}.")
             
             # Navigate to the alarm screen if navigation controller is set
             if self._navigation_controller:
                 self._navigation_controller.navigationRequested.emit("AlarmScreen.qml")
-                logger.info("[AlarmCommandProcessor] Navigating to AlarmScreen after setting alarm with days")
+                logger.info("[AlarmCommandProcessor] Navigating to AlarmScreen after setting day-specific alarm")
         else:
             self.alarmStateQueried.emit(f"Sorry, I couldn't create the alarm.")
         
@@ -342,6 +367,20 @@ class AlarmCommandProcessor(QObject):
     
     def _set_alarm_with_time_and_recurrence(self, matches):
         """Handle command to set alarm with time and recurrence pattern"""
+        # Get the full command for PM/AM detection
+        full_command = matches.group(0) if matches and hasattr(matches, 'group') else ""
+        
+        # Check for PM indicators in the full command BEFORE extracting components
+        is_pm = False
+        # General p.m. format detection
+        if re.search(r'p\.m\.', full_command.lower()):
+            is_pm = True
+            logger.debug(f"[AlarmCommandProcessor] PM indicator found (p.m. format) in full command: '{full_command}'")
+        # Regular PM detection for standard cases
+        elif any(pm_indicator in full_command.lower() for pm_indicator in ["pm", "p.m", "p m"]):
+            is_pm = True
+            logger.debug(f"[AlarmCommandProcessor] PM indicator found in full command: '{full_command}'")
+        
         time_str = " ".join([g for g in matches.groups() if g]).strip()
         
         # Find the recurrence pattern
@@ -358,6 +397,16 @@ class AlarmCommandProcessor(QObject):
         if hour is None or minute is None:
             self.alarmStateQueried.emit(f"Sorry, I couldn't understand the time '{time_str}'.")
             return True
+        
+        # Apply PM/AM conversion if needed - after time parsing
+        if is_pm:
+            # Handle 12 PM (noon) - should stay as 12
+            if hour != 12:
+                original_hour = hour
+                hour += 12
+                logger.debug(f"[AlarmCommandProcessor] CRITICAL: Converted PM time from {original_hour} to 24h format: hour={hour}")
+        
+        logger.debug(f"[AlarmCommandProcessor] Final parsed time for recurring alarm: hour={hour}, minute={minute}, is_pm={is_pm}")
         
         # Parse the recurrence
         days = self._parse_recurrence(recurrence_str)
