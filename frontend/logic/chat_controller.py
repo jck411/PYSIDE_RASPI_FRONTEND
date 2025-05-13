@@ -3,6 +3,7 @@ import json
 import asyncio
 import os
 from datetime import datetime
+from typing import Optional
 
 from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
 
@@ -17,7 +18,7 @@ from frontend.logic.resource_manager import ResourceManager
 from frontend.logic.time_context_provider import TimeContextProvider
 from frontend.logic.alarm_command_processor import AlarmCommandProcessor
 # Assuming NavigationController is available for import if type hinting is needed
-# from frontend.logic.navigation_controller import NavigationController
+from frontend.logic.navigation_controller import NavigationController
 
 
 class ChatController(QObject):
