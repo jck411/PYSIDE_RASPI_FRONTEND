@@ -139,6 +139,55 @@ Window {
             onCurrentItemChanged: {
                 currentScreen = currentItem
                 
+                // Update NavigationController with the current screen name
+                if (currentItem && currentItem.sourceComponent && currentItem.sourceComponent.url) {
+                    var fullPath = currentItem.sourceComponent.url.toString()
+                    var fileName = fullPath.substring(fullPath.lastIndexOf('/') + 1)
+                    // Remove query parameters if any (e.g. ?foo=bar from QML type registration)
+                    if (fileName.includes('?')) {
+                        fileName = fileName.substring(0, fileName.indexOf('?'))
+                    }
+                    // Remove QML type registration suffix if present (e.g., _QMLTYPE_0)
+                    if (fileName.includes('_QMLTYPE_')){
+                        fileName = fileName.substring(0, fileName.indexOf('_QMLTYPE_')) + ".qml";
+                    }
+                    // Fallback for initialItem which might not have full sourceComponent.url initially
+                    // or if the replace was called with a string that is the filename itself
+                    if (!fileName && typeof stackView.currentItem === 'string') {
+                        fileName = stackView.currentItem;
+                    } else if (!fileName && currentItem.objectName) {
+                        // Fallback to objectName if available and ends with .qml (less reliable)
+                        if (currentItem.objectName.endsWith(".qml")) {
+                           fileName = currentItem.objectName;
+                        } else {
+                            // Attempt to map common object names to QML files
+                            // This is a heuristic and might need refinement
+                            var potentialName = currentItem.objectName.charAt(0).toUpperCase() + currentItem.objectName.slice(1) + ".qml";
+                            // A more robust mapping might be needed if objectNames are not consistent
+                            if (potentialName === "ChatScreen.qml" || potentialName === "WeatherScreen.qml" || potentialName === "CalendarScreen.qml" || potentialName === "PhotoScreen.qml" || potentialName === "ClockScreen.qml" || potentialName === "SettingsScreen.qml" || potentialName === "AlarmScreen.qml" || potentialName === "TimerScreen.qml") {
+                                fileName = potentialName;
+                            }
+                        }
+                    }
+
+                    if (fileName) {
+                        // console.log("Current screen QML filename: " + fileName);
+                        NavigationController.setCurrentScreenName(fileName)
+                    } else {
+                        // console.warn("Could not determine screen QML filename from: ", currentItem, currentItem.sourceComponent.url.toString());
+                    }
+                } else if (currentItem && typeof currentItem === 'string') {
+                     // Case where currentItem is a string (e.g. initialItem before full load, or direct string push)
+                     var directName = currentItem;
+                     if (directName.includes('/')) { // If it's a path, extract filename
+                         directName = directName.substring(directName.lastIndexOf('/') + 1);
+                     }
+                     // console.log("Current screen QML (direct string): " + directName);
+                     NavigationController.setCurrentScreenName(directName);
+                } else {
+                    // console.warn("Current item or its sourceComponent/url is undefined.");
+                }
+                
                 // Load controls into the external Loader
                 if (currentItem && currentItem.screenControls) {
                     screenControlsLoader.source = "" // Clear first

@@ -23,6 +23,7 @@ class MessageHandler(QObject):
         self._interrupted_response = ""  # Track interrupted response for continuity
         self._last_request_messages = []  # Track messages from last request
         self._time_context_provider = None  # Not using this directly in messages anymore
+        self._processed_message_ids = set()  # Track processed message IDs to prevent duplicates
         logger.info("[MessageHandler] Initialized")
 
     def set_time_context_provider(self, provider):
@@ -42,7 +43,25 @@ class MessageHandler(QObject):
         Args:
             data: Dictionary containing message data
         """
-
+        # Check if we've already processed this message to prevent duplicates
+        # Use a combination of action and message ID or content as a unique identifier
+        message_id = data.get("id", "")
+        action = data.get("action", "")
+        
+        # Create a unique identifier for this message
+        if message_id:
+            unique_id = f"{action}:{message_id}"
+        else:
+            # Use truncated content hash for messages without ID
+            content = data.get("content", "")
+            content_hash = hash(content[:100]) if content else 0
+            unique_id = f"{action}:{content_hash}"
+        
+        # Skip if we've already processed this message
+        if unique_id in self._processed_message_ids:
+            logger.debug(f"[MessageHandler] Skipping duplicate message: {unique_id}")
+            return False
+            
         if "content" in data:
             # Check if this is a chunk or a complete message
             is_chunk = data.get("is_chunk", False)
@@ -62,6 +81,8 @@ class MessageHandler(QObject):
                 self.messageChunkReceived.emit(self._current_response, True)
                 if self._current_response.strip():
                     self.add_message("assistant", self._current_response)
+                    # Add to processed messages
+                    self._processed_message_ids.add(unique_id)
                 # Clear interrupted response since we've completed normally
                 self._interrupted_response = ""
                 self._current_response = ""
@@ -74,6 +95,8 @@ class MessageHandler(QObject):
                 self._current_response = ""
                 if content.strip():
                     self.add_message("assistant", content)
+                    # Add to processed messages
+                    self._processed_message_ids.add(unique_id)
                 logger.info("[MessageHandler] Received complete message")
 
             return True
@@ -209,13 +232,14 @@ class MessageHandler(QObject):
 
     def clear_history(self):
         """
-        Clear the message history.
+        Clear the message history and reset all state.
         """
-        logger.info("[MessageHandler] Clearing message history")
-        self._messages.clear()
+        self._messages = []
         self._current_response = ""
         self._interrupted_response = ""
         self._last_request_messages = []
+        self._processed_message_ids.clear()  # Clear the processed message IDs
+        logger.info("[MessageHandler] History cleared")
 
     def reset_current_response(self):
         """

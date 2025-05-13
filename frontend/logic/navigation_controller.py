@@ -16,10 +16,12 @@ class NavigationController(QObject):
     # Signal emitted when a navigation command is recognized
     navigationRequested = Signal(str)  # Emits the QML screen name to navigate to
     navigationWithParamsRequested = Signal(str, dict)  # Emits screen name and params dictionary
+    currentScreenNameChanged = Signal(str) # Emits when the current screen name changes
     
     def __init__(self, parent=None):
         super().__init__(parent)
         self._initialize_navigation_maps()
+        self._current_screen_name = "" # Initialize current screen name
         logger.info("[NavigationController] Initialized")
         
         # Connect to our own signals for logging
@@ -239,6 +241,26 @@ class NavigationController(QObject):
         logger.warning(f"[NavigationController] No navigation target found for keyword: {keyword}")
         return False
     
+    @Slot(str)
+    def setCurrentScreenName(self, screen_name: str):
+        """
+        Slot to be called from QML to update the current screen name.
+        """
+        if self._current_screen_name != screen_name:
+            self._current_screen_name = screen_name
+            logger.info(f"[NavigationController] Current screen updated to: {screen_name}")
+            self.currentScreenNameChanged.emit(screen_name)
+
+    @Property(str, notify=currentScreenNameChanged)
+    def currentScreenName(self):
+        return self._current_screen_name
+
+    def getCurrentScreenName(self) -> str:
+        """
+        Returns the object name of the currently active screen.
+        """
+        return self._current_screen_name
+    
     @Slot(str, str)
     def handleBackendNavigationRequest(self, screen_name, params_json="{}"):
         """
@@ -297,4 +319,10 @@ class NavigationController(QObject):
     
     def _log_navigation_with_params(self, screen_name, params):
         """Log navigation with params requests for debugging"""
-        logger.debug(f"[NavigationController] Navigation with params signal emitted for screen: {screen_name}, params: {params}") 
+        logger.debug(f"[NavigationController] Navigation with params signal emitted for screen: {screen_name}, params: {params}")
+
+# Example usage (for testing or if this script is run directly)
+if __name__ == '__main__':
+    # This part is usually for testing standalone components
+    # In a real application, this would be integrated into the main app flow
+    pass 

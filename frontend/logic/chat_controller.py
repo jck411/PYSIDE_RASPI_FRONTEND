@@ -16,6 +16,8 @@ from frontend.logic.tts_controller import TTSController
 from frontend.logic.resource_manager import ResourceManager
 from frontend.logic.time_context_provider import TimeContextProvider
 from frontend.logic.alarm_command_processor import AlarmCommandProcessor
+# Assuming NavigationController is available for import if type hinting is needed
+# from frontend.logic.navigation_controller import NavigationController
 
 
 class ChatController(QObject):
@@ -72,14 +74,15 @@ class ChatController(QObject):
 
         # Initialize wake word handler
         self.wake_word_handler = WakeWordHandler()
-        self.wake_word_handler.set_tts_callback(self._enable_tts_on_wake_word)
+        # MODIFIED: Set the new callback for "hey computer"
+        self.wake_word_handler.set_tts_callback(self.handle_hey_computer_wakeword)
 
         # Don't initialize alarm command processor here - it will be set from main.py
         # with proper alarm_controller
         self._alarm_command_processor = None
 
         # Navigation controller reference - will be set in main.py
-        self.navigation_controller = None
+        self.navigation_controller = None # type: Optional[NavigationController]
         
         # Timer command processor reference - will be set in main.py
         self._timer_command_processor = None
@@ -161,17 +164,33 @@ class ChatController(QObject):
     def _handle_timer_response(self, response_text):
         """Handle timer command responses"""
         if response_text:
-            # Add to message history as assistant response
-            self.message_handler.add_message("assistant", response_text)
-            self._add_assistant_message_to_history(response_text)
+            # Create a unique ID for this timer response
+            timestamp = int(datetime.now().timestamp())
+            msg_id = f"timer_command_response_{timestamp}"
+            
+            # Use the message handler to process the response
+            self.message_handler.process_message({
+                "action": "timer_response",
+                "id": msg_id,
+                "content": response_text,
+                "is_final": True
+            })
             logger.info(f"[ChatController] Added timer response: {response_text}")
     
     def _handle_alarm_response(self, response_text):
         """Handle alarm command responses"""
         if response_text:
-            # Add to message history as assistant response
-            self.message_handler.add_message("assistant", response_text)
-            self._add_assistant_message_to_history(response_text)
+            # Create a unique ID for this alarm response
+            timestamp = int(datetime.now().timestamp())
+            msg_id = f"alarm_command_response_{timestamp}"
+            
+            # Use the message handler to process the response
+            self.message_handler.process_message({
+                "action": "alarm_response",
+                "id": msg_id,
+                "content": response_text,
+                "is_final": True
+            })
             logger.info(f"[ChatController] Added alarm response: {response_text}")
 
     def _startTasks(self):
@@ -230,6 +249,7 @@ class ChatController(QObject):
             screen = data.get("screen", "")
             params = data.get("params", {})
             
+            # Handle navigation if possible
             if screen and hasattr(self, 'navigation_controller') and self.navigation_controller:
                 logger.info(f"[ChatController] Received navigation request to: {screen}")
                 if params:
@@ -240,32 +260,83 @@ class ChatController(QObject):
                     self.navigation_controller.handleBackendNavigationRequest(screen)
             else:
                 logger.warning(f"[ChatController] Cannot process navigation request: {data}")
+                
+            # Important: Even for navigation requests, still process the message content if available
+            # This allows the LLM's response to be displayed even while navigating
+            if "content" in data:
+                # Process the message content normally
+                # Ensure the message has an ID to prevent duplication
+                if "id" not in data:
+                    data["id"] = f"nav_{screen}_{hash(data.get('content', '')[:50])}"
+                self.message_handler.process_message(data)
         elif action == "set_timer":
             # Handle timer setting request
             timer_params = data.get("params", {})
             result = self.message_handler.process_timer_command(timer_params)
             
-            # Send acknowledgment back
-            if result["success"]:
-                self.message_handler.add_message("assistant", result["message"])
-                self._add_assistant_message_to_history(result["message"])
+            # Process the content message if available
+            if "content" in data:
+                # Process the message content normally to show LLM's natural response
+                # Ensure the message has an ID to prevent duplication
+                if "id" not in data:
+                    timer_name = timer_params.get("name", "Timer")
+                    data["id"] = f"timer_{timer_name}_{hash(data.get('content', '')[:50])}"
+                self.message_handler.process_message(data)
             else:
-                error_msg = f"Could not set timer: {result['message']}"
-                self.message_handler.add_message("assistant", error_msg)
-                self._add_assistant_message_to_history(error_msg)
+                # Only if no content is provided, use the default response
+                if result["success"]:
+                    # Create a unique ID for this message
+                    msg_id = f"timer_default_{timer_params.get('name', 'Timer')}"
+                    self.message_handler.process_message({
+                        "action": "set_timer",
+                        "id": msg_id,
+                        "content": result["message"],
+                        "is_final": True
+                    })
+                else:
+                    error_msg = f"Could not set timer: {result['message']}"
+                    # Create a unique ID for this message
+                    msg_id = f"timer_error_{timer_params.get('name', 'Timer')}"
+                    self.message_handler.process_message({
+                        "action": "set_timer",
+                        "id": msg_id,
+                        "content": error_msg,
+                        "is_final": True
+                    })
         elif action == "set_alarm":
             # Handle alarm setting request
             alarm_params = data.get("params", {})
             result = self.message_handler.process_alarm_command(alarm_params)
             
-            # Send acknowledgment back
-            if result["success"]:
-                self.message_handler.add_message("assistant", result["message"])
-                self._add_assistant_message_to_history(result["message"])
+            # Process the content message if available
+            if "content" in data:
+                # Process the message content normally to show LLM's natural response
+                # Ensure the message has an ID to prevent duplication
+                if "id" not in data:
+                    alarm_name = alarm_params.get("name", "Alarm")
+                    data["id"] = f"alarm_{alarm_name}_{hash(data.get('content', '')[:50])}"
+                self.message_handler.process_message(data)
             else:
-                error_msg = f"Could not set alarm: {result['message']}"
-                self.message_handler.add_message("assistant", error_msg)
-                self._add_assistant_message_to_history(error_msg)
+                # Only if no content is provided, use the default response
+                if result["success"]:
+                    # Create a unique ID for this message
+                    msg_id = f"alarm_default_{alarm_params.get('name', 'Alarm')}"
+                    self.message_handler.process_message({
+                        "action": "set_alarm",
+                        "id": msg_id,
+                        "content": result["message"],
+                        "is_final": True
+                    })
+                else:
+                    error_msg = f"Could not set alarm: {result['message']}"
+                    # Create a unique ID for this message
+                    msg_id = f"alarm_error_{alarm_params.get('name', 'Alarm')}"
+                    self.message_handler.process_message({
+                        "action": "set_alarm",
+                        "id": msg_id,
+                        "content": error_msg,
+                        "is_final": True
+                    })
         else:
             # Try to process as a message - MessageHandler will emit signals handled elsewhere
             self.message_handler.process_message(data)
@@ -337,39 +408,33 @@ class ChatController(QObject):
 
         # First, check if this is a timer command
         # If we have a timer command processor registered, try to process as timer command
+        timer_command = False
         if hasattr(self, '_timer_command_processor') and self._timer_command_processor:
             # Try to process as a timer command
             if self._timer_command_processor.processCommand(text):
-                # This was a timer command, add it to history but don't send to LLM
-                self._add_user_message_to_history(text)
-                
-                # The timer command processor will emit its own response through its signals
-                return
+                timer_command = True
+                logger.info(f"[ChatController] Timer command detected: {text}")
+                # We'll still process this as a normal message, but remember it's a timer command
         
         # Next, check if this is an alarm command
         # If we have an alarm command processor registered, try to process as alarm command
+        alarm_command = False
         if self._alarm_command_processor is not None:
             # Try to process as an alarm command
             if self._alarm_command_processor.processCommand(text):
-                # This was an alarm command, add it to history but don't send to LLM
-                self._add_user_message_to_history(text)
-                
-                # The alarm command processor will emit its own response through its signals
-                return
-
+                alarm_command = True
+                logger.info(f"[ChatController] Alarm command detected: {text}")
+                # We'll still process this as a normal message, but remember it's an alarm command
+        
         # Then, check if this is a navigation command
         # If we have a navigation controller registered, try to process as navigation
+        navigation_command = False
         if hasattr(self, 'navigation_controller') and self.navigation_controller:
             if self.navigation_controller.processNavigationCommand(text):
-                # This was a navigation command, add it to history but don't send to LLM
-                self._add_user_message_to_history(text)
-                
-                # Add a simple response confirming the navigation
-                response = f"Navigating to requested screen."
-                self.message_handler.add_message("assistant", response)
-                self._add_assistant_message_to_history(response)
-                return
-
+                navigation_command = True
+                logger.info(f"[ChatController] Navigation command detected: {text}")
+                # We'll still process this as a normal message below, but remember it's a navigation command
+        
         # Check if we have an interrupted response that needs to be continued
         has_interrupted = self.message_handler.has_interrupted_response()
 
@@ -402,13 +467,36 @@ class ChatController(QObject):
         # If we're continuing from an interrupted response, tell the server
         if has_interrupted:
             payload["continue_response"] = True
+        
+        # Add context to the payload for special commands
+        context = {}
+        if navigation_command:
+            context["navigation_command"] = True
+        if timer_command:
+            context["timer_command"] = True
+        if alarm_command:
+            context["alarm_command"] = True
+            
+        if context:
+            payload["context"] = context
 
         # Send asynchronously
         self.resource_manager.schedule_coroutine(
             self.websocket_client.send_message(payload)
         )
+        
+        command_types = []
+        if navigation_command:
+            command_types.append("navigation")
+        if timer_command:
+            command_types.append("timer")
+        if alarm_command:
+            command_types.append("alarm")
+            
+        command_type_str = f" ({', '.join(command_types)} command)" if command_types else ""
+        
         logger.info(
-            f"[ChatController] Sending message: {text}{' (continuing interrupted response)' if has_interrupted else ''}"
+            f"[ChatController] Sending message: {text}{' (continuing interrupted response)' if has_interrupted else ''}{command_type_str}"
         )
 
     @Slot()
@@ -604,36 +692,98 @@ class ChatController(QObject):
         )
 
     def _add_assistant_message_to_history(self, text):
-        """Adds a complete assistant message to the internal history list."""
-        # This is called when a non-chunked message arrives
+        """Adds an assistant message to the internal history list."""
         self._chat_history.append({"text": text, "isUser": False})
         logger.debug(
             f"[ChatController] Added assistant message to history. New length: {len(self._chat_history)}"
         )
 
     def _handle_assistant_message_chunk(self, text, is_final):
-        """Handles incoming chunks for assistant messages, updating the history."""
+        """Handles chunks of an assistant message, appending to the last message if not final."""
+        # The problem is in this method - it's concatenating chunks in a bad way
+        # Each received chunk already has the full text via the MessageHandler
+
+        # Don't append repeatedly - just set the text directly
         if not self._chat_history or self._chat_history[-1]["isUser"]:
-            # Start of a new assistant message
+            # If history is empty or last message was user, add new assistant message
             self._chat_history.append({"text": text, "isUser": False})
-            logger.debug(
-                f"[ChatController] Started new assistant message chunk in history. Length: {len(self._chat_history)}"
-            )
         else:
-            # Update the last assistant message
+            # Replace existing assistant message instead of appending
             self._chat_history[-1]["text"] = text
-            # logger.debug(f"[ChatController] Updated assistant message chunk in history.") # Too noisy
+        
+        logger.debug(
+            f"[ChatController] Handled assistant message chunk. Current message: '{text[:50]}...'"
+        )
 
-        if is_final:
-            logger.debug(
-                f"[ChatController] Final assistant message chunk received. History length: {len(self._chat_history)}"
-            )
+    async def handle_hey_computer_wakeword(self):
+        """
+        Handles the 'hey computer' wake word.
+        If not on the chat screen, navigates there first, then activates voice interaction.
+        Uses an event-driven approach to wait for navigation completion.
+        """
+        logger.info("[ChatController] 'Hey computer' wakeword detected.")
 
-    async def _enable_tts_on_wake_word(self):
+        if not self.navigation_controller:
+            logger.warning("[ChatController] NavigationController not available. Activating voice interaction directly.")
+            await self._activate_voice_interaction_core()
+            return
+
+        current_screen = self.navigation_controller.getCurrentScreenName()
+        logger.info(f"[ChatController] Current screen: {current_screen}")
+
+        if current_screen == "ChatScreen.qml":
+            await self._activate_voice_interaction_core()
+        else:
+            logger.info(f"[ChatController] Navigating from {current_screen} to ChatScreen.qml. Waiting for confirmation...")
+            navigation_complete_event = asyncio.Event()
+
+            # Temporary slot to listen for the specific screen change
+            # Needs to be a method or a callable that can be disconnected.
+            # Using a nested function that captures navigation_complete_event and self
+
+            def _on_screen_changed_for_wakeword(screen_name: str):
+                # This function will be called by the Qt signal
+                if screen_name == "ChatScreen.qml":
+                    logger.info(f"[ChatController] Navigation to {screen_name} confirmed via signal for wakeword activation.")
+                    if not navigation_complete_event.is_set():
+                        self._loop.call_soon_threadsafe(navigation_complete_event.set)
+                    # Attempt to disconnect immediately after the event is set
+                    try:
+                        self.navigation_controller.currentScreenNameChanged.disconnect(_on_screen_changed_for_wakeword)
+                        logger.debug("[ChatController] Disconnected temporary screen change listener for wakeword.")
+                    except (TypeError, RuntimeError) as e:
+                        logger.warning(f"[ChatController] Error disconnecting listener (may have already been disconnected): {e}")
+            
+            try:
+                self.navigation_controller.currentScreenNameChanged.connect(_on_screen_changed_for_wakeword)
+                logger.debug("[ChatController] Connected temporary screen change listener for wakeword.")
+                
+                self.navigation_controller.navigationRequested.emit("ChatScreen.qml")
+
+                try:
+                    await asyncio.wait_for(navigation_complete_event.wait(), timeout=5.0) # 5-second timeout
+                    logger.info("[ChatController] Navigation to ChatScreen.qml confirmed by event.")
+                except asyncio.TimeoutError:
+                    logger.warning("[ChatController] Timeout waiting for navigation to ChatScreen.qml. Activating voice interaction anyway.")
+                finally:
+                    # Ensure disconnection if not already done (e.g. timeout)
+                    try:
+                        self.navigation_controller.currentScreenNameChanged.disconnect(_on_screen_changed_for_wakeword)
+                        logger.debug("[ChatController] Ensured disconnection of listener in finally block after wait.")
+                    except (TypeError, RuntimeError):
+                        pass # Listener might have already been disconnected or failed to connect
+
+            except Exception as e:
+                logger.error(f"[ChatController] Error during navigation setup or wait: {e}. Activating voice interaction as fallback.")
+            
+            await self._activate_voice_interaction_core()
+
+    async def _activate_voice_interaction_core(self):
         """
-        Enable TTS when wake word is detected.
+        Core logic to activate voice interaction: plays wake sound, enables STT and TTS.
+        This was previously the content of _enable_tts_on_wake_word.
         """
-        logger.info("[ChatController] Wake word detected - enabling TTS")
+        logger.info("[ChatController] Activating voice interaction (sound, STT, TTS)")
 
         # Play the wake sound
         try:
@@ -665,16 +815,21 @@ class ChatController(QObject):
         except Exception as e:
             logger.error(f"[ChatController] Error playing wake sound: {e}")
 
-        # Enable TTS if it's not already enabled
+        # Enable STT if it's not already enabled
         if not self.speech_manager.is_stt_enabled():
-            self.toggleSTT()
-            logger.info("[ChatController] STT enabled after wake word")
+            # Call toggleSTT which handles state and UI updates
+            self.toggleSTT()  
+            logger.info("[ChatController] STT enabled after wake word processing.")
+        else:
+            logger.info("[ChatController] STT was already enabled.")
+
 
         # Also enable TTS as per the latest implementation
+        # Ensure TTS is enabled for voice responses
         await self.tts_controller.set_tts_enabled(True)
-        logger.info("[ChatController] TTS enabled after wake word")
+        logger.info("[ChatController] TTS explicitly enabled after wake word processing.")
 
-    def _handle_auto_submit_utterance(self, text):
+    def _handle_auto_submit_utterance(self, text: str):
         """
         Handle auto-submission of complete utterances directly to chat.
         This bypasses the input field and sends the message immediately.

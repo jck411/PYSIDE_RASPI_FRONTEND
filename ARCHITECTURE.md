@@ -47,7 +47,7 @@ This is a PySide6-based smart screen interface for desktop and Raspberry Pi with
   *Provides accurate time awareness for LLM interactions. Updates time information based on location coordinates and configurable intervals. Returns comprehensive time info including date, day of week, and time of day.*
 
 - [Natural Language Commands](docs/architecture/services/natural-language.md)  
-  *Command processors for timer and alarm functionality that intercept chat input. Uses regex patterns to match commands and extract parameters. Recent improvements for AM/PM time handling.*
+  *Command processors for timer and alarm functionality that intercept chat input. Uses regex patterns to match commands and extract parameters. Recent improvements for AM/PM time handling. Now preserves LLM responses when executing commands rather than replacing them with generic responses.*
 
 - [Utility Services](docs/architecture/services/utilities.md)  
   *Common utilities including MarkdownUtils for text formatting, AudioManager for sound playback, PathProvider for consistent resource paths, ThemeManager for light/dark theme switching, and SettingsService for application preferences.*
@@ -95,8 +95,22 @@ The application includes multiple screens that can be navigated via the tab bar:
 Screens can be navigated in two ways:
 - Via the top navigation bar buttons in MainWindow.qml
 - Via screen-specific control buttons (e.g., ClockScreen's "Show Alarms" button navigates to AlarmScreen, and AlarmScreen's "Show Clock" button navigates back to ClockScreen)
+- Via natural language commands processed by `NavigationController` or backend `navigate_to_screen` tool.
+- **NEW**: Via wakeword "hey computer", which automatically navigates to `ChatScreen.qml` if the user is on a different screen before activating voice interaction.
 
 The navigation is handled using the StackView component, with each screen having access to the MainWindow's stackView for navigation between screens.
+
+`NavigationController` (`frontend/logic/navigation_controller.py`) now includes:
+- A `currentScreenName` Q_PROPERTY (type `str`) that stores the QML filename of the currently displayed screen (e.g., "ChatScreen.qml").
+- A slot `setCurrentScreenName(screen_name: str)` called by `MainWindow.qml`.
+- `MainWindow.qml`, in its `StackView.onCurrentItemChanged` handler, determines the QML filename of the new `currentItem` (usually from `currentItem.sourceComponent.url`) and calls `NavigationController.setCurrentScreenName()` to keep it updated.
+
+The "hey computer" wakeword flow is as follows:
+1. `WakeWordHandler` detects "hey computer".
+2. It calls a dedicated method in `ChatController` (e.g., `handle_hey_computer_wakeword`).
+3. `ChatController` retrieves the `currentScreenName` from `NavigationController`.
+4. If `currentScreenName` is not "ChatScreen.qml", `ChatController` emits a `navigationRequested` signal via `NavigationController` to switch to "ChatScreen.qml". A brief asynchronous delay is introduced to allow the navigation to visually initiate.
+5. `ChatController` then proceeds to play the wake-up sound and activate STT (Speech-to-Text) and TTS (Text-to-Speech) services. This ensures that voice interaction starts on the chat screen.
 
 Screen controls maintain consistent navigation patterns:
 - Each screen has its own controls file (e.g., ClockControls.qml, AlarmControls.qml) that inherits from BaseControls
@@ -994,3 +1008,30 @@ chat_controller_instance.alarm_command_processor = alarm_command_processor_insta
 ```
 
 This architecture allows the command processor to focus on language parsing while delegating actual alarm management to the controller.
+
+### Chat and Tool Integration
+The application features a robust chat interface that integrates with various system tools:
+
+- **ChatController**: Manages all chat-related functionality
+  - Coordinates interaction between Speech-to-Text, Text-to-Speech, WebSocket, and UI
+  - Processes incoming messages and dispatches outgoing messages
+  - Handles chat history management and persistence
+  - **Enhanced Tool Integration**: Preserves natural LLM responses when executing tool functions
+    - Previously would replace LLM responses with generic messages like "Navigating to requested screen"
+    - Now maintains the original LLM response while still executing the corresponding action
+    - Supports parallel processing for navigation, timer, and alarm commands
+    - Adds contextual metadata to requests to inform the backend about command types
+    - **Prevents Duplicate Responses**: Includes message deduplication through unique message IDs
+    - Uses hashed content and action types to identify and prevent duplicate message processing
+    - Handles tool-specific responses with consistent message formats
+    - Ensures even complex interactions with multiple tools yield clean chat history
+
+- **Navigation Integration**:
+  - Detects navigation commands without interrupting the natural conversation flow
+  - Performs navigation actions while still displaying the LLM's natural language response
+  - Uses a context-aware system to handle both actions simultaneously
+
+- **Timer and Alarm Integration**:
+  - Processes timer and alarm commands via dedicated command processors
+  - Executes the corresponding commands while preserving the LLM's original response
+  - Maintains a natural conversational feel rather than presenting system messages

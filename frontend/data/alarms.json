@@ -46,5 +46,15 @@
       6
     ],
     "is_enabled": true
+  },
+  {
+    "id": "0db72857-9312-494b-a20a-774e1e944831",
+    "hour": 8,
+    "minute": 0,
+    "label": "Alarm 08:00",
+    "days_of_week": [
+      1
+    ],
+    "is_enabled": true
   }
 ]
