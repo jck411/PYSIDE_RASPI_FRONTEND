@@ -1,8 +1,9 @@
 import inspect
 import asyncio
-from typing import Callable, Tuple, Dict, Any, Union, Awaitable
+from typing import Callable, Tuple, Dict, Any, Union, Awaitable, Optional
 import json
 import logging
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -55,24 +56,59 @@ def get_function_and_args(
     return function_to_call, function_args
 
 
-async def execute_function(function: Callable, args: Dict[str, Any]) -> Any:
+async def execute_function(function: Callable, args: Dict[str, Any], timeout: Optional[float] = None) -> Any:
     """
     Execute a function with the given arguments, handling both sync and async functions.
     
     Args:
         function: The function to execute
         args: The arguments to pass to the function
+        timeout: Optional timeout in seconds for the function execution
         
     Returns:
         The result of the function call
+        
+    Raises:
+        asyncio.TimeoutError: If the function execution times out
+        Exception: Any exception raised by the function
     """
     logger.info(f"Executing function: {function.__name__} with args: {args}")
     
-    if inspect.iscoroutinefunction(function):
-        # Function is async, await it
-        logger.info(f"Function {function.__name__} is async")
-        return await function(**args)
-    else:
-        # Function is sync, run it directly
-        logger.info(f"Function {function.__name__} is sync")
-        return function(**args)
+    # Extract connection parameter if it exists (it might not be in the function signature)
+    connection = args.pop('connection', None) if 'connection' in args else None
+    
+    # Make a copy of args to filter out params not in the function signature
+    sig = inspect.signature(function)
+    valid_args = {k: v for k, v in args.items() if k in sig.parameters}
+    
+    # Add connection back if it's a valid parameter
+    if connection is not None and 'connection' in sig.parameters:
+        valid_args['connection'] = connection
+    
+    try:
+        if inspect.iscoroutinefunction(function):
+            # Function is async, await it with optional timeout
+            logger.info(f"Function {function.__name__} is async")
+            if timeout:
+                try:
+                    return await asyncio.wait_for(function(**valid_args), timeout=timeout)
+                except asyncio.TimeoutError:
+                    logger.error(f"Function {function.__name__} timed out after {timeout} seconds")
+                    return {
+                        "error": f"The operation timed out after {timeout} seconds",
+                        "status": "timeout"
+                    }
+            else:
+                # No timeout specified
+                return await function(**valid_args)
+        else:
+            # Function is sync, run it directly
+            logger.info(f"Function {function.__name__} is sync")
+            return function(**valid_args)
+    except Exception as e:
+        logger.error(f"Error executing function {function.__name__}: {e}")
+        logger.debug(f"Exception traceback: {traceback.format_exc()}")
+        return {
+            "error": f"An error occurred: {str(e)}",
+            "status": "error"
+        }

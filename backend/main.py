@@ -13,9 +13,12 @@ from backend.endpoints.state import GEN_STOP_EVENT
 from backend.tts.processor import process_streams
 
 # Import weather components
-from backend.weather.fetcher import fetch_weather_data
+from backend.weather.fetcher import fetch_weather_data, close_http_client
 from backend.weather.openweather_fetcher import fetch_openweather_data
 import backend.weather.state as weather_state  # Use alias to avoid name collision
+
+# Import shutdown utilities
+from backend.utils.shutdown import register_cleanup_task, run_cleanup_tasks
 
 from contextlib import asynccontextmanager
 
@@ -213,6 +216,11 @@ async def periodic_weather_update(interval_seconds: int = 1800):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Application startup...")
+    
+    # Register cleanup tasks
+    register_cleanup_task(close_http_client)
+    logger.info("Registered HTTP client cleanup task")
+    
     # Start background tasks
     weather_update_task = asyncio.create_task(periodic_weather_update())
     logger.info("Periodic weather update task started.")
@@ -227,6 +235,9 @@ async def lifespan(app: FastAPI):
         await weather_update_task  # Wait for task to finish cancellation
     except asyncio.CancelledError:
         logger.info("Periodic weather update task cancelled.")
+
+    # Run all registered cleanup tasks
+    await run_cleanup_tasks()
 
     # Add any other shutdown logic here (e.g., closing connections)
     shutdown()  # Call existing shutdown function if needed
@@ -295,7 +306,7 @@ async def unified_chat_websocket(websocket: WebSocket):
 
                 try:
                     async for content in stream_openai_completion(
-                        client, DEPLOYMENT_NAME, validated, phrase_queue, GEN_STOP_EVENT
+                        client, DEPLOYMENT_NAME, validated, phrase_queue, GEN_STOP_EVENT, connection=websocket
                     ):
                         if GEN_STOP_EVENT.is_set():
                             break

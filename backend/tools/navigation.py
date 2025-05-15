@@ -13,13 +13,14 @@ class NavigationRequest:
         self.screen = screen
         self.params = params or {}
 
-async def navigate_to_screen(screen: str, extra_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+async def navigate_to_screen(screen: str, extra_params: Optional[Dict[str, Any]] = None, connection=None) -> Dict[str, Any]:
     """
     Function for the LLM to call to request navigation to a specific screen.
     
     Args:
         screen: The screen to navigate to (e.g., "chat", "weather", "clock", etc.)
         extra_params: Optional parameters to pass to the screen
+        connection: Optional websocket connection to send the request to. If None, sends to all.
         
     Returns:
         Dict with status of the navigation request
@@ -72,7 +73,7 @@ async def navigate_to_screen(screen: str, extra_params: Optional[Dict[str, Any]]
         
         # Create and send the navigation request
         try:
-            await navigation_handler.send_navigation_request(target_screen, merged_params)
+            await navigation_handler.send_navigation_request(target_screen, merged_params, connection)
             
             return {
                 "status": "success",
@@ -137,7 +138,7 @@ async def navigate_to_screen(screen: str, extra_params: Optional[Dict[str, Any]]
     
     # Send the navigation request to connected frontends
     try:
-        await navigation_handler.send_navigation_request(target_screen, extra_params)
+        await navigation_handler.send_navigation_request(target_screen, extra_params, connection)
         logger.info(f"[NavigationTool] Navigation request sent: {target_screen}")
         
         return {

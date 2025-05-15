@@ -11,8 +11,10 @@ Total: 2 API calls per fetch.
 import os
 import logging
 import httpx
+import asyncio
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+from backend.weather.fetcher import get_http_client
 
 # Load environment variables from .env file
 load_dotenv()
@@ -65,70 +67,83 @@ async def fetch_openweather_data(lat: str = DEFAULT_LAT, lon: str = DEFAULT_LON)
     overview_url = "https://api.openweathermap.org/data/3.0/onecall/overview"
     
     try:
-        # Create a single client for all requests with timeout
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # Use asyncio.gather to make both API calls concurrently
-            import asyncio
-            
-            # Fetch weather data concurrently
-            onecall_task = client.get(onecall_url, params=params)
-            overview_task = client.get(overview_url, params=params)
-            
-            logger.debug(f"Requesting OneCall URL: {onecall_url} with params: {params}")
-            logger.debug(f"Requesting Overview URL: {overview_url} with params: {params}")
-            logger.info(f"Fetching OpenWeatherMap data concurrently for lat={lat}, lon={lon}")
-            responses = await asyncio.gather(
+        # Get the shared client with appropriate timeout
+        client = await get_http_client(timeout=12.0)
+        
+        # Create the tasks for concurrent execution
+        onecall_task = client.get(onecall_url, params=params)
+        overview_task = client.get(overview_url, params=params)
+        
+        logger.debug(f"Requesting OneCall URL: {onecall_url} with params: {params}")
+        logger.debug(f"Requesting Overview URL: {overview_url} with params: {params}")
+        logger.info(f"Fetching OpenWeatherMap data concurrently for lat={lat}, lon={lon}")
+        
+        # Use wait_for to ensure we have a timeout for the gather operation
+        responses = await asyncio.wait_for(
+            asyncio.gather(
                 onecall_task, 
                 overview_task,
                 return_exceptions=True
-            )
-            
-            # Check for exceptions
-            for i, resp in enumerate(responses):
-                if isinstance(resp, Exception):
-                    logger.error(f"Error in OpenWeatherMap request {i}: {resp}")
-                    return None
-            
-            # Process responses
-            onecall_response, overview_response = responses
-            
-            # Validate responses
-            if isinstance(onecall_response, httpx.Response):
-                logger.debug(f"OneCall response status: {onecall_response.status_code}")
-            if isinstance(overview_response, httpx.Response):
-                logger.debug(f"Overview response status: {overview_response.status_code}")
-            for resp in [onecall_response, overview_response]:
-                if isinstance(resp, httpx.Response):
-                    resp.raise_for_status()
-            
-            # Parse JSON data
-            onecall_data = onecall_response.json() if isinstance(onecall_response, httpx.Response) else {}
-            overview_data = overview_response.json() if isinstance(overview_response, httpx.Response) else {}
-            logger.debug("Successfully parsed JSON from both OpenWeatherMap responses.")
-            
-            # Extract required data
-            current = onecall_data.get("current", {})
-            minutely = onecall_data.get("minutely", [])
-            weather_overview = overview_data.get("weather_overview", "No weather overview available.")
-            
-            # Return the combined data
-            combined_data = {
-                "current": current,
-                "minutely": minutely,
-                "weather_overview": weather_overview
-            }
-            
-            logger.debug(f"Returning combined OpenWeatherMap data: {str(combined_data)[:200]}...")
-            logger.info("Successfully fetched OpenWeatherMap data")
-            return combined_data
-            
-    except httpx.RequestError as exc:
-        logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
-    except httpx.HTTPStatusError as exc:
-        logger.error(
-            f"Error response {exc.response.status_code} while requesting {exc.request.url!r}: {exc.response.text}"
+            ),
+            timeout=15.0  # Overall timeout for both API calls
         )
+        
+        # Check for exceptions
+        for i, resp in enumerate(responses):
+            if isinstance(resp, Exception):
+                logger.error(f"Error in OpenWeatherMap request {i}: {resp}")
+                # Don't return None immediately, try to use partial data if possible
+        
+        # Process responses
+        onecall_response, overview_response = responses
+        
+        # Parse JSON data from valid responses
+        onecall_data = {}
+        overview_data = {}
+        
+        # Only process valid responses
+        if not isinstance(onecall_response, Exception):
+            try:
+                onecall_response.raise_for_status()
+                onecall_data = onecall_response.json()
+                logger.debug("Successfully parsed OneCall response")
+            except (httpx.HTTPStatusError, ValueError) as e:
+                logger.error(f"Error processing OneCall response: {e}")
+                
+        if not isinstance(overview_response, Exception):
+            try:
+                overview_response.raise_for_status()
+                overview_data = overview_response.json()
+                logger.debug("Successfully parsed Overview response")
+            except (httpx.HTTPStatusError, ValueError) as e:
+                logger.error(f"Error processing Overview response: {e}")
+        
+        # Extract required data - handle missing fields safely
+        current = onecall_data.get("current", {})
+        minutely = onecall_data.get("minutely", [])
+        weather_overview = overview_data.get("weather_overview", "No weather overview available.")
+        
+        # Return the combined data - return partial data even if some calls failed
+        combined_data = {
+            "current": current,
+            "minutely": minutely,
+            "weather_overview": weather_overview
+        }
+        
+        # If we have no useful data, log a warning
+        if not current and not weather_overview:
+            logger.warning("Both OpenWeatherMap API calls failed, returning minimal data")
+            
+        logger.info("Successfully fetched OpenWeatherMap data")
+        return combined_data
+            
+    except asyncio.TimeoutError:
+        logger.error("Timeout fetching OpenWeatherMap data")
+    except httpx.RequestError as exc:
+        logger.error(f"Request error fetching OpenWeatherMap data: {exc}")
+    except httpx.HTTPStatusError as exc:
+        logger.error(f"HTTP error response {exc.response.status_code} from OpenWeatherMap API")
     except Exception as exc:
-        logger.error(f"An unexpected error occurred: {exc}")
+        logger.error(f"Unexpected error fetching OpenWeatherMap data: {exc}")
 
     return None 

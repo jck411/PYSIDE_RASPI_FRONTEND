@@ -49,6 +49,9 @@ This is a PySide6-based smart screen interface for desktop and Raspberry Pi with
 - [Natural Language Commands](docs/architecture/services/natural-language.md)  
   *Command processors for timer and alarm functionality that intercept chat input. Uses regex patterns to match commands and extract parameters. Recent improvements for AM/PM time handling. Now preserves LLM responses when executing commands rather than replacing them with generic responses.*
 
+- [Connection-Aware Tools](docs/architecture/services/connection-tools.md)  
+  *Tools that maintain awareness of which WebSocket connection initiated a request. Provides connection context throughout the tool execution pipeline. Ensures responses and navigation actions are directed to the originating client. Enhances multi-user support by preventing broadcasts to all connections.*
+
 - [Utility Services](docs/architecture/services/utilities.md)  
   *Common utilities including MarkdownUtils for text formatting, AudioManager for sound playback, PathProvider for consistent resource paths, ThemeManager for light/dark theme switching, and SettingsService for application preferences.*
 
@@ -701,6 +704,40 @@ The codebase follows these organizational principles:
 - State management via lightweight state modules with clear interfaces
 - Event-driven mechanisms for async operations
 - Clean import structure to avoid circular dependencies
+
+### Async Operations Optimization
+The application implements several optimizations for asynchronous operations:
+
+- **Shared HTTP Client**: Uses a global managed httpx.AsyncClient for all network requests
+  - Implements connection pooling and reuse to reduce connection overhead
+  - Properly closes connections during application shutdown using registered cleanup tasks
+  - Centralizes timeout handling and error management for all HTTP operations
+
+- **Robust Error Handling**: Improved resilience with comprehensive error handling
+  - Each async operation has appropriate try/except blocks with specific error types
+  - Returns partial data when possible instead of failing completely
+  - Includes detailed error logging with traceback information for easier debugging
+  - Uses asyncio.TimeoutError handling to prevent hanging operations
+
+- **Timeout Management**: Multiple layers of timeout protection
+  - Per-request timeouts for individual HTTP requests
+  - Operation-level timeouts using asyncio.wait_for
+  - Global timeouts for concurrent operations with asyncio.gather
+  - Function-specific timeouts based on operation type (e.g., longer for weather API calls)
+
+- **Concurrent Operations**: Efficiently executes parallel tasks
+  - Uses asyncio.gather for concurrent API requests
+  - Properly handles exceptions in concurrent tasks without failing the entire operation
+  - Balances parallelism with proper resource management
+  - Implements proper task cancellation during shutdown
+
+- **Graceful Shutdown**: Ensures all resources are properly released
+  - Registers cleanup tasks at application startup
+  - Uses an extensible cleanup system in backend.utils.shutdown
+  - Properly closes HTTP client connections during application shutdown
+  - Cancels and awaits running background tasks during shutdown
+
+This approach ensures the application remains responsive during network operations while efficiently managing system resources.
 
 ### Tool Functions Architecture
 The application uses a modular tool functions system that allows for easy extension with new capabilities:

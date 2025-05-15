@@ -131,6 +131,7 @@ async def stream_openai_completion(
     messages: Sequence[Dict[str, Union[str, Any]]],
     phrase_queue: asyncio.Queue,
     stop_event: asyncio.Event,
+    connection=None,
 ) -> AsyncIterator[str]:
     delimiter_pattern = compile_delimiter_pattern(
         CONFIG["PROCESSING_PIPELINE"]["DELIMITERS"]
@@ -204,7 +205,24 @@ async def stream_openai_completion(
             for tc in tool_calls:
                 try:
                     fn, fn_args = get_function_and_args(tc, funcs)
-                    resp = await execute_function(fn, fn_args)
+                    
+                    # Execute the function with a timeout based on function type
+                    # Chat, weather, and external API calls get longer timeouts
+                    timeout = None
+                    if fn.__name__ in ['get_weather_current', 'get_weather_forecast']:
+                        timeout = 15.0  # Weather API calls get 15 seconds
+                    elif fn.__name__ in ['navigate_to_screen']:
+                        timeout = 5.0   # Navigation gets 5 seconds
+                    elif fn.__name__ in ['get_time', 'get_sunrise_sunset']:
+                        timeout = 10.0  # Time-related API calls get 10 seconds
+                    
+                    # If this is a navigation function and we have a connection, add it to the args
+                    if fn.__name__ == 'navigate_to_screen' and connection:
+                        fn_args['connection'] = connection
+                    
+                    # Execute with appropriate timeout
+                    resp = await execute_function(fn, fn_args, timeout=timeout)
+                    
                     log_function_call_result(fn.__name__, resp)
                     messages.append(
                         {

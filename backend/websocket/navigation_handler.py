@@ -30,17 +30,24 @@ class NavigationHandler:
         except KeyError:
             logger.warning("[NavigationHandler] Attempted to unregister unknown connection")
     
-    async def send_navigation_request(self, screen: str, params: Optional[Dict[str, Any]] = None):
+    async def send_navigation_request(self, screen: str, params: Optional[Dict[str, Any]] = None, connection=None):
         """
-        Send a navigation request to all connected frontends.
+        Send a navigation request to a specific connection or all connected frontends.
         
         Args:
             screen: The screen to navigate to
             params: Optional parameters for the screen
+            connection: Optional specific websocket connection to send to. If None, send to all.
         """
-        if not self._connections:
-            logger.warning("[NavigationHandler] No active connections to send navigation request")
-            return
+        if connection:
+            connections = [connection]
+            logger.info(f"[NavigationHandler] Sending navigation request to specific connection")
+        else:
+            connections = self._connections
+            if not connections:
+                logger.warning("[NavigationHandler] No active connections to send navigation request")
+                return
+            logger.info(f"[NavigationHandler] Sending navigation request to all {len(connections)} connections")
         
         # Prepare the message
         message = {
@@ -52,9 +59,9 @@ class NavigationHandler:
         message_json = json.dumps(message)
         logger.info(f"[NavigationHandler] Sending navigation request: {message_json}")
         
-        # Send to all connected clients
+        # Send to target connections
         disconnected = set()
-        for ws in self._connections:
+        for ws in connections:
             try:
                 await ws.send_json(message)
             except Exception as e:

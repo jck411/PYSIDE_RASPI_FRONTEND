@@ -1,6 +1,7 @@
 import httpx
 import os
 import logging
+import asyncio
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -16,6 +17,36 @@ KMCO_LON = "-81.3089"
 
 logger = logging.getLogger(__name__)
 
+# Global httpx client instance for connection reuse
+_http_client = None
+
+async def get_http_client(timeout=10.0):
+    """
+    Get or create a shared httpx client with connection pooling.
+    
+    Args:
+        timeout: Request timeout in seconds
+        
+    Returns:
+        An httpx AsyncClient instance
+    """
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            timeout=timeout,
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
+        )
+    return _http_client
+
+async def close_http_client():
+    """
+    Close the global httpx client if it exists.
+    Should be called during application shutdown.
+    """
+    global _http_client
+    if _http_client is not None and not _http_client.is_closed:
+        await _http_client.aclose()
+        _http_client = None
 
 async def fetch_sunrise_sunset(lat: str, lon: str) -> dict | None:
     """
@@ -42,20 +73,25 @@ async def fetch_sunrise_sunset(lat: str, lon: str) -> dict | None:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
+        client = await get_http_client()
+        response = await asyncio.wait_for(
+            client.get(url, params=params),
+            timeout=8.0  # Specific timeout for this operation
+        )
+        response.raise_for_status()
+        data = response.json()
 
-            if data["status"] == "OK":
-                return {
-                    "sunrise": data["results"]["sunrise"],
-                    "sunset": data["results"]["sunset"],
-                }
-            else:
-                logger.error(f"Sunrise-sunset API returned non-OK status: {data['status']}")
-                return None
+        if data["status"] == "OK":
+            return {
+                "sunrise": data["results"]["sunrise"],
+                "sunset": data["results"]["sunset"],
+            }
+        else:
+            logger.error(f"Sunrise-sunset API returned non-OK status: {data['status']}")
+            return None
 
+    except asyncio.TimeoutError:
+        logger.error("Timeout fetching sunrise/sunset data")
     except httpx.RequestError as exc:
         logger.error(f"Request error fetching sunrise/sunset: {exc}")
     except httpx.HTTPStatusError as exc:
@@ -91,88 +127,108 @@ async def fetch_weather_data(
         "User-Agent": "RaspberryPi-WeatherApp/1.0 (pyside-weather-app)",
         "Accept": "application/json",
     }
-    timeout = 10.0
 
     try:
-        # Create a single client for all requests with timeout
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            # First, get the grid point information for Winter Park (for forecasts)
-            points_url = f"{base_url}/points/{lat},{lon}"
-            logger.info(f"Fetching gridpoints for Winter Park lat={lat}, lon={lon} from {points_url}")
+        # Create a client with extended timeout for NWS API
+        client = await get_http_client(timeout=15.0)
             
-            points_response = await client.get(points_url, headers=headers)
-            points_response.raise_for_status()
-            points_data = points_response.json()
+        # First, get the grid point information for Winter Park (for forecasts)
+        points_url = f"{base_url}/points/{lat},{lon}"
+        logger.info(f"Fetching gridpoints for Winter Park lat={lat}, lon={lon} from {points_url}")
+        
+        # Use explicit timeout for each request stage
+        points_response = await asyncio.wait_for(
+            client.get(points_url, headers=headers),
+            timeout=12.0
+        )
+        points_response.raise_for_status()
+        points_data = points_response.json()
 
-            # Extract URLs for all needed forecast endpoints
-            properties = points_data.get("properties", {})
-            forecast_url = properties.get("forecast")
-            forecast_hourly_url = properties.get("forecastHourly")
-            grid_forecast_url = properties.get("forecastGridData")
-            
-            # Now get grid point information for KMCO (for observations)
-            kmco_points_url = f"{base_url}/points/{KMCO_LAT},{KMCO_LON}"
-            logger.info(f"Fetching gridpoints for KMCO lat={KMCO_LAT}, lon={KMCO_LON} from {kmco_points_url}")
-            
-            kmco_points_response = await client.get(kmco_points_url, headers=headers)
-            kmco_points_response.raise_for_status()
-            kmco_points_data = kmco_points_response.json()
-            
-            # Get observation stations URL for KMCO
-            kmco_properties = kmco_points_data.get("properties", {})
-            observation_stations_url = kmco_properties.get("observationStations")
-            
-            # Validate all required URLs are present
-            if not all([forecast_url, forecast_hourly_url, grid_forecast_url, observation_stations_url]):
-                logger.error("One or more required URLs not found in points responses")
-                return None
+        # Extract URLs for all needed forecast endpoints
+        properties = points_data.get("properties", {})
+        forecast_url = properties.get("forecast")
+        forecast_hourly_url = properties.get("forecastHourly")
+        grid_forecast_url = properties.get("forecastGridData")
+        
+        # Now get grid point information for KMCO (for observations)
+        kmco_points_url = f"{base_url}/points/{KMCO_LAT},{KMCO_LON}"
+        logger.info(f"Fetching gridpoints for KMCO lat={KMCO_LAT}, lon={KMCO_LON} from {kmco_points_url}")
+        
+        kmco_points_response = await asyncio.wait_for(
+            client.get(kmco_points_url, headers=headers),
+            timeout=12.0
+        )
+        kmco_points_response.raise_for_status()
+        kmco_points_data = kmco_points_response.json()
+        
+        # Get observation stations URL for KMCO
+        kmco_properties = kmco_points_data.get("properties", {})
+        observation_stations_url = kmco_properties.get("observationStations")
+        
+        # Validate all required URLs are present
+        if not all([forecast_url, forecast_hourly_url, grid_forecast_url, observation_stations_url]):
+            logger.error("One or more required URLs not found in points responses")
+            return None
 
-            # Use gather to fetch all forecast data concurrently
-            import asyncio
-            
-            # Fetch forecast data concurrently
-            forecast_task = client.get(forecast_url, headers=headers)
-            forecast_hourly_task = client.get(forecast_hourly_url, headers=headers)
-            grid_forecast_task = client.get(grid_forecast_url, headers=headers)
-            stations_task = client.get(observation_stations_url, headers=headers)
-            
-            # Also fetch sunrise/sunset data
-            sunrise_sunset_task = fetch_sunrise_sunset(lat, lon)
-            
-            logger.info(f"Fetching all forecast data concurrently")
-            responses = await asyncio.gather(
+        # Create tasks for concurrent fetching
+        forecast_task = client.get(forecast_url, headers=headers)
+        forecast_hourly_task = client.get(forecast_hourly_url, headers=headers)
+        grid_forecast_task = client.get(grid_forecast_url, headers=headers)
+        stations_task = client.get(observation_stations_url, headers=headers)
+        
+        # Also fetch sunrise/sunset data
+        sunrise_sunset_task = fetch_sunrise_sunset(lat, lon)
+        
+        logger.info(f"Fetching all forecast data concurrently")
+        
+        # Use wait_for with gather to apply timeout to all concurrent tasks
+        responses = await asyncio.wait_for(
+            asyncio.gather(
                 forecast_task,
                 forecast_hourly_task,
                 grid_forecast_task,
                 stations_task,
                 sunrise_sunset_task,
                 return_exceptions=True
-            )
+            ),
+            timeout=20.0  # Overall timeout for all parallel requests
+        )
+        
+        # Check for exceptions
+        for i, resp in enumerate(responses):
+            if isinstance(resp, Exception):
+                logger.error(f"Error in concurrent request {i}: {resp}")
+                # Continue with others rather than returning None immediately
+        
+        # Process responses
+        forecast_response, forecast_hourly_response, grid_forecast_response, stations_response, sunrise_sunset_data = responses
+        
+        # Validate HTTP responses
+        for i, resp in enumerate([forecast_response, forecast_hourly_response, grid_forecast_response, stations_response]):
+            if isinstance(resp, Exception):
+                logger.error(f"Request {i} failed: {resp}")
+                continue  # Try to continue with other data
             
-            # Check for exceptions
-            for i, resp in enumerate(responses):
-                if isinstance(resp, Exception):
-                    logger.error(f"Error in concurrent request {i}: {resp}")
-                    return None
-            
-            # Process responses
-            forecast_response, forecast_hourly_response, grid_forecast_response, stations_response, sunrise_sunset_data = responses
-            
-            # Validate responses
-            for resp in [forecast_response, forecast_hourly_response, grid_forecast_response, stations_response]:
+            # Only raise_for_status if not an exception
+            if not isinstance(resp, Exception):
                 resp.raise_for_status()
-            
-            # Parse JSON data
-            forecast_data = forecast_response.json()
-            forecast_hourly_data = forecast_hourly_response.json()
-            grid_forecast_data = grid_forecast_response.json()
-            stations_data = stations_response.json()
+        
+        # Only process data if we have valid responses
+        if (isinstance(forecast_response, Exception) or
+            isinstance(forecast_hourly_response, Exception) or
+            isinstance(grid_forecast_response, Exception) or
+            isinstance(stations_response, Exception)):
+            logger.error("One or more critical weather API requests failed")
+            # Continue anyway to get partial data
+        
+        # Parse JSON data from valid responses
+        forecast_data = forecast_response.json() if not isinstance(forecast_response, Exception) else {}
+        forecast_hourly_data = forecast_hourly_response.json() if not isinstance(forecast_hourly_response, Exception) else {}
+        grid_forecast_data = grid_forecast_response.json() if not isinstance(grid_forecast_response, Exception) else {}
+        stations_data = stations_response.json() if not isinstance(stations_response, Exception) else {}
 
-            # Process stations data from KMCO
-            if not stations_data.get("features") or len(stations_data["features"]) == 0:
-                logger.error("No observation stations found for KMCO")
-                return None
-
+        # Process stations data from KMCO (if available)
+        if not isinstance(stations_response, Exception) and stations_data.get("features") and len(stations_data["features"]) > 0:
             # Look for KMCO station in the list or use the first one as fallback
             station = None
             for feature in stations_data["features"]:
@@ -188,39 +244,51 @@ async def fetch_weather_data(
                 station = stations_data["features"][0]
                 
             station_url = station["properties"].get("@id") or station.get("id")
-            if not station_url:
-                logger.error("Station URL not found")
-                return None
+            if station_url:
+                station_id = station["properties"].get("stationIdentifier", "Unknown")
+                logger.info(f"Using observation station: {station_id}")
+
+                observations_url = f"{station_url}/observations/latest"
+                logger.info(f"Fetching latest observations from {observations_url}")
                 
-            station_id = station["properties"].get("stationIdentifier", "Unknown")
-            logger.info(f"Using observation station: {station_id}")
+                try:
+                    obs_response = await asyncio.wait_for(
+                        client.get(observations_url, headers=headers),
+                        timeout=10.0
+                    )
+                    obs_response.raise_for_status()
+                    obs_data = obs_response.json()
+                    
+                    # Return the combined data
+                    combined_data = {
+                        "properties": obs_data.get("properties", {}),
+                        "forecast": forecast_data,
+                        "forecast_hourly": forecast_hourly_data,
+                        "grid_forecast": grid_forecast_data,
+                        "sunrise_sunset": sunrise_sunset_data
+                    }
+                    logger.info(f"Successfully fetched observations from {station_id} and forecast data for Winter Park")
+                    return combined_data
+                    
+                except (asyncio.TimeoutError, httpx.RequestError, httpx.HTTPStatusError) as e:
+                    logger.error(f"Error fetching observations: {e}")
+                    # Return partial data even if observations fail
+                    return {
+                        "properties": {},
+                        "forecast": forecast_data,
+                        "forecast_hourly": forecast_hourly_data,
+                        "grid_forecast": grid_forecast_data,
+                        "sunrise_sunset": sunrise_sunset_data
+                    }
 
-            observations_url = f"{station_url}/observations/latest"
-            logger.info(f"Fetching latest observations from {observations_url}")
-            obs_response = await client.get(observations_url, headers=headers)
-            obs_response.raise_for_status()
-            obs_data = obs_response.json()
-
-            # Return the combined data
-            combined_data = {
-                "properties": obs_data.get("properties", {}),
-                "forecast": forecast_data,
-                "forecast_hourly": forecast_hourly_data,
-                "grid_forecast": grid_forecast_data,
-                "sunrise_sunset": sunrise_sunset_data
-            }
-            logger.info(f"Successfully fetched observations from {station_id} and forecast data for Winter Park")
-
-            return combined_data
-
+    except asyncio.TimeoutError:
+        logger.error("Timeout fetching weather data")
     except httpx.RequestError as exc:
-        logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
+        logger.error(f"Request error fetching weather: {exc}")
     except httpx.HTTPStatusError as exc:
-        logger.error(
-            f"Error response {exc.response.status_code} while requesting {exc.request.url!r}: {exc.response.text}"
-        )
+        logger.error(f"HTTP error fetching weather: {exc.response.status_code}")
     except Exception as exc:
-        logger.error(f"An unexpected error occurred: {exc}")
+        logger.error(f"Unexpected error fetching weather: {exc}")
 
     return None
 
