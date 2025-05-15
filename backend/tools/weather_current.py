@@ -107,6 +107,10 @@ def get_schema():
                 },
                 "required": ["lat", "lon", "units", "lang", "detail_level"],
                 "additionalProperties": False
-            }
+            },
+            # Dependency metadata
+            "dependencies": [],  # Current weather doesn't depend on other tools
+            "provides": ["current_weather"],  # Provides current weather data
+            "parallel_safe": True  # Can be run in parallel with other operations
         }
     } 

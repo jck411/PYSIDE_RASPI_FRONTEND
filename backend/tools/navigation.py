@@ -176,7 +176,11 @@ def get_schema():
                     }
                 },
                 "required": ["screen"]
-            }
+            },
+            # Dependency metadata for parallel execution
+            "dependencies": [],  # Navigation doesn't depend on other tools
+            "provides": ["navigation_result"],  # Provides navigation result
+            "parallel_safe": True  # Can be run in parallel with other operations
         }
     }
 
