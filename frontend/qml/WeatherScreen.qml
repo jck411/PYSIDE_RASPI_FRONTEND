@@ -8,6 +8,7 @@ import MyServices 1.0
 
 BaseScreen {
     id: weatherScreen
+    property string filename: "WeatherScreen.qml"
     
     screenControls: "WeatherControls.qml"
     title: "Weather"

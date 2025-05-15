@@ -115,8 +115,13 @@ The "hey computer" wakeword flow is as follows:
 1. `WakeWordHandler` detects "hey computer".
 2. It calls a dedicated method in `ChatController` (e.g., `handle_hey_computer_wakeword`).
 3. `ChatController` retrieves the `currentScreenName` from `NavigationController`.
-4. If `currentScreenName` is not "ChatScreen.qml", `ChatController` emits a `navigationRequested` signal via `NavigationController` to switch to "ChatScreen.qml". A brief asynchronous delay is introduced to allow the navigation to visually initiate.
-5. `ChatController` then proceeds to play the wake-up sound and activate STT (Speech-to-Text) and TTS (Text-to-Speech) services. This ensures that voice interaction starts on the chat screen.
+4. **IMPROVED (September 2025)**: Now uses asynchronous parallel processing:
+   - Immediately starts preparing voice interaction (wake sound) in the background
+   - Simultaneously triggers navigation to ChatScreen if not already there
+   - Both operations run concurrently for faster responsiveness
+   - Only waits for navigation if needed, while voice preparation continues
+   - Finalizes voice activation (enabling STT/TTS) after navigation is complete
+5. The parallel approach ensures faster response to wake word detection by eliminating sequential waiting.
 
 Screen controls maintain consistent navigation patterns:
 - Each screen has its own controls file (e.g., ClockControls.qml, AlarmControls.qml) that inherits from BaseControls
@@ -711,10 +716,19 @@ The codebase follows these organizational principles:
 ### Async Operations Optimization
 The application implements several optimizations for asynchronous operations:
 
-- **Shared HTTP Client**: Uses a global managed httpx.AsyncClient for all network requests
-  - Implements connection pooling and reuse to reduce connection overhead
+- **Shared HTTP Client**: Uses a singleton SharedHTTPClient for all network requests
+  - Implements connection pooling and session reuse to reduce connection overhead
   - Properly closes connections during application shutdown using registered cleanup tasks
-  - Centralizes timeout handling and error management for all HTTP operations
+  - Centralizes timeout handling for all HTTP operations
+  - Eliminates the overhead of creating new sessions for each API request
+  - Significantly improves TTS and navigation responsiveness by reusing established connections
+
+- **Screen Name Detection Optimization**: Improved screen name determination in MainWindow.qml
+  - Simplified complex URL parsing logic with a clearer, prioritized approach
+  - Uses direct property access when available for better performance
+  - Improved readability and maintainability with helper functions
+  - Reduces error potential by prioritizing more reliable property access methods
+  - Falls back to URL parsing only as a last resort
 
 - **Robust Error Handling**: Improved resilience with comprehensive error handling
   - Each async operation has appropriate try/except blocks with specific error types

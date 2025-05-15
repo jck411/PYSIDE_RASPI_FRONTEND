@@ -7,6 +7,7 @@ import "components"
 
 BaseScreen {
     id: timerScreen
+    property string filename: "TimerScreen.qml"
     
     // Set the controls file for this screen
     screenControls: "TimerControls.qml"

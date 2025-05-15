@@ -11,6 +11,9 @@ BaseScreen {
     id: chatScreen
     title: "Chat Interface"
     
+    // Add filename property for direct screen detection
+    property string filename: "ChatScreen.qml"
+    
     // Property to hold the setting value
     property bool showInputBox: true
     

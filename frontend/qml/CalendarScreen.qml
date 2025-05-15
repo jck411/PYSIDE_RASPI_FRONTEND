@@ -5,8 +5,9 @@ import MyTheme 1.0
 import MyServices 1.0 // Import the services module
 import "components" // Import our components directory
 
-Item {
+BaseScreen {
     id: calendarScreen
+    property string filename: "CalendarScreen.qml"
 
     // Property to tell MainWindow which controls to load
     property string screenControls: "CalendarControls.qml"

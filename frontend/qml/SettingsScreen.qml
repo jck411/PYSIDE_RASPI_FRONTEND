@@ -5,8 +5,9 @@ import QtQuick.Window 2.15
 import MyTheme 1.0
 import MyServices 1.0
 
-Item {
+BaseScreen {
     id: settingsScreen
+    property string filename: "SettingsScreen.qml"
     property string title: "Settings"
     
     // Property to tell MainWindow which controls to load

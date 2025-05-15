@@ -7,6 +7,7 @@ import "components"
 
 BaseScreen {
     id: alarmScreen
+    property string filename: "AlarmScreen.qml"
     
     // Set the controls file for this screen
     screenControls: "AlarmControls.qml"

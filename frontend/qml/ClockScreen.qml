@@ -6,6 +6,7 @@ import MyServices 1.0
 
 BaseScreen {
     id: clockScreen
+    property string filename: "ClockScreen.qml"
     
     // Set the controls file for this screen
     screenControls: "ClockControls.qml"

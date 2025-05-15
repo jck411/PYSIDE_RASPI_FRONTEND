@@ -32,6 +32,8 @@ from frontend.logic.alarm_command_processor import AlarmCommandProcessor
 from frontend.logic.navigation_controller import NavigationController
 # Import config functions
 from frontend.config import set_app_instance
+# Import our new SharedHTTPClient utilities
+from frontend.utils.http_client import SharedHTTPClient, register_http_client_cleanup
 
 # Display PySide6 version for debugging
 print(f"Using PySide6 version: {PySide6.__version__}")
@@ -103,6 +105,11 @@ def main():
 
     # Initialize QtWebEngine before creating QML engine
     QtWebEngineQuick.initialize()
+
+    # Initialize SharedHTTPClient - run this early to benefit all components
+    loop.run_until_complete(SharedHTTPClient.get_session())
+    register_http_client_cleanup()
+    logger.info("Initialized SharedHTTPClient for improved connection pooling")
 
     # --- Configuration Loading ---
     config_manager = ConfigManager()
@@ -377,6 +384,9 @@ def main():
     
     # Scheduled cleanup tasks using asyncio
     try:
+        # Handle HTTP client cleanup
+        loop.run_until_complete(SharedHTTPClient.close())
+        
         # Handle chat controller cleanup
         loop.run_until_complete(chat_controller_instance.cleanup())
     except Exception as e:

@@ -5,6 +5,7 @@ import aiohttp
 from PySide6.QtCore import QObject, Signal, QTimer
 
 from frontend.config import HTTP_BASE_URL, logger
+from frontend.utils.http_client import SharedHTTPClient
 
 
 class TTSController(QObject):
@@ -34,21 +35,22 @@ class TTSController(QObject):
         """Query the current TTS state from the server"""
         logger.info("[TTSController] Querying initial TTS state from server")
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{HTTP_BASE_URL}/api/tts-state") as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        self._ttsEnabled = data.get("tts_enabled", False)
-                        logger.info(
-                            f"[TTSController] Initial TTS state from server: {self._ttsEnabled}"
-                        )
-                        self.ttsStateChanged.emit(self._ttsEnabled)
-                    else:
-                        logger.warning(
-                            f"[TTSController] Failed to get TTS state: {resp.status}"
-                        )
-                        self._ttsEnabled = False
-                        self.ttsStateChanged.emit(self._ttsEnabled)
+            # Use shared HTTP session
+            session = await SharedHTTPClient.get_session()
+            async with session.get(f"{HTTP_BASE_URL}/api/tts-state") as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    self._ttsEnabled = data.get("tts_enabled", False)
+                    logger.info(
+                        f"[TTSController] Initial TTS state from server: {self._ttsEnabled}"
+                    )
+                    self.ttsStateChanged.emit(self._ttsEnabled)
+                else:
+                    logger.warning(
+                        f"[TTSController] Failed to get TTS state: {resp.status}"
+                    )
+                    self._ttsEnabled = False
+                    self.ttsStateChanged.emit(self._ttsEnabled)
         except Exception as e:
             logger.error(f"[TTSController] Error querying TTS state: {e}")
             self._ttsEnabled = False
@@ -63,12 +65,13 @@ class TTSController(QObject):
 
         self.is_toggling_tts = True
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(f"{HTTP_BASE_URL}/api/toggle-tts") as resp:
-                    data = await resp.json()
-                    self._ttsEnabled = data.get("tts_enabled", not self._ttsEnabled)
-                    self.ttsStateChanged.emit(self._ttsEnabled)
-                    logger.info(f"[TTSController] TTS toggled => {self._ttsEnabled}")
+            # Use shared HTTP session
+            session = await SharedHTTPClient.get_session()
+            async with session.post(f"{HTTP_BASE_URL}/api/toggle-tts") as resp:
+                data = await resp.json()
+                self._ttsEnabled = data.get("tts_enabled", not self._ttsEnabled)
+                self.ttsStateChanged.emit(self._ttsEnabled)
+                logger.info(f"[TTSController] TTS toggled => {self._ttsEnabled}")
         except Exception as e:
             logger.error(f"[TTSController] Error toggling TTS: {e}")
         finally:
@@ -77,10 +80,11 @@ class TTSController(QObject):
     async def stop_tts(self):
         """Stop TTS playback on the server"""
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(f"{HTTP_BASE_URL}/api/stop-audio") as resp:
-                    resp_data = await resp.json()
-                    logger.info(f"[TTSController] Stop TTS response: {resp_data}")
+            # Use shared HTTP session
+            session = await SharedHTTPClient.get_session()
+            async with session.post(f"{HTTP_BASE_URL}/api/stop-audio") as resp:
+                resp_data = await resp.json()
+                logger.info(f"[TTSController] Stop TTS response: {resp_data}")
             return True
         except Exception as e:
             logger.error(f"[TTSController] Error stopping TTS: {e}")
@@ -98,30 +102,31 @@ class TTSController(QObject):
             return True
 
         try:
-            async with aiohttp.ClientSession() as session:
-                await asyncio.sleep(0.5)  # Small delay to avoid race condition
-                async with session.post(f"{HTTP_BASE_URL}/api/toggle-tts") as resp:
-                    data = await resp.json()
-                    restored_state = data.get("tts_enabled", False)
+            # Use shared HTTP session
+            session = await SharedHTTPClient.get_session()
+            await asyncio.sleep(0.5)  # Small delay to avoid race condition
+            async with session.post(f"{HTTP_BASE_URL}/api/toggle-tts") as resp:
+                data = await resp.json()
+                restored_state = data.get("tts_enabled", False)
 
-                    # If state doesn't match expected, try once more
-                    if restored_state != state_to_restore:
-                        await asyncio.sleep(0.5)
-                        async with session.post(
-                            f"{HTTP_BASE_URL}/api/toggle-tts"
-                        ) as resp2:
-                            final_data = await resp2.json()
-                            self._ttsEnabled = final_data.get(
-                                "tts_enabled", state_to_restore
-                            )
-                    else:
-                        self._ttsEnabled = restored_state
+                # If state doesn't match expected, try once more
+                if restored_state != state_to_restore:
+                    await asyncio.sleep(0.5)
+                    async with session.post(
+                        f"{HTTP_BASE_URL}/api/toggle-tts"
+                    ) as resp2:
+                        final_data = await resp2.json()
+                        self._ttsEnabled = final_data.get(
+                            "tts_enabled", state_to_restore
+                        )
+                else:
+                    self._ttsEnabled = restored_state
 
-                    self.ttsStateChanged.emit(self._ttsEnabled)
-                    logger.info(
-                        f"[TTSController] TTS state after restore: {self._ttsEnabled}"
-                    )
-                    return self._ttsEnabled == state_to_restore
+                self.ttsStateChanged.emit(self._ttsEnabled)
+                logger.info(
+                    f"[TTSController] TTS state after restore: {self._ttsEnabled}"
+                )
+                return self._ttsEnabled == state_to_restore
         except Exception as e:
             logger.error(f"[TTSController] Error restoring TTS state: {e}")
             self._ttsEnabled = state_to_restore  # Still update local state

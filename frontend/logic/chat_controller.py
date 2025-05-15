@@ -720,7 +720,7 @@ class ChatController(QObject):
         """
         Handles the 'hey computer' wake word.
         If not on the chat screen, navigates there first, then activates voice interaction.
-        Uses an event-driven approach to wait for navigation completion.
+        Now runs navigation and STT initialization in parallel for better responsiveness.
         """
         logger.info("[ChatController] 'Hey computer' wakeword detected.")
 
@@ -731,61 +731,52 @@ class ChatController(QObject):
 
         current_screen = self.navigation_controller.getCurrentScreenName()
         logger.info(f"[ChatController] Current screen: {current_screen}")
-
-        if current_screen == "ChatScreen.qml":
-            await self._activate_voice_interaction_core()
-        else:
-            logger.info(f"[ChatController] Navigating from {current_screen} to ChatScreen.qml. Waiting for confirmation...")
+        
+        # Start voice interaction preparation immediately in the background
+        voice_interaction_task = asyncio.create_task(self._prepare_voice_interaction())
+        
+        # Only wait for navigation if we're not already on the chat screen
+        if current_screen != "ChatScreen.qml":
+            logger.info(f"[ChatController] Navigating from {current_screen} to ChatScreen.qml in parallel with voice setup.")
             navigation_complete_event = asyncio.Event()
 
-            # Temporary slot to listen for the specific screen change
-            # Needs to be a method or a callable that can be disconnected.
-            # Using a nested function that captures navigation_complete_event and self
-
             def _on_screen_changed_for_wakeword(screen_name: str):
-                # This function will be called by the Qt signal
                 if screen_name == "ChatScreen.qml":
-                    logger.info(f"[ChatController] Navigation to {screen_name} confirmed via signal for wakeword activation.")
+                    logger.info(f"[ChatController] Navigation to {screen_name} confirmed.")
                     if not navigation_complete_event.is_set():
                         self._loop.call_soon_threadsafe(navigation_complete_event.set)
-                    # Attempt to disconnect immediately after the event is set
                     try:
                         self.navigation_controller.currentScreenNameChanged.disconnect(_on_screen_changed_for_wakeword)
-                        logger.debug("[ChatController] Disconnected temporary screen change listener for wakeword.")
                     except (TypeError, RuntimeError) as e:
-                        logger.warning(f"[ChatController] Error disconnecting listener (may have already been disconnected): {e}")
+                        logger.warning(f"[ChatController] Error disconnecting listener: {e}")
             
             try:
                 self.navigation_controller.currentScreenNameChanged.connect(_on_screen_changed_for_wakeword)
-                logger.debug("[ChatController] Connected temporary screen change listener for wakeword.")
-                
                 self.navigation_controller.navigationRequested.emit("ChatScreen.qml")
-
+                
+                # Don't wait for voice interaction setup to complete first - let it run in parallel
+                await asyncio.wait_for(navigation_complete_event.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.warning("[ChatController] Timeout waiting for navigation to ChatScreen.qml.")
+            finally:
                 try:
-                    await asyncio.wait_for(navigation_complete_event.wait(), timeout=5.0) # 5-second timeout
-                    logger.info("[ChatController] Navigation to ChatScreen.qml confirmed by event.")
-                except asyncio.TimeoutError:
-                    logger.warning("[ChatController] Timeout waiting for navigation to ChatScreen.qml. Activating voice interaction anyway.")
-                finally:
-                    # Ensure disconnection if not already done (e.g. timeout)
-                    try:
-                        self.navigation_controller.currentScreenNameChanged.disconnect(_on_screen_changed_for_wakeword)
-                        logger.debug("[ChatController] Ensured disconnection of listener in finally block after wait.")
-                    except (TypeError, RuntimeError):
-                        pass # Listener might have already been disconnected or failed to connect
+                    self.navigation_controller.currentScreenNameChanged.disconnect(_on_screen_changed_for_wakeword)
+                except (TypeError, RuntimeError):
+                    pass # Listener might have already been disconnected
+        
+        # Wait for voice interaction preparation to complete
+        await voice_interaction_task
+        
+        # Complete activation process
+        self._finalize_voice_activation()
 
-            except Exception as e:
-                logger.error(f"[ChatController] Error during navigation setup or wait: {e}. Activating voice interaction as fallback.")
-            
-            await self._activate_voice_interaction_core()
-
-    async def _activate_voice_interaction_core(self):
+    async def _prepare_voice_interaction(self):
         """
-        Core logic to activate voice interaction: plays wake sound, enables STT and TTS.
-        This was previously the content of _enable_tts_on_wake_word.
+        Prepares voice interaction by playing wake sound in parallel with navigation.
+        This can run concurrently with screen navigation for better responsiveness.
         """
-        logger.info("[ChatController] Activating voice interaction (sound, STT, TTS)")
-
+        logger.info("[ChatController] Preparing voice interaction in parallel with navigation.")
+        
         # Play the wake sound
         try:
             # Construct the path to the wakesound PCM file
@@ -795,9 +786,7 @@ class ChatController(QObject):
 
             # Check if the file exists
             if os.path.exists(wakesound_path):
-                logger.info(
-                    f"[ChatController] Playing wake sound from {wakesound_path}"
-                )
+                logger.info(f"[ChatController] Playing wake sound from {wakesound_path}")
                 # Read the PCM data
                 with open(wakesound_path, "rb") as f:
                     pcm_data = f.read()
@@ -810,25 +799,38 @@ class ChatController(QObject):
                 await self.audio_manager.process_audio_data(b"")
                 logger.info("[ChatController] Wake sound playback completed")
             else:
-                logger.error(
-                    f"[ChatController] Wake sound file not found at {wakesound_path}"
-                )
+                logger.error(f"[ChatController] Wake sound file not found at {wakesound_path}")
         except Exception as e:
             logger.error(f"[ChatController] Error playing wake sound: {e}")
 
+    def _finalize_voice_activation(self):
+        """
+        Finalizes voice activation by enabling STT and TTS.
+        Called after both navigation and wake sound are processed.
+        """
+        logger.info("[ChatController] Finalizing voice activation")
+        
         # Enable STT if it's not already enabled
         if not self.speech_manager.is_stt_enabled():
             # Call toggleSTT which handles state and UI updates
             self.toggleSTT()  
-            logger.info("[ChatController] STT enabled after wake word processing.")
+            logger.info("[ChatController] STT enabled")
         else:
             logger.info("[ChatController] STT was already enabled.")
 
+        # Schedule the TTS enabling (which is async)
+        self.resource_manager.schedule_coroutine(self.tts_controller.set_tts_enabled(True))
+        logger.info("[ChatController] TTS enabling scheduled")
 
-        # Also enable TTS as per the latest implementation
-        # Ensure TTS is enabled for voice responses
-        await self.tts_controller.set_tts_enabled(True)
-        logger.info("[ChatController] TTS explicitly enabled after wake word processing.")
+    # Keep the original method for backward compatibility or direct calls
+    async def _activate_voice_interaction_core(self):
+        """
+        Legacy method that combines preparation and finalization.
+        Maintained for backward compatibility.
+        """
+        logger.info("[ChatController] Using legacy voice interaction activation")
+        await self._prepare_voice_interaction()
+        self._finalize_voice_activation()
 
     def _handle_auto_submit_utterance(self, text: str):
         """

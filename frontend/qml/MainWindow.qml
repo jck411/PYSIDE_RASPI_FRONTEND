@@ -139,61 +139,48 @@ Window {
             onCurrentItemChanged: {
                 currentScreen = currentItem
                 
-                // Update NavigationController with the current screen name
-                if (currentItem && currentItem.sourceComponent && currentItem.sourceComponent.url) {
-                    var fullPath = currentItem.sourceComponent.url.toString()
-                    var fileName = fullPath.substring(fullPath.lastIndexOf('/') + 1)
-                    // Remove query parameters if any (e.g. ?foo=bar from QML type registration)
-                    if (fileName.includes('?')) {
-                        fileName = fileName.substring(0, fileName.indexOf('?'))
+                // Get screen name with simplified logic
+                var screenName = ""
+                
+                // Case 1: Simple string path (most common case)
+                if (typeof currentItem === 'string') {
+                    screenName = extractFilename(currentItem)
+                } 
+                // Case 2: Actual component with filename property
+                else if (currentItem && currentItem.hasOwnProperty("filename")) {
+                    screenName = currentItem.filename
+                }
+                // Case 3: Component with objectName ending with .qml
+                else if (currentItem && currentItem.objectName && currentItem.objectName.endsWith(".qml")) {
+                    screenName = currentItem.objectName
+                }
+                // Case 4: Use object name with .qml appended
+                else if (currentItem && currentItem.objectName) {
+                    screenName = currentItem.objectName.charAt(0).toUpperCase() + 
+                                 currentItem.objectName.slice(1) + ".qml"
+                    
+                    // Only use if it's a known screen
+                    if (!isKnownScreen(screenName)) {
+                        // Fall back to URL parsing as last resort
+                        screenName = extractScreenNameFromUrl(currentItem)
                     }
-                    // Remove QML type registration suffix if present (e.g., _QMLTYPE_0)
-                    if (fileName.includes('_QMLTYPE_')){
-                        fileName = fileName.substring(0, fileName.indexOf('_QMLTYPE_')) + ".qml";
-                    }
-                    // Fallback for initialItem which might not have full sourceComponent.url initially
-                    // or if the replace was called with a string that is the filename itself
-                    if (!fileName && typeof stackView.currentItem === 'string') {
-                        fileName = stackView.currentItem;
-                    } else if (!fileName && currentItem.objectName) {
-                        // Fallback to objectName if available and ends with .qml (less reliable)
-                        if (currentItem.objectName.endsWith(".qml")) {
-                           fileName = currentItem.objectName;
-                        } else {
-                            // Attempt to map common object names to QML files
-                            // This is a heuristic and might need refinement
-                            var potentialName = currentItem.objectName.charAt(0).toUpperCase() + currentItem.objectName.slice(1) + ".qml";
-                            // A more robust mapping might be needed if objectNames are not consistent
-                            if (potentialName === "ChatScreen.qml" || potentialName === "WeatherScreen.qml" || potentialName === "CalendarScreen.qml" || potentialName === "PhotoScreen.qml" || potentialName === "ClockScreen.qml" || potentialName === "SettingsScreen.qml" || potentialName === "AlarmScreen.qml" || potentialName === "TimerScreen.qml") {
-                                fileName = potentialName;
-                            }
-                        }
-                    }
-
-                    if (fileName) {
-                        // console.log("Current screen QML filename: " + fileName);
-                        NavigationController.setCurrentScreenName(fileName)
-                    } else {
-                        // console.warn("Could not determine screen QML filename from: ", currentItem, currentItem.sourceComponent.url.toString());
-                    }
-                } else if (currentItem && typeof currentItem === 'string') {
-                     // Case where currentItem is a string (e.g. initialItem before full load, or direct string push)
-                     var directName = currentItem;
-                     if (directName.includes('/')) { // If it's a path, extract filename
-                         directName = directName.substring(directName.lastIndexOf('/') + 1);
-                     }
-                     // console.log("Current screen QML (direct string): " + directName);
-                     NavigationController.setCurrentScreenName(directName);
-                } else {
-                    // console.warn("Current item or its sourceComponent/url is undefined.");
+                }
+                // Case 5: Fall back to URL parsing as last resort
+                else if (currentItem && currentItem.sourceComponent && currentItem.sourceComponent.url) {
+                    screenName = extractScreenNameFromUrl(currentItem) 
                 }
                 
-                // Load controls into the external Loader
+                // Update navigation controller with screen name
+                if (screenName) {
+                    NavigationController.setCurrentScreenName(screenName)
+                }
+                
+                // Rest of the existing logic for controls, title, and transparency
                 if (currentItem && currentItem.screenControls) {
                     screenControlsLoader.source = "" // Clear first
                     screenControlsLoader.source = currentItem.screenControls
                 } else {
-                     screenControlsLoader.source = "" // Clear if no controls specified
+                    screenControlsLoader.source = "" // Clear if no controls specified
                 }
                 
                 // Update title
@@ -211,6 +198,45 @@ Window {
                 } else {
                     topBarTransparent = false;
                 }
+            }
+            
+            // Helper function to extract filename from path
+            function extractFilename(path) {
+                if (path.includes('/')) {
+                    return path.substring(path.lastIndexOf('/') + 1)
+                }
+                return path
+            }
+            
+            // Helper function to check if screen name is known
+            function isKnownScreen(name) {
+                var knownScreens = [
+                    "ChatScreen.qml", "WeatherScreen.qml", "CalendarScreen.qml", 
+                    "PhotoScreen.qml", "ClockScreen.qml", "SettingsScreen.qml", 
+                    "AlarmScreen.qml", "TimerScreen.qml"
+                ]
+                return knownScreens.indexOf(name) >= 0
+            }
+            
+            // Helper function to extract screen name from URL as last resort
+            function extractScreenNameFromUrl(item) {
+                if (item && item.sourceComponent && item.sourceComponent.url) {
+                    var fullPath = item.sourceComponent.url.toString()
+                    var fileName = fullPath.substring(fullPath.lastIndexOf('/') + 1)
+                    
+                    // Remove query parameters if any
+                    if (fileName.includes('?')) {
+                        fileName = fileName.substring(0, fileName.indexOf('?'))
+                    }
+                    
+                    // Remove QML type registration suffix if present
+                    if (fileName.includes('_QMLTYPE_')) {
+                        fileName = fileName.substring(0, fileName.indexOf('_QMLTYPE_')) + ".qml"
+                    }
+                    
+                    return fileName
+                }
+                return ""
             }
         } // End StackView
     } // End ColumnLayout

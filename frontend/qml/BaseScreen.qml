@@ -11,6 +11,14 @@ Item {
     // Common property for screen title
     property string title: ""
     
+    /* 
+     * NOTE: All screens that extend BaseScreen should also define:
+     * property string filename: "ScreenName.qml"
+     * 
+     * This helps MainWindow identify screens more efficiently with direct property access
+     * rather than parsing URLs or using object names.
+     */
+    
     // Base rectangle that fills the screen with theme background color
     Rectangle {
         id: screenBackground

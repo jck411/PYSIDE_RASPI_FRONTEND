@@ -11,6 +11,7 @@ Item {
     // exitRequested signal removed
     id: photoScreen
     objectName: "photoScreen"  // Add an object name so MainWindow can identify this screen
+    property string filename: "PhotoScreen.qml"
 
     // Handle visibility changes to pause/resume the slideshow timer
     onVisibleChanged: {
