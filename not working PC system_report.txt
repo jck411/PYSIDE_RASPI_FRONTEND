@@ -1,0 +1,208 @@
+==== 1. GIT STATUS ====
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	check_system_state.sh
+	system_report.txt
+
+nothing added to commit but untracked files present (use "git add" to track)
+
+==== 2. GIT LOG (last commit) ====
+commit f8fda29644dbacbd85397b75cbdaa7be6669b083
+Author: Jack <jck411@gmail.com>
+Date:   Thu May 15 05:59:43 2025 -0400
+
+    docs: update ARCHITECTURE.md to reflect enhancements in wakeword handling and async operations
+    
+    - Revised the wakeword detection flow to utilize asynchronous parallel processing, improving responsiveness by initiating voice interaction and navigation concurrently.
+    - Documented the new approach in ARCHITECTURE.md, highlighting the benefits of reduced waiting times and enhanced user experience.
+    - Updated sections on async operations, including the implementation of a shared HTTP client for improved connection management and performance.
+    - Simplified screen name detection logic in MainWindow.qml, enhancing clarity and efficiency in identifying active screens.
+    - Added filename properties to various screens for direct access, streamlining navigation and improving maintainability.
+
+==== 3. GIT DIFF (uncommitted changes) ====
+
+==== 4. GIT BRANCH ====
+* main
+
+==== 5. PYTHON VERSION ====
+Python 3.12.3
+
+==== 6. PIP FREEZE ====
+aenum==3.1.15
+aiofiles==24.1.0
+aiohappyeyeballs==2.6.1
+aiohttp==3.11.13
+aiosignal==1.3.2
+annotated-types==0.7.0
+anyio==4.8.0
+attrs==25.3.0
+azure-cognitiveservices-speech==1.42.0
+black==25.1.0
+cachetools==5.5.2
+certifi==2025.1.31
+cffi==1.17.1
+charset-normalizer==3.4.1
+click==8.1.8
+dataclasses-json==0.6.7
+deepgram-sdk==3.10.0
+deprecation==2.1.0
+distro==1.9.0
+environs==10.3.0
+fastapi==0.115.8
+ffmpeg==1.4
+flake8==7.2.0
+frozenlist==1.5.0
+google-api-core==2.24.2
+google-api-python-client==2.166.0
+google-auth==2.38.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
+googleapis-common-protos==1.69.2
+h11==0.14.0
+h3==4.2.2
+httpcore==1.0.7
+httplib2==0.22.0
+httpx==0.28.1
+idna==3.10
+Jinja2==3.1.5
+jiter==0.9.0
+MarkupSafe==3.0.2
+marshmallow==3.26.1
+mccabe==0.7.0
+multidict==6.1.0
+mypy-extensions==1.0.0
+numpy==1.26.4
+oauthlib==3.2.2
+openai==1.61.1
+orjson==3.9.12
+packaging==24.2
+pathspec==0.12.1
+pillow==11.1.0
+platformdirs==4.3.7
+propcache==0.3.0
+proto-plus==1.26.1
+protobuf==6.30.2
+pvporcupine==3.0.0
+pyasn1==0.6.1
+pyasn1_modules==0.4.2
+PyAudio==0.2.14
+pycodestyle==2.13.0
+pycparser==2.22
+pydantic==2.10.6
+pydantic-settings==2.7.1
+pydantic_core==2.27.2
+pydub==0.25.1
+pyflakes==3.3.2
+pyparsing==3.2.3
+PyQt6==6.8.1
+PyQt6-Qt6==6.8.2
+PyQt6_sip==13.10.0
+PySide6==6.6.2
+PySide6_Addons==6.6.2
+PySide6_Essentials==6.6.2
+python-dotenv==1.0.1
+python-json-logger==2.0.7
+python-multipart==0.0.20
+pytz==2025.1
+qasync==0.27.1
+requests==2.32.3
+requests-oauthlib==2.0.0
+rsa==4.9
+shiboken6==6.6.2
+sniffio==1.3.1
+sounddevice==0.5.1
+starlette==0.45.3
+timezonefinder==6.5.8
+tqdm==4.67.1
+typing-inspect==0.9.0
+typing_extensions==4.12.2
+ujson==5.10.0
+uritemplate==4.1.1
+urllib3==2.3.0
+uvicorn==0.34.0
+websockets==14.2
+yarl==1.18.3
+
+==== 7. ENVIRONMENT VARIABLES (.env) ====
+ANTHROPIC_API_KEY=REDACTED
+
+AZURE_SPEECH_KEY=REDACTED
+AZURE_SPEECH_REGION=eastus
+
+DEEPGRAM_API_KEY=REDACTED
+
+DEEPINFRA_TOKEN=REDACTED
+
+EELEVENLABS_API_KEY=REDACTED
+
+export GOOGLE_APPLICATION_CREDENTIALS="/home/jack/ayyaihome/backend/keyfile.json"
+
+GEMINI_API_KEY=REDACTED
+
+GROK_API_KEY=REDACTED
+
+GROQ_API_KEY=REDACTED
+
+LLAMA_API_KEY=REDACTED
+
+MISTRAL_API_KEY=REDACTED
+
+OPENAI_API_KEY=REDACTED
+
+OPENROUTER_API_KEY=REDACTED
+OPENROUTER_API_KEY=REDACTED
+
+OPENWEATHER_API_KEY=REDACTED
+
+PORCUPINE_ACCESS_KEY=OFFLINE_KEY python3 wake_word_test.py
+
+WANDB_API_KEY=8547401304f46f5fcea7fc53130108af466ca92a
+==== 8. APP LOG (last 100 lines) ====
+app_output.log not found.
+
+==== 9. TOOL REGISTRATION (Python) ====
+Registered tools: ['get_sunrise_sunset', 'get_time', 'navigate_to_screen', 'get_weather_forecast', 'get_weather_current']
+
+==== 10. OS AND SHELL ====
+Linux main 6.11.0-25-generic #25~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 15 17:20:50 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+Default shell: /bin/bash
+
+==== 11. USER CONFIG (~/.smartscreen_config.json) ====
+{"is_dark_mode": true, "stt": {"auto_send": false, "model": "nova-general"}, "llm": {"api": "openrouter", "system_prompt": "you are a helpful but sarcastic assistant. Users live in Orlando, Fl"}, "tts": {"use_segmentation": false, "provider": "azure", "azure_voice": "en-US-Brian:DragonHDLatestNeural", "enable_profanity_filter": false}, "module_overrides": {"chat": {"CHAT_CONFIG": {"show_input_box": true}}, "stt": {"STT_CONFIG": {"auto_submit_utterances": true}}, "ui": {"WINDOW_CONFIG": {"fullscreen": false}}}, "ui": {"WINDOW_CONFIG": {"fullscreen": false}}, "auto_theme_mode": true}
+==== 12. CHECK FOR LOCAL FRONTEND/LOGIC/CONFIG FILES ====
+-rw-rw-r-- 1 human human 4.2K Apr  3 18:56 frontend/logic/resource_manager.py
+-rw-rw-r-- 1 human human 5.6K Apr 11 09:47 frontend/logic/google_calendar.py
+-rw-rw-r-- 1 human human 5.9K Apr 11 10:16 frontend/logic/calendar_view_strategies.py
+-rw-rw-r-- 1 human human 0 Mar 29 10:05 frontend/logic/__init__.py
+-rw-rw-r-- 1 human human 6.0K Apr  3 18:56 frontend/logic/speech_manager.py
+-rw-rw-r-- 1 human human 37K May 15 14:45 frontend/logic/chat_controller.py
+-rw-rw-r-- 1 human human 6.4K Apr 14 16:02 frontend/logic/time_context_provider.py
+-rw-rw-r-- 1 human human 5.4K May 15 14:45 frontend/logic/tts_controller.py
+-rw-rw-r-- 1 human human 15K May 13 09:28 frontend/logic/navigation_controller.py
+-rw-rw-r-- 1 human human 14K May 11 10:34 frontend/logic/alarm_controller_v2.py
+-rw-rw-r-- 1 human human 36K Apr 11 10:36 frontend/logic/calendar_controller.py
+-rw-rw-r-- 1 human human 6.1K Apr  3 18:54 frontend/logic/wake_word_handler.py
+-rw-rw-r-- 1 human human 6.5K Apr 11 10:08 frontend/logic/date_utils.py
+-rw-rw-r-- 1 human human 23K May 11 10:34 frontend/logic/timer_command_processor.py
+-rw-rw-r-- 1 human human 18K May 11 10:34 frontend/logic/audio_manager.py
+-rw-rw-r-- 1 human human 10K May 13 09:28 frontend/logic/message_handler.py
+-rw-rw-r-- 1 human human 14K May 11 10:34 frontend/logic/timer_controller.py
+-rw-rw-r-- 1 human human 37K May 13 09:28 frontend/logic/alarm_command_processor.py
+-rw-rw-r-- 1 human human 7.2K Apr 14 16:02 frontend/logic/websocket_client.py
+
+==== 13. CHECK FOR LOCAL BACKEND/TOOLS/CONFIG FILES ====
+-rw-rw-r-- 1 human human 2.4K Apr 14 16:02 backend/tools/sunrise_sunset.py
+-rw-rw-r-- 1 human human 0 Mar 31 08:46 backend/tools/__init__.py
+-rw-rw-r-- 1 human human 4.0K May 15 14:45 backend/tools/helpers.py
+-rw-rw-r-- 1 human human 14K May 15 14:45 backend/tools/orchestrator.py
+-rw-rw-r-- 1 human human 4.2K May 15 14:45 backend/tools/examples.py
+-rw-rw-r-- 1 human human 7.7K Apr 14 16:02 backend/tools/time.py
+-rw-rw-r-- 1 human human 9.0K May 15 14:45 backend/tools/navigation.py
+-rw-rw-r-- 1 human human 3.7K Apr 14 16:02 backend/tools/weather_forecast.py
+-rw-rw-r-- 1 human human 4.8K May 15 14:45 backend/tools/weather_current.py
+-rw-rw-r-- 1 human human 5.1K May 15 14:45 backend/tools/registry.py
+
+==== DONE ====

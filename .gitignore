@@ -2,6 +2,8 @@
 google_photos_credentials.json
 google_credentials.json
 token.pickle
+.env
+*system_report.txt
 
 # Python
 __pycache__/
