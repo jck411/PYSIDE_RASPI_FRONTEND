@@ -6,14 +6,23 @@ This module provides functionality to:
 2. Execute tools sequentially when there are dependencies
 3. Automatically run navigation tools in parallel with other operations
 4. Handle tool dependencies and execution planning
+
+Tool call results are keyed by a unique 'id' field if present in the tool call dict, otherwise by tool name. This allows multiple calls to the same tool in a batch without overwriting results.
 """
+
 
 import asyncio
 import logging
 from typing import Dict, List, Any, Callable, Optional, Set, Tuple, Union
 
-# Create logger
-logger = logging.getLogger(__name__)
+# Setup logger for orchestrator
+logger = logging.getLogger("orchestrator")
+handler = logging.StreamHandler()
+formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
+handler.setFormatter(formatter)
+if not logger.hasHandlers():
+    logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 class ToolDependency:
     """
@@ -44,10 +53,12 @@ class ToolExecutionPlan:
     def __init__(self):
         self.tool_dependencies: Dict[str, ToolDependency] = {}
         self.execution_batches: List[List[str]] = []
+        logger.debug(f"ToolExecutionPlan initialized.")
 
     def add_tool(self, tool_name: str, 
                  depends_on: Optional[List[str]] = None, 
                  provides: Optional[List[str]] = None) -> None:
+        logger.debug(f"Adding tool to plan: {tool_name}, depends_on={depends_on}, provides={provides}")
         """
         Add a tool to the execution plan with its dependencies
         and what data it provides.
@@ -69,6 +80,7 @@ class ToolExecutionPlan:
                     self.tool_dependencies[dep] = ToolDependency(dep)
 
     def build_execution_plan(self) -> None:
+        logger.info(f"Building execution plan for tools: {list(self.tool_dependencies.keys())}")
         """
         Builds an execution plan by analyzing dependencies and 
         creating batches of tools that can be executed in parallel.
@@ -84,14 +96,17 @@ class ToolExecutionPlan:
         # that can run in parallel with other operations
         navigation_tools = {t for t in remaining_tools 
                            if t == "navigate_to_screen" or "navigation" in t.lower()}
-        
+        logger.debug(f"Navigation tools detected: {navigation_tools}")
+
         # If we have navigation tools, put them in their own batch right away
         if navigation_tools:
             self.execution_batches.append(list(navigation_tools))
+            logger.info(f"Navigation batch: {list(navigation_tools)}")
             executed_tools.update(navigation_tools)
             remaining_tools -= navigation_tools
         
         # Process remaining tools in dependency order
+        logger.debug(f"Remaining tools after navigation: {remaining_tools}")
         while remaining_tools:
             # Find tools with no unmet dependencies
             ready_tools = {
@@ -123,6 +138,7 @@ class ToolExecutionPlan:
             
             # Add this batch of tools to the execution plan
             self.execution_batches.append(list(ready_tools))
+            logger.info(f"Batch added: {list(ready_tools)}")
             executed_tools.update(ready_tools)
             remaining_tools -= ready_tools
     
@@ -159,21 +175,26 @@ class ToolOrchestrator:
     def __init__(self):
         self.functions: Dict[str, Callable] = {}
         self.execution_plan = ToolExecutionPlan()
+        logger.debug("ToolOrchestrator initialized.")
         
     def register_function(self, name: str, func: Callable) -> None:
         """Register a tool function with the orchestrator"""
+        logger.info(f"Registering tool function: {name}")
         self.functions[name] = func
         
     def set_functions(self, functions: Dict[str, Callable]) -> None:
         """Set all available functions at once"""
+        logger.info(f"Setting all tool functions: {list(functions.keys())}")
         self.functions = functions
         
     def add_tool(self, name: str, depends_on: Optional[List[str]] = None,
                 provides: Optional[List[str]] = None) -> None:
         """Add a tool to the execution plan"""
+        logger.info(f"Adding tool to orchestrator: {name}, depends_on={depends_on}, provides={provides}")
         self.execution_plan.add_tool(name, depends_on, provides)
     
     def create_tool_dependency_map(self, tool_calls: List[Dict[str, Any]]) -> None:
+        logger.info(f"Creating tool dependency map for tool_calls: {tool_calls}")
         """
         Analyzes a list of tool calls and creates a dependency map.
         
@@ -197,6 +218,7 @@ class ToolOrchestrator:
         
     async def execute_tools(self, tool_calls: List[Dict[str, Any]], 
                            timeout: float = 30.0) -> Dict[str, Any]:
+        logger.info(f"Executing tool calls: {[call.get('name') for call in tool_calls]}")
         """
         Execute tool calls based on the dependency plan.
         
@@ -210,8 +232,15 @@ class ToolOrchestrator:
         # Create dependency map if not already done
         self.create_tool_dependency_map(tool_calls)
         
-        # Create lookup for tool parameters
-        tool_params = {tc['name']: tc.get('params', {}) for tc in tool_calls if 'name' in tc}
+        # Create lookup for tool parameters and ids
+        tool_params = {}
+        tool_ids = {}
+        for tc in tool_calls:
+            if 'name' in tc:
+                tool_params[tc['name']] = tc.get('params', {})
+                # Use id if present, else fallback to name
+                key = tc.get('id', tc['name'])
+                tool_ids[tc['name']] = key
         
         # Prepare results dictionary
         results = {}
@@ -219,38 +248,30 @@ class ToolOrchestrator:
         # Execute batches in sequence
         for batch_idx, batch in enumerate(self.execution_plan.execution_batches):
             logger.info(f"Executing batch {batch_idx+1}/{len(self.execution_plan.execution_batches)}: {batch}")
+            for tool_name in batch:
+                logger.info(f"Batch {batch_idx+1}: tool {tool_name}")
             
             # Prepare coroutines for this batch
             batch_coros = []
-            
             for tool_name in batch:
                 # Get function to execute
                 func = self.functions.get(tool_name)
-                
                 if not func:
                     logger.error(f"Tool function '{tool_name}' not found")
-                    results[tool_name] = {"error": f"Tool function '{tool_name}' not found"}
+                    key = tool_ids.get(tool_name, tool_name)
+                    results[key] = {"error": f"Tool function '{tool_name}' not found"}
                     continue
-                
                 # Get parameters for this tool
                 params = tool_params.get(tool_name, {})
-                
                 # Get inputs from dependencies
                 dep_inputs = self.execution_plan.get_tool_inputs(tool_name)
-                
                 # Merge dependency inputs with explicit parameters
-                # Explicit parameters take precedence
                 merged_params = {**dep_inputs, **params}
-                
                 # Create coroutine
                 if asyncio.iscoroutinefunction(func):
                     coro = func(**merged_params)
                 else:
-                    # Wrap synchronous function in coroutine
-                    async def run_sync(f, **kw):
-                        return f(**kw)
-                    coro = run_sync(func, **merged_params)
-                
+                    coro = asyncio.to_thread(func, **merged_params)
                 batch_coros.append((tool_name, coro))
             
             # Execute batch with timeout
@@ -266,13 +287,13 @@ class ToolOrchestrator:
                 
                 # Process results
                 for (tool_name, _), result in zip(batch_coros, batch_results):
+                    key = tool_ids.get(tool_name, tool_name)
                     if isinstance(result, Exception):
                         logger.error(f"Error executing tool '{tool_name}': {result}")
-                        results[tool_name] = {"error": str(result)}
+                        results[key] = {"error": str(result)}
                     else:
                         # Store the result
-                        results[tool_name] = result
-                        
+                        results[key] = result
                         # Also store in the dependency for use by subsequent tools
                         if tool_name in self.execution_plan.tool_dependencies:
                             self.execution_plan.tool_dependencies[tool_name].output = result
@@ -280,8 +301,9 @@ class ToolOrchestrator:
             except asyncio.TimeoutError:
                 logger.error(f"Timeout executing batch {batch_idx+1}")
                 for tool_name, _ in batch_coros:
-                    if tool_name not in results:
-                        results[tool_name] = {"error": "Execution timed out"}
+                    key = tool_ids.get(tool_name, tool_name)
+                    if key not in results:
+                        results[key] = {"error": "Execution timed out"}
         
         return results
 

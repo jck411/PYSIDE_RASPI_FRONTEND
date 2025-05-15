@@ -50,7 +50,7 @@ This is a PySide6-based smart screen interface for desktop and Raspberry Pi with
   *Command processors for timer and alarm functionality that intercept chat input. Uses regex patterns to match commands and extract parameters. Recent improvements for AM/PM time handling. Now preserves LLM responses when executing commands rather than replacing them with generic responses.*
 
 - [Tool Orchestration](docs/architecture/services/tool-orchestration.md)  
-  *Manages parallel and sequential execution of tools based on dependencies. Automatically runs navigation tools in parallel with other operations. Handles tool dependencies by creating execution batches and passing outputs between tools. Uses asyncio.gather() for parallel execution of independent tools.*
+  *Manages parallel and sequential execution of tools based on dependencies. Automatically runs navigation tools in parallel with other operations. Handles tool dependencies by creating execution batches and passing outputs between tools. Uses asyncio.gather() for parallel execution of independent tools. As of May 2025, synchronous tool functions are executed using asyncio.to_thread() to avoid blocking the event loop, improving performance and responsiveness when running sync and async tools together.*
 
 - [Connection-Aware Tools](docs/architecture/services/connection-tools.md)  
   *Tools that maintain awareness of which WebSocket connection initiated a request. Provides connection context throughout the tool execution pipeline. Ensures responses and navigation actions are directed to the originating client. Enhances multi-user support by preventing broadcasts to all connections.*
