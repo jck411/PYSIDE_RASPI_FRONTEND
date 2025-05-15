@@ -1,0 +1,237 @@
+==== 1. GIT STATUS ====
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   check_system_state.sh
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	system_check_report.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+==== 2. GIT LOG (last commit) ====
+commit add74e16f882239f0d969da471c33dd61c6cfa23
+Author: Jack <jck411@gmail.com>
+Date:   Thu May 15 15:12:44 2025 -0400
+
+    feat: add system state check script and initial system report
+
+==== 3. GIT DIFF (uncommitted changes) ====
+diff --git a/check_system_state.sh b/check_system_state.sh
+old mode 100644
+new mode 100755
+
+==== 4. GIT BRANCH ====
+* main
+
+==== 5. PYTHON VERSION ====
+Python 3.12.3
+
+==== 6. PIP FREEZE ====
+aenum==3.1.15
+aiofiles==24.1.0
+aiohappyeyeballs==2.6.1
+aiohttp==3.11.16
+aiosignal==1.3.2
+annotated-types==0.7.0
+anyio==4.9.0
+attrs==25.3.0
+azure-cognitiveservices-speech==1.42.0
+cachetools==5.5.2
+certifi==2025.1.31
+cffi==1.17.1
+charset-normalizer==3.4.1
+click==8.1.8
+coloredlogs==15.0.1
+dataclasses-json==0.6.7
+deepgram-sdk==3.10.1
+deprecation==2.1.0
+distro==1.9.0
+dnspython==2.7.0
+email_validator==2.2.0
+fastapi==0.115.8
+fastapi-cli==0.0.7
+flake8==7.1.2
+flatbuffers==25.2.10
+frozenlist==1.5.0
+google-api-core==2.24.2
+google-api-python-client==2.166.0
+google-auth==2.38.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
+googleapis-common-protos==1.69.2
+h11==0.14.0
+h3==4.2.1
+httpcore==1.0.7
+httplib2==0.22.0
+httptools==0.6.4
+httpx==0.28.1
+humanfriendly==10.0
+idna==3.10
+itsdangerous==2.2.0
+Jinja2==3.1.5
+jiter==0.8.2
+joblib==1.4.2
+markdown-it-py==3.0.0
+MarkupSafe==3.0.2
+marshmallow==3.26.1
+mccabe==0.7.0
+mdurl==0.1.2
+mpmath==1.3.0
+multidict==6.3.1
+mypy-extensions==1.0.0
+nest-asyncio==1.6.0
+numpy==1.26.4
+oauthlib==3.2.2
+onnx==1.17.0
+onnxruntime==1.21.0
+openai==1.61.1
+openwakeword==0.4.0
+orjson==3.10.15
+packaging==24.2
+pillow==11.1.0
+propcache==0.3.1
+proto-plus==1.26.1
+protobuf==6.30.0
+psutil==7.0.0
+pvporcupine==3.0.5
+pyasn1==0.6.1
+pyasn1_modules==0.4.2
+PyAudio==0.2.14
+pycodestyle==2.12.1
+pycparser==2.22
+pydantic==2.10.6
+pydantic-extra-types==2.10.2
+pydantic-settings==2.7.1
+pydantic_core==2.27.2
+pydub==0.25.1
+pyflakes==3.2.0
+Pygments==2.19.1
+pyparsing==3.2.3
+PyQt6==6.8.1
+PyQt6-Qt6==6.8.2
+PyQt6_sip==13.10.0
+PySide6==6.6.2
+PySide6_Addons==6.6.2
+PySide6_Essentials==6.6.2
+python-dotenv==1.1.0
+python-multipart==0.0.20
+pytz==2025.1
+PyYAML==6.0.2
+qasync==0.27.1
+requests==2.32.3
+requests-oauthlib==2.0.0
+rich==13.9.4
+rich-toolkit==0.13.2
+rsa==4.9
+scikit-learn==1.6.1
+scipy==1.15.2
+setuptools==78.1.0
+shellingham==1.5.4
+shiboken6==6.6.2
+sniffio==1.3.1
+sounddevice==0.5.1
+starlette==0.45.3
+sympy==1.13.1
+threadpoolctl==3.5.0
+timezonefinder==6.5.8
+tqdm==4.67.1
+typer==0.15.1
+typing-inspect==0.9.0
+typing_extensions==4.13.0
+ujson==5.10.0
+uritemplate==4.1.1
+urllib3==2.3.0
+uvicorn==0.34.0
+uvloop==0.21.0
+watchfiles==1.0.4
+websockets==15.0.1
+yarl==1.18.3
+
+==== 7. ENVIRONMENT VARIABLES (.env) ====
+[REDACTED]
+
+[REDACTED]
+AZURE_SPEECH_REGION=eastus
+
+[REDACTED]
+
+DEEPINFRA_TOKEN=jhjkWdeJUDciEX3zZjINKmI0YK7FVqLP
+
+[REDACTED]
+
+[REDACTED]
+
+[REDACTED]
+
+[REDACTED]
+
+[REDACTED]
+
+[REDACTED]
+
+[REDACTED]
+
+[REDACTED]
+
+[REDACTED]
+[REDACTED]
+
+
+[REDACTED]
+
+
+[REDACTED]
+[REDACTED]
+
+[REDACTED]
+==== 8. APP LOG (last 100 lines) ====
+app_output.log not found.
+
+==== 9. TOOL REGISTRATION (Python) ====
+Registered tools: ['get_weather_forecast', 'get_time', 'navigate_to_screen', 'get_weather_current', 'get_sunrise_sunset']
+
+==== 10. OS AND SHELL ====
+Linux XPS-13-9365 6.11.0-25-generic #25~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 15 17:20:50 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+Default shell: /bin/bash
+
+==== 11. USER CONFIG (~/.smartscreen_config.json) ====
+{"module_overrides": {"stt": {"STT_CONFIG": {"auto_submit_utterances": true}}, "chat": {"CHAT_CONFIG": {"show_input_box": true}}, "ui": {"WINDOW_CONFIG": {"fullscreen": true}}, "alarm": {"ALARM_CONFIG": {"sound_file": "timer.raw", "repeat_sound": false}}, "sounds": {"SOUND_CONFIG": {"repeat_sounds": true}}, "timer": {"TIMER_CONFIG": {"repeat_sound": false, "sound_file": "timer.raw"}}}, "theme": {"is_dark_mode": true}, "is_dark_mode": true, "auto_theme_mode": false}
+==== 12. CHECK FOR LOCAL FRONTEND/LOGIC/CONFIG FILES ====
+-rw-rw-r-- 1 jack jack 37K May 15 05:31 frontend/logic/chat_controller.py
+-rw-rw-r-- 1 jack jack 6.4K Apr 14 04:51 frontend/logic/time_context_provider.py
+-rw-rw-r-- 1 jack jack 4.2K Apr 11 01:09 frontend/logic/resource_manager.py
+-rw-rw-r-- 1 jack jack 23K May 13 05:22 frontend/logic/timer_command_processor.py
+-rw-rw-r-- 1 jack jack 36K Apr 11 20:39 frontend/logic/calendar_controller.py
+-rw-rw-r-- 1 jack jack 7.2K May 13 05:22 frontend/logic/websocket_client.py
+-rw-rw-r-- 1 jack jack 6.5K Apr 11 19:20 frontend/logic/date_utils.py
+-rw-rw-r-- 1 jack jack 37K May 13 05:22 frontend/logic/alarm_command_processor.py
+-rw-rw-r-- 1 jack jack 14K May 11 06:12 frontend/logic/alarm_controller_v2.py
+-rw-rw-r-- 1 jack jack 0 Mar 22 13:46 frontend/logic/__init__.py
+-rw-rw-r-- 1 jack jack 6.1K May 13 00:33 frontend/logic/wake_word_handler.py
+-rw-rw-r-- 1 jack jack 18K Apr 27 05:12 frontend/logic/audio_manager.py
+-rw-rw-r-- 1 jack jack 14K May  9 04:01 frontend/logic/timer_controller.py
+-rw-rw-r-- 1 jack jack 5.4K May 15 05:46 frontend/logic/tts_controller.py
+-rw-rw-r-- 1 jack jack 5.6K Apr 11 01:20 frontend/logic/google_calendar.py
+-rw-rw-r-- 1 jack jack 5.9K Apr 11 19:20 frontend/logic/calendar_view_strategies.py
+-rw-rw-r-- 1 jack jack 15K May 13 05:45 frontend/logic/navigation_controller.py
+-rw-rw-r-- 1 jack jack 6.0K Apr 11 01:09 frontend/logic/speech_manager.py
+-rw-rw-r-- 1 jack jack 10K May 13 09:24 frontend/logic/message_handler.py
+
+==== 13. CHECK FOR LOCAL BACKEND/TOOLS/CONFIG FILES ====
+-rw-rw-r-- 1 jack jack 3.7K May 13 05:22 backend/tools/weather_forecast.py
+-rw-rw-r-- 1 jack jack 7.7K Apr 14 05:07 backend/tools/time.py
+-rw-rw-r-- 1 jack jack 5.1K May 15 04:32 backend/tools/registry.py
+-rw-rw-r-- 1 jack jack 9.0K May 15 04:32 backend/tools/navigation.py
+-rw-rw-r-- 1 jack jack 14K May 15 04:39 backend/tools/orchestrator.py
+-rw-rw-r-- 1 jack jack 0 Mar 31 00:11 backend/tools/__init__.py
+-rw-rw-r-- 1 jack jack 4.8K May 15 04:33 backend/tools/weather_current.py
+-rw-rw-r-- 1 jack jack 2.4K Apr 14 03:54 backend/tools/sunrise_sunset.py
+-rw-rw-r-- 1 jack jack 4.0K May 15 04:06 backend/tools/helpers.py
+-rw-rw-r-- 1 jack jack 4.2K May 15 04:33 backend/tools/examples.py
+
+==== DONE ====

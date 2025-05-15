@@ -22,7 +22,7 @@ echo
 
 echo "==== 7. ENVIRONMENT VARIABLES (.env) ===="
 if [ -f .env ]; then
-    cat .env
+    sed 's/.*key.*/[REDACTED]/I' .env
 else
     echo ".env file not found in current directory."
 fi
@@ -47,7 +47,7 @@ echo
 
 echo "==== 11. USER CONFIG (~/.smartscreen_config.json) ===="
 if [ -f ~/.smartscreen_config.json ]; then
-    cat ~/.smartscreen_config.json
+    sed 's/.*key.*/[REDACTED]/I' ~/.smartscreen_config.json
 else
     echo "~/.smartscreen_config.json not found."
 fi
